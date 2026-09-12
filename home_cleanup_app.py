@@ -46,8 +46,8 @@ def _upcoming_events(today, days=180, limit=10):
         e=dict(raw)
         if exp._is_trip_event(e):
             continue
-        title=(e.get('title') or '').replace(' ','')
-        if '청소아줌마' in title:
+        compact=(e.get('title') or '').replace(' ','')
+        if '청소아줌마' in compact:
             continue
         sd=exp._safe_date(str(e.get('start_date') or '')[:10])
         ed=exp._safe_date(str(e.get('end_date') or e.get('start_date') or '')[:10])
@@ -66,7 +66,6 @@ def clean_family_home():
     c.close()
     family_events=_upcoming_events(today)
 
-    # No secondary quick navigation here; the global header is the only navigator.
     body='<div class="next-trip-grid">'+exp._trip_card(domestic,today,'다음 국내 여행')+exp._trip_card(overseas,today,'다음 해외 여행')+'</div>'
     body+='<section class="home-card family-next"><h2>다음 가족 일정</h2><div class="home-family-list">'
     if not family_events:
@@ -87,7 +86,25 @@ def clean_family_home():
     return base.page('우리 가족 기록',body)
 
 
+# Replace any existing root endpoint, then also intercept GET / before routing.
+# The before_request hook makes this robust even if another imported wrapper
+# registered a duplicate root route earlier in Flask's URL map.
 for rule in list(app.url_map.iter_rules()):
     if rule.rule=='/':
         app.view_functions[rule.endpoint]=clean_family_home
-        break
+
+
+@app.before_request
+def force_clean_home():
+    if base.request.method=='GET' and base.request.path=='/':
+        return clean_family_home()
+    return None
+
+
+@app.after_request
+def prevent_stale_home_cache(response):
+    if base.request.path=='/':
+        response.headers['Cache-Control']='no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma']='no-cache'
+        response.headers['Expires']='0'
+    return response
