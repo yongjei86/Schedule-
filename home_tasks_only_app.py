@@ -799,8 +799,10 @@ def _workbook_section():
         d=(r['day_of_week'] or '').strip()
         (by[d] if d in by else unknown).append(r)
     day_opts=''.join(f'<option>{d}</option>' for d in DAYS)
-    body=(f'<section class="feature-card" style="margin-top:14px"><h2>지유 문제집 체크리스트 · 미완료 {open_n}건</h2>'
-          '<form method="post" action="/riley/workbook/add" class="task-form">'
+    body=(f'<section class="feature-card" style="margin-top:14px">'
+          f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">지유 문제집 체크리스트 · 미완료 {open_n}건</h2>'
+          '<button type="button" class="btn s" onclick="let f=document.getElementById(\'wb-add\');f.style.display=f.style.display===\'none\'?\'grid\':\'none\'">+ 추가</button></div>'
+          '<form method="post" action="/riley/workbook/add" class="task-form" id="wb-add" style="display:none">'
           '<label class="task-title">문제집/과제<input name="title" required placeholder="예: 디딤돌 수학 3단원"></label>'
           f'<label>요일<select name="day_of_week">{day_opts}</select></label>'
           '<label>메모<input name="notes" placeholder="분량 등"></label>'
