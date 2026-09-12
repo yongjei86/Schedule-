@@ -41,6 +41,7 @@ CSS='''body{margin:0;background:#f4f7fb;color:#14263f;font-family:-apple-system,
 JS='''function t(id){let e=document.getElementById("d"+id);e.style.display=e.style.display==="none"?"table-row":"none"}function o(id){document.getElementById(id).classList.add("show")}function x(id){document.getElementById(id).classList.remove("show")}function ntrip(){document.getElementById("tf").action="/trip/add";document.getElementById("tf").reset();o("tm")}function et(b){let d=b.dataset;document.getElementById("tf").action="/trip/"+d.id+"/edit";["start_date","end_date","country","region","title","companions","trip_type","status","lodging","transport","notes"].forEach(k=>document.querySelector("#tm [name="+k+"]").value=d[k]||"");o("tm")}function ni(id){document.getElementById("if").action="/itinerary/add";document.getElementById("if").reset();document.querySelector("#im [name=trip_id]").value=id;o("im")}function ei(b){let d=b.dataset;document.getElementById("if").action="/itinerary/"+d.id+"/edit";["trip_id","item_date","day_label","time_text","title","place","detail","sort_order"].forEach(k=>document.querySelector("#im [name="+k+"]").value=d[k]||"");o("im")}function ne(){document.getElementById("ef").action="/event/add";document.getElementById("ef").reset();o("em")}function ee(b){let d=b.dataset;document.getElementById("ef").action="/event/"+d.id+"/edit";["start_date","end_date","title","category","person","notes"].forEach(k=>document.querySelector("#em [name="+k+"]").value=d[k]||"");o("em")}function na(day){document.getElementById("af").action="/academy/add";document.getElementById("af").reset();if(day)document.querySelector("#am [name=day_of_week]").value=day;o("am")}function ea(b){let d=b.dataset;document.getElementById("af").action="/academy/"+d.id+"/edit";["day_of_week","start_time","end_time","academy","subject","location","notes"].forEach(k=>document.querySelector("#am [name="+k+"]").value=d[k]||"");o("am")}'''
 CSS+='''.fab-group{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:20}.fab{width:46px;height:46px;border-radius:50%;background:#0f4c81;color:#fff;border:0;font-size:20px;line-height:1;cursor:pointer;box-shadow:0 4px 14px #0f4c8155;display:flex;align-items:center;justify-content:center;transition:transform .12s ease,box-shadow .12s ease}.fab:hover{box-shadow:0 6px 18px #0f4c8166;transform:translateY(-1px)}.fab:active{transform:scale(.94)}@media(max-width:560px){.fab-group{right:14px;bottom:14px;gap:8px}.fab{width:42px;height:42px;font-size:18px}}'''
 CSS+='''.person-filter{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}.pf{border:1px solid #d7dfe8;background:#fff;color:#5c6b80;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;text-decoration:none;transition:all .12s ease}.pf:hover{border-color:#0f4c81;color:#0f4c81}.pf.on{color:#fff;border-color:transparent}.pf.on.yj{background:#315c9b}.pf.on.지유{background:#e98755}.pf.on.보미{background:#9a66ad}.pf.on.혜온{background:#46a081}.pf.on.가족{background:#c99a35}.pf.on.여행{background:#d64f5b}.pf.on:not(.yj):not(.지유):not(.보미):not(.혜온):not(.가족):not(.여행){background:#14263f}'''
+CSS+='''.future-card{display:flex;flex-direction:column}.future-card>a{color:inherit;text-decoration:none}.status-form{margin-top:8px}.status-select{width:100%;border:1px solid #d7dfe8;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:#eef2f6;color:#5c6b80}.status-select.planned{background:#e8f6ee;color:#1f7a4d;border-color:#bfe4cd}.status-select.review{background:#fff3e0;color:#b5680a;border-color:#f3d9ab}.status-select.longterm{background:#f1ecfb;color:#6a4fb0;border-color:#dccdf5}.status-select.done{background:#eef2f6;color:#5c6b80;border-color:#dfe6ee}'''
 CSS+='''*{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.btn,.nav a,.seg a,.pf{transition:filter .12s ease,transform .06s ease,background .12s ease,color .12s ease,box-shadow .12s ease}.btn:hover{filter:brightness(1.07)}.btn:active{transform:scale(.97)}.box,.card,.home-card,.dashcard,.next-trip-card,.feature-card,.plan-section,.monthbig,.mini,.wday,.sday,.status-card,.stat-card,.summary-card{box-shadow:0 1px 3px rgba(20,38,63,.06)}.trip:hover,.home-family-row:hover,.event:hover,.feature-row:hover{background:#f7fbff}.home-family-row,.feature-row,.plan-row,.summary-row{transition:background .12s ease}.hero{box-shadow:0 6px 20px rgba(15,76,129,.18)}'''
 JS+='''(function(){var t=document.getElementById("toTop");if(t)t.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})});var r=document.getElementById("refreshBtn");if(r)r.addEventListener("click",function(){location.reload()})})();'''
 def nav():return '<header><nav><b>✈️ 우리 가족 기록</b><div class="nav"><a href="/past">과거 여행</a><a href="/future">향후 여행</a><a href="/calendar">가족 달력</a><a href="/riley">지유 주간 학원 일정</a>'+('<a href="/logout">로그아웃</a>' if admin() else '<a href="/login">관리자</a>')+'</div></nav></header>'
@@ -1052,6 +1053,16 @@ def set_trip_date_status(trip_id):
     if status not in ('확정','대략','미정'): return abort(400)
     before=row_snapshot('trip_date_quality',trip_id); backup_db('prechange'); c=db(); c.execute('insert into trip_date_quality(trip_id,date_status,updated_at) values(?,?,?) on conflict(trip_id) do update set date_status=excluded.date_status,updated_at=excluded.updated_at',(trip_id,status,datetime.now().isoformat(timespec='seconds'))); c.commit(); c.close(); after=row_snapshot('trip_date_quality',trip_id); log_change('trip_date_quality',trip_id,'edit',before,after); return redirect(request.referrer or f'/trip/{trip_id}')
 
+TRIP_STATUSES=('예정','검토 중','장기 계획','완료')
+def _status_class(s):
+    return {'완료':'done','예정':'planned','검토 중':'review','장기 계획':'longterm'}.get((s or '').strip(),'other')
+
+@app.route('/trip/<int:trip_id>/status',methods=['POST'])
+def set_trip_status(trip_id):
+    status=(request.form.get('status') or '').strip()
+    if status not in TRIP_STATUSES: return abort(400)
+    before=row_snapshot('trips',trip_id); backup_db('prechange'); c=db(); c.execute('update trips set status=? where id=?',(status,trip_id)); c.commit(); c.close(); after=row_snapshot('trips',trip_id); log_change('trips',trip_id,'edit',before,after); return redirect(request.referrer or f'/trip/{trip_id}')
+
 
 # ===== editable trip detail =====
 def trip_attrs(r):
@@ -1285,10 +1296,16 @@ def future_filtered():
         region=' · '.join(x for x in [r['country'],r['region']] if x)
         sd=qdate(r['start_date'] or '')
         dday=_dday_label(sd,today) if sd else '-'
-        body+=(f'<a class="past-card home-link" href="/trip/{r["id"]}">'
+        scls=_status_class(r['status'])
+        opts=''.join(f'<option value="{H(s)}" {"selected" if r["status"]==s else ""}>{H(s)}</option>' for s in TRIP_STATUSES)
+        body+=(f'<div class="past-card future-card">'
+               f'<a class="home-link" href="/trip/{r["id"]}">'
                f'<div class="date">{H(r["start_date"])} ~ {H(r["end_date"])}<span class="dday" style="float:right">{H(dday)}</span></div>'
                f'<b>{H(r["title"])}</b><div class="meta">{H(region) or "-"}</div>'
-               f'<div class="meta">함께: {H(r["companions"]) or "-"} · {H(r["status"])}</div></a>')
+               f'<div class="meta">함께: {H(r["companions"]) or "-"}</div></a>'
+               f'<form method="post" action="/trip/{r["id"]}/status" class="status-form">'
+               f'<select name="status" class="status-select {scls}" onchange="this.form.submit()">{opts}</select>'
+               f'</form></div>')
     body+='</div>'
     return page('향후 여행',body)
 
