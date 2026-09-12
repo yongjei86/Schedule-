@@ -1,8 +1,14 @@
-import os,sqlite3,calendar,html
+import os,sqlite3,calendar,html,secrets
 from datetime import datetime,timedelta,date
 from flask import Flask,request,redirect,session,abort
-app=Flask(__name__);app.secret_key=os.getenv('SECRET_KEY','change-me')
-DB_PATH=os.getenv('DB_PATH','/data/family_travel.db');ADMIN_PASSWORD=os.getenv('ADMIN_PASSWORD','admin')
+app=Flask(__name__)
+SECRET_KEY=os.getenv('SECRET_KEY')
+if not SECRET_KEY:raise RuntimeError('SECRET_KEY environment variable must be set (no insecure default is used)')
+app.secret_key=SECRET_KEY
+app.config.update(SESSION_COOKIE_SAMESITE='Lax',SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SECURE=os.getenv('SESSION_COOKIE_SECURE','1')!='0')
+DB_PATH=os.getenv('DB_PATH','/data/family_travel.db')
+ADMIN_PASSWORD=os.getenv('ADMIN_PASSWORD')
+if not ADMIN_PASSWORD:raise RuntimeError('ADMIN_PASSWORD environment variable must be set (no insecure default is used)')
 DAYS=['월','화','수','목','금','토','일']
 
 def db():
@@ -128,7 +134,7 @@ def riley():
 
 @app.route('/login',methods=['GET','POST'])
 def login():
- if request.method=='POST' and request.form.get('password')==ADMIN_PASSWORD:session['admin']=1;return redirect('/future')
+ if request.method=='POST' and secrets.compare_digest(request.form.get('password',''),ADMIN_PASSWORD):session['admin']=1;return redirect('/future')
  return page('관리자 로그인','<div class="card"><form method="post"><label>비밀번호<input type="password" name="password"></label><br><button class="btn">로그인</button></form></div>')
 @app.route('/logout')
 def logout():session.clear();return redirect('/future')
