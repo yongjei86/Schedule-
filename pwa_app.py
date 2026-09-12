@@ -9,8 +9,9 @@ app = current.app
 
 PWA_NAME = '우리 가족 기록'
 PWA_SHORT_NAME = '가족 기록'
-PWA_THEME = '#0f4c81'
+PWA_THEME = '#10253f'
 PWA_BG = '#f4f7fb'
+PWA_ICON = '/pwa-icon-v2.svg'
 
 _manifest = {
     'name': PWA_NAME,
@@ -24,7 +25,7 @@ _manifest = {
     'theme_color': PWA_THEME,
     'lang': 'ko-KR',
     'icons': [
-        {'src': '/pwa-icon.svg', 'sizes': 'any', 'type': 'image/svg+xml', 'purpose': 'any maskable'},
+        {'src': PWA_ICON, 'sizes': 'any', 'type': 'image/svg+xml', 'purpose': 'any maskable'},
     ],
     'shortcuts': [
         {'name': '가족 달력', 'short_name': '달력', 'url': '/calendar'},
@@ -33,19 +34,29 @@ _manifest = {
     ],
 }
 
+# Clean travel mark: deep navy tile + ivory globe + warm gold airplane.
+# The important artwork stays inside the maskable safe area so Android/Samsung launchers
+# can crop it to circles, squircles or rounded squares without losing details.
 _ICON_SVG = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-<rect width="512" height="512" rx="116" fill="#0f4c81"/>
-<circle cx="390" cy="126" r="54" fill="#ffffff" opacity=".16"/>
-<path d="M96 292c0-25 20-45 45-45h230c25 0 45 20 45 45v86c0 25-20 45-45 45H141c-25 0-45-20-45-45v-86z" fill="#ffffff" opacity=".96"/>
-<path d="M165 247c9-72 51-121 91-121s82 49 91 121" fill="none" stroke="#ffffff" stroke-width="28" stroke-linecap="round"/>
-<circle cx="190" cy="330" r="24" fill="#e98755"/>
-<circle cx="256" cy="330" r="24" fill="#46a081"/>
-<circle cx="322" cy="330" r="24" fill="#9a66ad"/>
-<path d="M256 64l18 38 42 6-30 29 7 41-37-19-37 19 7-41-30-29 42-6 18-38z" fill="#f5c451"/>
+<defs>
+  <linearGradient id="bg" x1="72" y1="54" x2="438" y2="462" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#183A60"/>
+    <stop offset="1" stop-color="#0B1D32"/>
+  </linearGradient>
+</defs>
+<rect width="512" height="512" rx="120" fill="url(#bg)"/>
+<circle cx="256" cy="256" r="146" fill="#F8F5ED"/>
+<circle cx="256" cy="256" r="106" fill="none" stroke="#B9C4CE" stroke-width="12"/>
+<path d="M154 256h204M256 150c-31 30-48 67-48 106s17 76 48 106M256 150c31 30 48 67 48 106s-17 76-48 106" fill="none" stroke="#B9C4CE" stroke-width="12" stroke-linecap="round"/>
+<path d="M174 200c25 13 53 19 82 19s57-6 82-19M174 312c25-13 53-19 82-19s57 6 82 19" fill="none" stroke="#B9C4CE" stroke-width="10" stroke-linecap="round"/>
+<path d="M126 303c38-28 86-48 142-57l91-58c8-5 18-3 23 5 5 7 4 16-2 22l-69 64 50 11c10 2 17 11 16 21-1 9-9 16-18 17l-74 4-41 66c-5 8-15 11-23 7-8-4-12-13-9-22l23-69c-42 3-78 10-111 22-12 4-24-3-27-15-2-7 1-14 9-18z" fill="#D7A347"/>
+<path d="M318 218l42-27" stroke="#FFF9EC" stroke-width="9" stroke-linecap="round"/>
+<circle cx="116" cy="118" r="10" fill="#D7A347"/>
+<circle cx="396" cy="394" r="7" fill="#D7A347" opacity=".75"/>
 </svg>'''
 
-_SW = '''const CACHE='family-pwa-v1';
-const SHELL=['/manifest.webmanifest','/pwa-icon.svg'];
+_SW = '''const CACHE='family-pwa-v2';
+const SHELL=['/manifest.webmanifest','/pwa-icon-v2.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener('fetch',event=>{
@@ -56,18 +67,23 @@ self.addEventListener('fetch',event=>{
     event.respondWith(fetch(event.request).catch(()=>caches.match('/')));
     return;
   }
-  if(url.pathname==='/manifest.webmanifest'||url.pathname==='/pwa-icon.svg'){
-    event.respondWith(caches.match(event.request).then(r=>r||fetch(event.request).then(resp=>{const copy=resp.clone();caches.open(CACHE).then(c=>c.put(event.request,copy));return resp;})));
+  if(url.pathname==='/manifest.webmanifest'||url.pathname==='/pwa-icon-v2.svg'){
+    event.respondWith(fetch(event.request).then(resp=>{const copy=resp.clone();caches.open(CACHE).then(c=>c.put(event.request,copy));return resp;}).catch(()=>caches.match(event.request)));
   }
 });'''
 
 @app.route('/manifest.webmanifest')
 def pwa_manifest():
-    return Response(json.dumps(_manifest, ensure_ascii=False), mimetype='application/manifest+json', headers={'Cache-Control':'public, max-age=3600'})
+    return Response(json.dumps(_manifest, ensure_ascii=False), mimetype='application/manifest+json', headers={'Cache-Control':'no-cache'})
 
-@app.route('/pwa-icon.svg')
-def pwa_icon():
+@app.route('/pwa-icon-v2.svg')
+def pwa_icon_v2():
     return Response(_ICON_SVG, mimetype='image/svg+xml', headers={'Cache-Control':'public, max-age=86400'})
+
+# Keep old route alive so previously installed versions do not break while updating.
+@app.route('/pwa-icon.svg')
+def pwa_icon_legacy():
+    return Response(_ICON_SVG, mimetype='image/svg+xml', headers={'Cache-Control':'no-cache'})
 
 @app.route('/service-worker.js')
 def pwa_service_worker():
@@ -83,8 +99,8 @@ def pwa_page(title, body):
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="{PWA_SHORT_NAME}">
-<link rel="icon" href="/pwa-icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/pwa-icon.svg">'''
+<link rel="icon" href="{PWA_ICON}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{PWA_ICON}">'''
     pwa_script = '''<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/service-worker.js').catch(()=>{}));}</script>'''
     return html.replace('</head>', pwa_head + '</head>').replace('</body>', pwa_script + '</body>')
 
