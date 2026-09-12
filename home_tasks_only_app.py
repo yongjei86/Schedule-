@@ -185,18 +185,6 @@ def ae(i):must();c=db();v=[request.form.get(k,'') for k in af];c.execute('update
 def ad(i):must();c=db();c.execute('delete from academy where id=?',(i,));c.commit();c.close();return redirect(request.referrer or '/riley')
 @app.route('/health')
 def health():return 'ok'
-@app.route('/debug/academy')
-def debug_academy():
-    c=db();rows=[dict(x) for x in c.execute('select id,day_of_week,start_time,end_time,academy,subject,location,notes,active from academy order by id').fetchall()];c.close()
-    lines=[f"{r['id']} | day={r['day_of_week']!r} | active={r['active']} | {r['start_time']}-{r['end_time']} | {r['academy']} | {r['subject']}" for r in rows]
-    return '<pre>'+H('\n'.join(lines) if lines else '(no rows)')+'</pre>'
-@app.route('/debug/academy-log')
-def debug_academy_log():
-    c=db();rows=c.execute("select * from change_log where entity_type='academy' order by id").fetchall();c.close()
-    out=[]
-    for r in rows:
-        out.append(f"log#{r['id']} | {r['created_at']} | action={r['action']} | entity_id={r['entity_id']}\n  before={r['before_json']}\n  after={r['after_json']}")
-    return '<pre>'+H('\n\n'.join(out) if out else '(no academy change_log rows)')+'</pre>'
 
 # ===================== from gcal_wrapper.py =====================
 KST = ZoneInfo('Asia/Seoul')
@@ -2036,7 +2024,7 @@ def next_nav():
             '<a href="/future">향후 여행</a>'
             '<a href="/calendar">가족 달력</a>'
             '<a href="/tasks">할 일</a>'
-            '<a href="/kids">아이 일정</a>'
+            '<a href="/riley">지유 주간 학원 일정</a>'
             '<a href="/notifications">알림</a>'
             '</div></nav></header>')
 
