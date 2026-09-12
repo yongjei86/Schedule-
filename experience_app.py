@@ -44,7 +44,7 @@ def family_home():
 
     c=base.db(); nxt=_next_trip(c,today); recent=_recent_trips(c); completed=c.execute("select count(*) n from trips where status='완료'").fetchone()['n']; c.close()
     month_events=main.family_events(month_start,month_end)
-    week_riley=main.recurring_riley_events(week_start,week_end,'지유')
+    week_events=main.family_events(week_start,week_end)
 
     quick='<div class="quick-row"><a class="btn" href="/travel-search">통합 검색</a><a class="btn s" href="/travel-stats">여행 통계</a><a class="btn s" href="/calendar">가족 달력</a><a class="btn s" href="/riley">지유 주간 일정</a></div>'
     body=quick+'<div class="home-grid">'
@@ -66,11 +66,13 @@ def family_home():
         d=dict(e); body+=f'<div class="home-item"><span>{base.H(d.get("title"))}</span><span class="muted">{base.H(str(d.get("start_date") or "")[:10])}</span></div>'
     body+='</div></section>'
 
-    body+='<section class="home-card"><h2>지유 이번주 일정</h2><div class="home-list">'
-    if not week_riley:
-        body+='<div class="muted">반복 학원 일정이 없습니다.</div>'
-    for e in week_riley[:8]:
-        body+=f'<div class="home-item"><span>{base.H(e["title"])}</span><span class="muted">{e["date"].strftime("%m/%d")} {base.H(e["start"])}</span></div>'
+    body+='<section class="home-card"><h2>이번주 일정</h2><div class="home-list">'
+    week_sorted=sorted(week_events,key=lambda e:(str(dict(e).get('start_date') or ''),str(dict(e).get('title') or '')))
+    if not week_sorted:
+        body+='<div class="muted">이번주 일정이 없습니다.</div>'
+    for e in week_sorted[:8]:
+        d=dict(e)
+        body+=f'<div class="home-item"><span>{base.H(d.get("title"))}</span><span class="muted">{base.H(str(d.get("start_date") or "")[:10])}</span></div>'
     body+='</div></section>'
 
     body+=f'<section class="home-card"><h2>최근 여행</h2><div class="muted" style="margin-bottom:5px">완료 여행 {completed}건</div><div class="home-list">'
