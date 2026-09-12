@@ -185,6 +185,11 @@ def ae(i):must();c=db();v=[request.form.get(k,'') for k in af];c.execute('update
 def ad(i):must();c=db();c.execute('delete from academy where id=?',(i,));c.commit();c.close();return redirect(request.referrer or '/riley')
 @app.route('/health')
 def health():return 'ok'
+@app.route('/debug/academy')
+def debug_academy():
+    c=db();rows=[dict(x) for x in c.execute('select id,day_of_week,start_time,end_time,academy,subject,location,notes,active from academy order by id').fetchall()];c.close()
+    lines=[f"{r['id']} | day={r['day_of_week']!r} | active={r['active']} | {r['start_time']}-{r['end_time']} | {r['academy']} | {r['subject']}" for r in rows]
+    return '<pre>'+H('\n'.join(lines) if lines else '(no rows)')+'</pre>'
 
 # ===================== from gcal_wrapper.py =====================
 KST = ZoneInfo('Asia/Seoul')
