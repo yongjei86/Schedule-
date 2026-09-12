@@ -772,6 +772,58 @@ def academy_modal():
     opts=''.join(f'<option>{d}</option>' for d in DAYS)+ '<option>미정</option>'
     return f'''<div class="modal" id="am"><div class="card"><div class="head"><h2>지유 일정 추가/수정</h2><button class="btn s" onclick="x('am')">닫기</button></div><form class="form" id="af" method="post"><label>요일<select name="day_of_week">{opts}</select></label><label>시작 시간<input type="time" name="start_time"></label><label>종료 시간<input type="time" name="end_time"></label><label>학원/일정명<input name="academy" required></label><label>과목<input name="subject"></label><label>장소<input name="location"></label><label class="full">메모<textarea name="notes"></textarea></label><div class="full"><button class="btn">저장</button></div></form></div></div>'''
 
+def _init_riley_workbook_schema():
+    c=db()
+    c.executescript('''CREATE TABLE IF NOT EXISTS riley_workbooks(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      notes TEXT,
+      done INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    )''')
+    c.commit(); c.close()
+_init_riley_workbook_schema()
+
+def _workbook_rows():
+    c=db(); rows=[dict(x) for x in c.execute('select * from riley_workbooks order by done asc, id desc').fetchall()]; c.close(); return rows
+
+def _workbook_section():
+    rows=_workbook_rows()
+    open_n=sum(1 for r in rows if not r['done'])
+    body=(f'<section class="feature-card" style="margin-top:14px"><h2>지유 문제집 체크리스트 · 미완료 {open_n}건</h2>'
+          '<form method="post" action="/riley/workbook/add" class="task-form">'
+          '<label class="task-title">문제집/과제<input name="title" required placeholder="예: 디딤돌 수학 3단원"></label>'
+          '<label>메모<input name="notes" placeholder="분량 등"></label>'
+          '<button class="btn">추가</button></form>'
+          '<div class="feature-list" style="margin-top:10px">')
+    if not rows:
+        body+='<div class="muted">등록된 문제집이 없습니다.</div>'
+    for r in rows:
+        cls=' task-done' if r['done'] else ''
+        meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
+        body+=(f'<div class="feature-row"><div><b class="{cls}">{H(r["title"])}</b>{meta}</div><div class="task-actions">'
+               f'<form method="post" action="/riley/workbook/{r["id"]}/toggle"><button class="btn s">{"되돌리기" if r["done"] else "완료"}</button></form>'
+               f'<form method="post" action="/riley/workbook/{r["id"]}/delete" onsubmit="return confirm(\'삭제할까요?\')"><button class="btn d">삭제</button></form></div></div>')
+    body+='</div></section>'
+    return body
+
+@app.route('/riley/workbook/add',methods=['POST'])
+def riley_workbook_add():
+    title=(request.form.get('title') or '').strip()
+    if title:
+        c=db(); c.execute('insert into riley_workbooks(title,notes,done,created_at) values(?,?,0,?)',(title,(request.form.get('notes') or '').strip(),datetime.now().isoformat(timespec='seconds'))); c.commit(); c.close()
+    return redirect(request.referrer or '/riley')
+
+@app.route('/riley/workbook/<int:i>/toggle',methods=['POST'])
+def riley_workbook_toggle(i):
+    c=db(); c.execute('update riley_workbooks set done=case when done=1 then 0 else 1 end where id=?',(i,)); c.commit(); c.close()
+    return redirect(request.referrer or '/riley')
+
+@app.route('/riley/workbook/<int:i>/delete',methods=['POST'])
+def riley_workbook_delete(i):
+    c=db(); c.execute('delete from riley_workbooks where id=?',(i,)); c.commit(); c.close()
+    return redirect(request.referrer or '/riley')
+
 def riley_week():
     q=qdate(request.args.get('date','')) or date.today(); today=date.today()
     mon=q-timedelta(days=q.weekday()); sun=mon+timedelta(days=6)
@@ -821,7 +873,8 @@ def riley_week():
             dat=f'data-id="{r["id"]}" data-day_of_week="{H(r["day_of_week"])}" data-start_time="{H(r["start_time"])}" data-end_time="{H(r["end_time"])}" data-academy="{H(r["academy"])}" data-subject="{H(r["subject"])}" data-location="{H(r["location"])}" data-notes="{H(r["notes"])}"'
             body+=f'<div class="needs-item"><div><b>{H(r["academy"])}</b><div class="muted">요일 또는 시간이 미정이라 주간표 밖에 표시</div></div><div class="row-actions"><button class="btn s" {dat} onclick="ea(this)">수정</button><form method="post" action="/academy/{r["id"]}/delete"><button class="btn d">삭제</button></form></div></div>'
         body+='</div>'
-    body+='<p class="muted" style="margin-top:10px">주황색은 지유 Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'+academy_modal()
+    body+='<p class="muted" style="margin-top:10px">주황색은 지유 Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'
+    body+=_workbook_section()+academy_modal()
     return page('지유 주간 일정',body)
 
 for rule in list(app.url_map.iter_rules()):
