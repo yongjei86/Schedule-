@@ -1,32 +1,25 @@
 import os,sqlite3,calendar,html
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta,date
 from flask import Flask,request,redirect,session,abort
 app=Flask(__name__);app.secret_key=os.getenv('SECRET_KEY','change-me')
 DB_PATH=os.getenv('DB_PATH','/data/family_travel.db');ADMIN_PASSWORD=os.getenv('ADMIN_PASSWORD','admin')
+DAYS=['월','화','수','목','금','토','일']
+
 def db():
  os.makedirs(os.path.dirname(DB_PATH) or '.',exist_ok=True);c=sqlite3.connect(DB_PATH);c.row_factory=sqlite3.Row;c.execute('PRAGMA foreign_keys=ON');return c
 def H(x):return html.escape('' if x is None else str(x))
 def admin():return bool(session.get('admin'))
 def must():
  if not admin():abort(403)
-TRIPS=[
-('2013-08-05','2013-08-09','홍콩','홍콩','홍콩','부부','해외','완료','','','4박 5일'),('2013-12-24','2013-12-28','태국','방콕','방콕','부부','해외','완료','','','4박 5일'),('2014-08-15','2014-08-24','체코·오스트리아·헝가리','프라하·빈·부다페스트','중부유럽','부부','해외','완료','','','9박 10일'),('2015-01-01','2015-01-05','대만','타이베이','타이베이','부부','해외','완료','','','4박 5일'),('2015-05-10','2015-05-17','미국','하와이','하와이 신혼여행','부부','해외','완료','','','6박 8일'),('2015-10-01','2015-10-04','중국','상하이','상하이','부부','해외','완료','','','3박 4일'),('2015-12-25','2016-01-03','스페인','스페인','스페인','부부','해외','완료','','','약 9박 10일'),('2016-02-27','2016-03-01','대한민국','제주','제주','부부','국내','완료','','','3박 4일'),('2017-09-30','2017-10-03','대한민국','속초','속초 롯데리조트','가족 3명','국내','완료','롯데리조트 속초','','약 3박 4일'),('2018-01-01','2018-01-01','대한민국','서울','시그니엘 서울','가족 3명','국내','완료','시그니엘 서울','','정확한 날짜 확인 필요'),('2018-03-14','2018-03-17','마카오·홍콩','마카오·홍콩','마카오·홍콩','가족 3명','해외','완료','갤럭시 마카오 / 디즈니 할리우드 호텔','','3박 4일'),('2018-04-29','2018-05-01','대한민국','제주','제주','가족 3명','국내','완료','','','2박 3일'),('2018-06-01','2018-06-06','괌','괌','괌','가족 3명','해외','완료','','','출발일 확인 필요 · 6/6 귀국'),('2018-10-09','2018-10-13','베트남','다낭','다낭','가족 3명','해외','완료','','','4박 5일'),('2018-11-06','2018-11-09','홍콩','홍콩','홍콩 출장+가족동반','가족 3명','해외','완료','','','출장+가족동반 · 3박 4일'),('2019-06-05','2019-06-08','일본','도쿄','도쿄·디즈니','가족 3명','해외','완료','','','3박 4일'),('2019-08-16','2019-08-21','베트남','다낭·랑코','다낭·랑코','가족 3명','해외','완료','','','5박 6일'),('2019-11-01','2019-11-03','대만','타이베이','타이베이','가족 3명','해외','완료','','','2박 3일'),('2020-01-09','2020-01-14','태국','방콕','방콕','가족 3명','해외','완료','','','5박 6일'),('2020-10-02','2020-10-03','대한민국','가평','더 스테이 힐링파크','가족 3명','국내','완료','더 스테이 힐링파크','','날짜 추정'),('2020-10-10','2020-10-10','대한민국','서울','몬드리안 서울','가족 3명','국내','완료','몬드리안 서울','','숙박일 확인 필요'),('2021-01-17','2021-01-18','대한민국','서울','콘래드 서울','가족 3명','국내','완료','콘래드 서울','','1박 2일'),('2021-04-24','2021-04-25','대한민국','서울','그랜드 하얏트 서울','가족 3명','국내','완료','그랜드 하얏트 서울','','약 1박 2일'),('2021-05-19','2021-05-21','대한민국','정선','파크로쉬','가족 3명','국내','완료','파크로쉬','','2박 3일'),('2021-08-15','2021-08-16','대한민국','인천','경원재','가족 3명','국내','완료','경원재','','1박 2일'),('2022-08-02','2022-08-05','대한민국','정선','파크로쉬','가족 3명','국내','완료','파크로쉬','','시작일 재확인 필요'),('2022-08-14','2022-08-15','대한민국','서울','포시즌스 서울','가족 3명','국내','완료','포시즌스 서울','','1박 2일'),('2022-10-09','2022-10-10','대한민국','서울','페어몬트 서울','가족 3명','국내','완료','페어몬트 서울','','체크인 날짜 확인 필요'),('2022-10-29','2022-10-30','대한민국','가평','가평 마이다스','가족 3명','국내','완료','마이다스 호텔','','1박 2일'),('2022-12-26','2022-12-30','일본','후쿠오카·벳푸','후쿠오카·벳푸','가족 3명','해외','완료','','','4박 5일'),('2023-02-27','2023-03-01','대한민국','속초','켄싱턴 설악밸리','가족 4명','국내','완료','켄싱턴 설악밸리','','2박 3일'),('2023-03-18','2023-03-19','대한민국','이천','에덴파라다이스','가족 4명','국내','완료','에덴파라다이스','','1박 2일'),('2023-08-29','2023-09-02','베트남','다낭·랑코','다낭·랑코','가족 4명','해외','완료','','','4박 5일'),('2023-10-28','2023-10-29','대한민국','가평','가평 마이다스','가족 4명','국내','완료','마이다스 호텔','','1박 2일'),('2023-12-26','2023-12-29','대한민국','제천','레스트리 리솜','가족 4명','국내','완료','레스트리 리솜','','3박 4일'),('2024-02-29','2024-03-03','일본','오사카','오사카','가족 4명','해외','완료','','','3박 4일'),('2024-06-06','2024-06-09','마카오','마카오','마카오','가족 4명','해외','완료','','','3박 4일'),('2024-07-21','2024-07-27','일본','홋카이도','홋카이도','가족 4명','해외','완료','','','6박 7일'),('2024-08-31','2024-09-01','대한민국','원주','오크밸리','가족 4명','국내','완료','오크밸리','','1박 2일'),('2024-11-09','2024-11-10','대한민국','가평','더 스테이 힐링파크','가족 4명','국내','완료','더 스테이 힐링파크','','1박 2일'),('2024-12-24','2024-12-27','홍콩','홍콩','홍콩','가족 4명','해외','완료','','','3박 4일'),('2025-02-08','2025-02-15','인도네시아','발리','발리','가족 4명','해외','완료','','','7박 8일'),('2025-06-03','2025-06-07','대한민국','제주','제주','가족 4명','국내','완료','','','4박 5일'),('2025-07-12','2025-07-13','대한민국','원주','오크밸리','가족 4명','국내','완료','오크밸리','','1박 2일'),('2025-08-09','2025-08-11','대한민국','속초','카시아 속초','가족 4명','국내','완료','카시아 속초','','2박 3일'),('2025-10-18','2025-10-20','대한민국','속초','카시아 속초','가족 4명','국내','완료','카시아 속초','','2박 3일'),('2026-01-24','2026-01-25','대한민국','홍천','비발디파크','가족 4명','국내','완료','비발디파크','','1박 2일'),('2026-03-21','2026-03-22','대한민국','홍천','비발디파크','가족 4명','국내','완료','비발디파크','','1박 2일'),('2026-05-23','2026-05-25','대한민국','경주','경주 코모도','가족 4명','국내','완료','코모도호텔 경주','','2박 3일'),('2026-06-20','2026-06-21','대한민국','평창','평창 켄싱턴','가족 4명','국내','완료','켄싱턴호텔 평창','','1박 2일'),('2026-08-08','2026-08-17','인도네시아','발리','발리','가족 4명','해외','완료','','대한항공 KE431/KE432','9박 10일'),('2026-11-14','2026-11-15','대한민국','부여','롯데리조트 부여','가족 4명','국내','예정','롯데리조트 부여','','1박 2일'),('2027-01-02','2027-01-23','이탈리아·스페인','로마·피렌체·바르셀로나·그라나다·마드리드','이탈리아·스페인','가족 4명','해외','예정','','','약 3주'),('2027-08-07','2027-08-15','싱가포르','싱가포르','싱가포르·Disney Adventure','가족 4명','해외','검토 중','','','8/9~12 Disney Adventure 3박'),('2028-01-01','2028-12-31','호주','시드니·케언즈 검토','호주','가족 4명','해외','장기 계획','','','10~14일 검토'),('2029-01-01','2029-12-31','미국','미국 서부','미국 서부','가족 4명','해외','장기 계획','','','SF·요세미티·LA 중심 검토'),('2030-01-01','2030-12-31','체코·오스트리아·헝가리','중부유럽','중부유럽','가족 4명','해외','장기 계획','','','프라하·빈·부다페스트 중심 검토')]
+def qdate(s):
+ try:return datetime.strptime(s,'%Y-%m-%d').date()
+ except:return None
+
 def init():
- c=db();c.executescript('''CREATE TABLE IF NOT EXISTS trips(id INTEGER PRIMARY KEY,start_date TEXT,end_date TEXT,country TEXT,region TEXT,title TEXT,companions TEXT,trip_type TEXT,status TEXT,lodging TEXT,transport TEXT,notes TEXT);CREATE TABLE IF NOT EXISTS itinerary(id INTEGER PRIMARY KEY,trip_id INTEGER REFERENCES trips(id) ON DELETE CASCADE,item_date TEXT,day_label TEXT,time_text TEXT,title TEXT,place TEXT,detail TEXT,sort_order INTEGER DEFAULT 0);CREATE TABLE IF NOT EXISTS calendar_events(id INTEGER PRIMARY KEY,start_date TEXT,end_date TEXT,title TEXT,category TEXT,person TEXT,notes TEXT);CREATE TABLE IF NOT EXISTS academy(id INTEGER PRIMARY KEY,day_of_week TEXT,start_time TEXT,end_time TEXT,academy TEXT,subject TEXT,location TEXT,notes TEXT,active INTEGER DEFAULT 1);''')
- if c.execute('select count(*) n from trips').fetchone()['n']==0:c.executemany('insert into trips(start_date,end_date,country,region,title,companions,trip_type,status,lodging,transport,notes) values(?,?,?,?,?,?,?,?,?,?,?)',TRIPS)
- if c.execute('select count(*) n from calendar_events').fetchone()['n']==0:c.executemany('insert into calendar_events(start_date,end_date,title,category,person,notes) values(?,?,?,?,?,?)',[('2026-09-23','2026-09-23','보미 휴업일','가족','보미',''),('2026-09-24','2026-09-26','추석','공휴일','가족',''),('2026-09-28','2026-09-28','지유 휴업일','학교','지유',''),('2026-09-28','2026-09-28','지유 치과','병원','지유',''),('2026-10-09','2026-10-11','국내여행 후보','여행','가족','미정'),('2026-10-24','2026-10-24','용제 회사 골프','개인일정','용제',''),('2026-11-14','2026-11-15','롯데리조트 부여','여행','가족',''),('2026-12-01','2026-12-07','할머니 제사','가족','가족','12월 초 · 정확한 날짜 확인 필요'),('2027-01-02','2027-01-23','이탈리아·스페인 여행','여행','가족','')])
- if c.execute('select count(*) n from academy').fetchone()['n']==0:c.executemany('insert into academy(day_of_week,start_time,end_time,academy,subject,location,notes,active) values(?,?,?,?,?,?,?,?)',[('화','19:20','21:20','논술','논술','','',1),('화','21:00','','화상영어','영어','','',1),('목','21:00','','화상영어','영어','','',1),('월','','','발레','예체능','','월요일 1시간 · 정확한 시간 입력 필요',1),('미정','','','리드101','영어독서','','2026-07-15 시작 · 요일/시간 입력 필요',1)])
- c.commit()
- if c.execute('select count(*) n from itinerary').fetchone()['n']==0:
-  ids={r['title']:r['id'] for r in c.execute('select id,title from trips')}
-  rows=[]
-  if '마카오·홍콩' in ids:rows += [(ids['마카오·홍콩'],'2018-03-14','1일차','','마카오 도착','마카오','갤럭시 마카오 투숙',1),(ids['마카오·홍콩'],'2018-03-16','3일차','','홍콩 디즈니랜드','홍콩','디즈니 할리우드 호텔 투숙',3)]
-  if '이탈리아·스페인' in ids:rows += [(ids['이탈리아·스페인'],'2027-01-02','출발','','로마 도착','로마','여행 시작',1),(ids['이탈리아·스페인'],'','','','피렌체','피렌체','세부 일정 편집 가능',2),(ids['이탈리아·스페인'],'','','','바르셀로나','바르셀로나','세부 일정 편집 가능',3),(ids['이탈리아·스페인'],'','','','그라나다','그라나다','세부 일정 편집 가능',4),(ids['이탈리아·스페인'],'','','','마드리드','마드리드','세부 일정 편집 가능',5)]
-  if '싱가포르·Disney Adventure' in ids:rows += [(ids['싱가포르·Disney Adventure'],'2027-08-07','1일차','','싱가포르 도착','싱가포르','',1),(ids['싱가포르·Disney Adventure'],'2027-08-09','3일차','','Disney Adventure 승선','싱가포르','3박 크루즈 시작',3),(ids['싱가포르·Disney Adventure'],'2027-08-10','4일차','','Disney Adventure','선상','Sea Day',4),(ids['싱가포르·Disney Adventure'],'2027-08-11','5일차','','Disney Adventure','선상','Sea Day',5),(ids['싱가포르·Disney Adventure'],'2027-08-12','6일차','','하선','싱가포르','추가 체류',6),(ids['싱가포르·Disney Adventure'],'2027-08-15','9일차','','귀국','싱가포르','',9)]
-  c.executemany('insert into itinerary(trip_id,item_date,day_label,time_text,title,place,detail,sort_order) values(?,?,?,?,?,?,?,?)',rows);c.commit()
- c.close()
+ c=db();c.executescript('''CREATE TABLE IF NOT EXISTS trips(id INTEGER PRIMARY KEY,start_date TEXT,end_date TEXT,country TEXT,region TEXT,title TEXT,companions TEXT,trip_type TEXT,status TEXT,lodging TEXT,transport TEXT,notes TEXT);CREATE TABLE IF NOT EXISTS itinerary(id INTEGER PRIMARY KEY,trip_id INTEGER REFERENCES trips(id) ON DELETE CASCADE,item_date TEXT,day_label TEXT,time_text TEXT,title TEXT,place TEXT,detail TEXT,sort_order INTEGER DEFAULT 0);CREATE TABLE IF NOT EXISTS calendar_events(id INTEGER PRIMARY KEY,start_date TEXT,end_date TEXT,title TEXT,category TEXT,person TEXT,notes TEXT);CREATE TABLE IF NOT EXISTS academy(id INTEGER PRIMARY KEY,day_of_week TEXT,start_time TEXT,end_time TEXT,academy TEXT,subject TEXT,location TEXT,notes TEXT,active INTEGER DEFAULT 1);''');c.commit();c.close()
 init()
-CSS='''body{margin:0;background:#f4f7fb;color:#14263f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif}*{box-sizing:border-box}header{position:sticky;top:0;z-index:10;background:#f4f7fbf2;border-bottom:1px solid #e4e9f0}nav{max-width:1240px;margin:auto;padding:10px 16px;display:flex;justify-content:space-between;gap:10px}.nav{display:flex;gap:5px;overflow:auto}.nav a,.btn{white-space:nowrap;text-decoration:none;border:0;border-radius:9px;padding:8px 10px;font:inherit;font-size:13px;cursor:pointer}.nav a{color:#728096}.btn{background:#0f4c81;color:#fff}.btn.s{background:#fff;color:#14263f;border:1px solid #e4e9f0}.btn.d{background:#b64b50}.wrap{max-width:1240px;margin:auto;padding:18px 16px 50px}.hero{background:linear-gradient(145deg,#0f4c81,#173d66);color:#fff;border-radius:20px;padding:22px;margin-bottom:18px}.hero h1{margin:0}.toolbar{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:10px 0}.box{background:#fff;border:1px solid #e4e9f0;border-radius:15px;overflow:auto}table{width:100%;border-collapse:collapse;min-width:950px}th,td{padding:10px;border-bottom:1px solid #e4e9f0;text-align:left;font-size:13px}th{background:#fbfcfe;color:#728096}.trip{cursor:pointer}.trip:hover{background:#f7fbff}.detail td{background:#f8fafc;padding:14px}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.m{background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:10px}.m b{display:block;color:#728096;font-size:11px}.it{display:grid;grid-template-columns:90px 70px 1fr 1fr auto;gap:8px;background:#fff;border:1px solid #e4e9f0;border-radius:9px;padding:9px;margin-top:7px}.pill{display:inline-block;padding:4px 7px;border-radius:999px;background:#eaf3fb;color:#0f4c81;font-size:11px;font-weight:700}.months{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.month{background:#fff;border:1px solid #e4e9f0;border-radius:14px;padding:10px}.month h3{text-align:center}.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}.day,.dow{text-align:center;font-size:11px;padding:5px}.day{background:#fafbfd;border-radius:6px}.has{background:#eaf3fb;color:#0f4c81;font-weight:800}.event{background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:10px;margin-top:7px;display:flex;justify-content:space-between;gap:8px}.week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.col{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:8px;min-height:160px}.col h3{text-align:center}.lesson{background:#eaf3fb;border-radius:9px;padding:8px;margin-bottom:6px;font-size:12px}.modal{display:none;position:fixed;inset:0;background:#10203088;z-index:30;padding:16px;overflow:auto}.modal.show{display:block}.card{max-width:720px;margin:3vh auto;background:#fff;border-radius:16px;padding:16px}.head{display:flex;justify-content:space-between}.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}label{font-size:12px;color:#728096;display:grid;gap:4px}input,select,textarea{width:100%;padding:9px;border:1px solid #ccd5e0;border-radius:8px;font:inherit}textarea{min-height:70px}@media(max-width:800px){.months{grid-template-columns:1fr 1fr}.week{grid-template-columns:repeat(2,1fr)}.meta{grid-template-columns:1fr}.it{grid-template-columns:80px 60px 1fr}.it .place{grid-column:3}.nav{max-width:72vw}}@media(max-width:560px){.months,.week,.form{grid-template-columns:1fr}.full{grid-column:1}.hero h1{font-size:26px}}'''
+
+CSS='''body{margin:0;background:#f4f7fb;color:#14263f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif}*{box-sizing:border-box}header{position:sticky;top:0;z-index:10;background:#f4f7fbf2;border-bottom:1px solid #e4e9f0}nav{max-width:1240px;margin:auto;padding:10px 16px;display:flex;justify-content:space-between;gap:10px}.nav{display:flex;gap:5px;overflow:auto}.nav a,.btn{white-space:nowrap;text-decoration:none;border:0;border-radius:9px;padding:8px 10px;font:inherit;font-size:13px;cursor:pointer}.nav a{color:#728096}.btn{background:#0f4c81;color:#fff}.btn.s{background:#fff;color:#14263f;border:1px solid #e4e9f0}.btn.d{background:#b64b50}.wrap{max-width:1240px;margin:auto;padding:18px 16px 50px}.hero{background:linear-gradient(145deg,#0f4c81,#173d66);color:#fff;border-radius:20px;padding:22px;margin-bottom:18px}.hero h1{margin:0}.toolbar{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap}.seg{display:flex;background:#eaf0f6;border-radius:10px;padding:3px}.seg a{padding:7px 11px;text-decoration:none;color:#65758b;border-radius:8px;font-size:13px}.seg a.on{background:#fff;color:#0f4c81;font-weight:800;box-shadow:0 1px 4px #00000014}.box{background:#fff;border:1px solid #e4e9f0;border-radius:15px;overflow:auto}table{width:100%;border-collapse:collapse;min-width:950px}th,td{padding:10px;border-bottom:1px solid #e4e9f0;text-align:left;font-size:13px}th{background:#fbfcfe;color:#728096}.trip{cursor:pointer}.trip:hover{background:#f7fbff}.detail td{background:#f8fafc;padding:14px}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.m{background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:10px}.m b{display:block;color:#728096;font-size:11px}.it{display:grid;grid-template-columns:90px 70px 1fr 1fr auto;gap:8px;background:#fff;border:1px solid #e4e9f0;border-radius:9px;padding:9px;margin-top:7px}.pill{display:inline-block;padding:4px 7px;border-radius:999px;background:#eaf3fb;color:#0f4c81;font-size:11px;font-weight:700}.event{background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:10px;margin-top:7px;display:flex;justify-content:space-between;gap:8px}.monthbig{background:#fff;border:1px solid #e4e9f0;border-radius:16px;padding:14px}.monthgrid{display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid #e4e9f0;border-top:1px solid #e4e9f0}.dow{padding:10px;text-align:center;font-size:12px;color:#718097;background:#fafbfd;border-right:1px solid #e4e9f0;border-bottom:1px solid #e4e9f0}.cell{min-height:112px;padding:7px;border-right:1px solid #e4e9f0;border-bottom:1px solid #e4e9f0;background:#fff}.cell.out{background:#fafbfd;color:#b1bac6}.num{font-size:12px;font-weight:800;margin-bottom:5px}.ce{display:block;background:#eaf3fb;color:#0f4c81;border-radius:6px;padding:4px 5px;margin:3px 0;font-size:11px;overflow:hidden}.weekcal{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.wday{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px;min-height:220px}.wday h3{margin:0 0 10px;text-align:center;font-size:14px}.yeargrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.mini{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px}.mini h3{text-align:center;margin:2px 0 8px}.minigrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}.md{font-size:10px;text-align:center;padding:4px;border-radius:4px}.md.has{background:#eaf3fb;color:#0f4c81;font-weight:800}.schedule{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.sday{background:#fff;border:1px solid #e4e9f0;border-radius:13px;min-height:230px;padding:10px}.sday .date{font-size:11px;color:#7a8798}.sday h3{margin:3px 0 10px}.lesson{background:#eaf3fb;border-radius:9px;padding:8px;margin-bottom:7px;font-size:12px}.lesson b{display:block;margin-bottom:3px}.modal{display:none;position:fixed;inset:0;background:#10203088;z-index:30;padding:16px;overflow:auto}.modal.show{display:block}.card{max-width:720px;margin:3vh auto;background:#fff;border-radius:16px;padding:16px}.head{display:flex;justify-content:space-between}.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}label{font-size:12px;color:#728096;display:grid;gap:4px}input,select,textarea{width:100%;padding:9px;border:1px solid #ccd5e0;border-radius:8px;font:inherit}textarea{min-height:70px}@media(max-width:900px){.schedule,.weekcal{grid-template-columns:repeat(2,1fr)}.yeargrid{grid-template-columns:repeat(2,1fr)}.meta{grid-template-columns:1fr}.it{grid-template-columns:80px 60px 1fr}.it .place{grid-column:3}.nav{max-width:72vw}.cell{min-height:90px}}@media(max-width:560px){.schedule,.weekcal,.yeargrid,.form{grid-template-columns:1fr}.full{grid-column:1}.hero h1{font-size:26px}.monthbig{padding:8px}.cell{min-height:74px;padding:4px}.ce{font-size:9px;padding:3px}.dow{padding:6px;font-size:10px}}'''
 JS='''function t(id){let e=document.getElementById("d"+id);e.style.display=e.style.display==="none"?"table-row":"none"}function o(id){document.getElementById(id).classList.add("show")}function x(id){document.getElementById(id).classList.remove("show")}function ntrip(){document.getElementById("tf").action="/trip/add";document.getElementById("tf").reset();o("tm")}function et(b){let d=b.dataset;document.getElementById("tf").action="/trip/"+d.id+"/edit";["start_date","end_date","country","region","title","companions","trip_type","status","lodging","transport","notes"].forEach(k=>document.querySelector("#tm [name="+k+"]").value=d[k]||"");o("tm")}function ni(id){document.getElementById("if").action="/itinerary/add";document.getElementById("if").reset();document.querySelector("#im [name=trip_id]").value=id;o("im")}function ei(b){let d=b.dataset;document.getElementById("if").action="/itinerary/"+d.id+"/edit";["trip_id","item_date","day_label","time_text","title","place","detail","sort_order"].forEach(k=>document.querySelector("#im [name="+k+"]").value=d[k]||"");o("im")}function ne(){document.getElementById("ef").action="/event/add";document.getElementById("ef").reset();o("em")}function ee(b){let d=b.dataset;document.getElementById("ef").action="/event/"+d.id+"/edit";["start_date","end_date","title","category","person","notes"].forEach(k=>document.querySelector("#em [name="+k+"]").value=d[k]||"");o("em")}function na(day){document.getElementById("af").action="/academy/add";document.getElementById("af").reset();if(day)document.querySelector("#am [name=day_of_week]").value=day;o("am")}function ea(b){let d=b.dataset;document.getElementById("af").action="/academy/"+d.id+"/edit";["day_of_week","start_time","end_time","academy","subject","location","notes"].forEach(k=>document.querySelector("#am [name="+k+"]").value=d[k]||"");o("am")}'''
 def nav():return '<header><nav><b>✈️ 우리 가족 기록</b><div class="nav"><a href="/past">과거 여행</a><a href="/future">향후 여행</a><a href="/calendar">가족 달력</a><a href="/riley">지유 주간 학원 일정</a>'+('<a href="/logout">로그아웃</a>' if admin() else '<a href="/login">관리자</a>')+'</div></nav></header>'
 def page(title,body):return f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{H(title)}</title><style>{CSS}</style></head><body>{nav()}<main class="wrap"><div class="hero"><h1>{H(title)}</h1></div>{body}</main><script>{JS}</script></body></html>'
@@ -56,49 +49,83 @@ def home():return redirect('/future')
 def past():return page('과거 여행',travels(True))
 @app.route('/future')
 def future():return page('향후 여행',travels(False))
-@app.route('/calendar')
-def calpage():
- y=int(request.args.get('year',datetime.now().year));c=db();es=c.execute('select * from calendar_events where substr(start_date,1,4)=? or substr(end_date,1,4)=? order by start_date,id',(str(y),str(y))).fetchall();c.close();marked=set()
- for e in es:
-  try:
-   d=datetime.strptime(e['start_date'],'%Y-%m-%d').date();en=datetime.strptime(e['end_date'],'%Y-%m-%d').date()
-   while d<=en:
-    if d.year==y:marked.add((d.month,d.day))
-    d+=timedelta(days=1)
-  except:pass
- b=f'<div class="toolbar"><a class="btn s" href="/calendar?year={y-1}">← {y-1}</a><h2>{y}</h2><a class="btn s" href="/calendar?year={y+1}">{y+1} →</a></div>'+('<div class="toolbar"><span></span><button class="btn" onclick="ne()">+ 일정 추가</button></div>' if admin() else '')+'<div class="months">';C=calendar.Calendar()
- for m in range(1,13):
-  b+=f'<div class="month"><h3>{m}월</h3><div class="cal">'+''.join(f'<div class="dow">{x}</div>' for x in '월화수목금토일')
-  for d in C.itermonthdays(y,m):b+=('<div></div>' if not d else f'<div class="day {"has" if (m,d) in marked else ""}">{d}</div>')
-  b+='</div></div>'
- b+='</div>'
+
+def event_rows(start,end):
+ c=db();es=c.execute('select * from calendar_events where start_date<=? and end_date>=? order by start_date,id',(end.isoformat(),start.isoformat())).fetchall();c.close();return es
+def event_modals(es):
+ b=''
  for e in es:
   a=''
   if admin():
    dat=' '.join('data-'+k+'="'+H(e[k])+'"' for k in ['id','start_date','end_date','title','category','person','notes']);a=f'<div><button class="btn s" {dat} onclick="ee(this)">수정</button><form method="post" action="/event/{e["id"]}/delete" style="display:inline"><button class="btn d">삭제</button></form></div>'
   b+=f'<div class="event"><div><b>{H(e["start_date"])} ~ {H(e["end_date"])}</b> · {H(e["title"])} <span class="pill">{H(e["category"])}</span><br>{H(e["person"])} · {H(e["notes"])}</div>{a}</div>'
  if admin():b+='''<div class="modal" id="em"><div class="card"><div class="head"><h2>가족 일정</h2><button class="btn s" onclick="x('em')">닫기</button></div><form class="form" id="ef" method="post"><label>시작일<input type="date" name="start_date" required></label><label>종료일<input type="date" name="end_date" required></label><label class="full">일정명<input name="title" required></label><label>분류<input name="category"></label><label>사람<input name="person"></label><label class="full">메모<textarea name="notes"></textarea></label><div class="full"><button class="btn">저장</button></div></form></div></div>'''
- return page('가족 달력',b)
+ return b
+@app.route('/calendar')
+def calpage():
+ today=date.today();view=request.args.get('view','month');y=int(request.args.get('year',today.year));m=int(request.args.get('month',today.month));
+ if view=='week':
+  base=qdate(request.args.get('date','')) or today;start=base-timedelta(days=base.weekday());end=start+timedelta(days=6);es=event_rows(start,end);by={start+timedelta(days=i):[] for i in range(7)}
+  for e in es:
+   s=qdate(e['start_date']);en=qdate(e['end_date'])
+   if not s or not en:continue
+   for d in by:
+    if s<=d<=en:by[d].append(e)
+  prev=(start-timedelta(days=7)).isoformat();nxt=(start+timedelta(days=7)).isoformat();title=f'{start.month}/{start.day} ~ {end.month}/{end.day}'
+  b=f'<div class="toolbar"><div><a class="btn s" href="/calendar?view=week&date={prev}">← 이전 주</a> <b style="margin:0 10px">{title}</b> <a class="btn s" href="/calendar?view=week&date={nxt}">다음 주 →</a></div><div class="seg"><a class="on" href="/calendar?view=week&date={start.isoformat()}">주</a><a href="/calendar?view=month&year={start.year}&month={start.month}">월</a><a href="/calendar?view=year&year={start.year}">연</a></div></div>'+('<div class="toolbar"><span></span><button class="btn" onclick="ne()">+ 일정 추가</button></div>' if admin() else '')+'<div class="weekcal">'
+  for i,d in enumerate(by):
+   b+=f'<div class="wday"><h3>{DAYS[i]} {d.month}/{d.day}</h3>'+''.join(f'<span class="ce">{H(e["title"])}</span>' for e in by[d])+'</div>'
+  b+='</div>'+event_modals(es);return page('가족 달력',b)
+ if view=='year':
+  start=date(y,1,1);end=date(y,12,31);es=event_rows(start,end);marks=set()
+  for e in es:
+   s=qdate(e['start_date']);en=qdate(e['end_date'])
+   if not s or not en:continue
+   d=max(s,start)
+   while d<=min(en,end):marks.add((d.month,d.day));d+=timedelta(days=1)
+  b=f'<div class="toolbar"><div><a class="btn s" href="/calendar?view=year&year={y-1}">← {y-1}</a> <b style="margin:0 10px">{y}</b> <a class="btn s" href="/calendar?view=year&year={y+1}">{y+1} →</a></div><div class="seg"><a href="/calendar?view=week&date={today.isoformat()}">주</a><a href="/calendar?view=month&year={y}&month={today.month}">월</a><a class="on" href="/calendar?view=year&year={y}">연</a></div></div><div class="yeargrid">'
+  C=calendar.Calendar()
+  for mm in range(1,13):
+   b+=f'<div class="mini"><h3><a href="/calendar?view=month&year={y}&month={mm}" style="text-decoration:none;color:inherit">{mm}월</a></h3><div class="minigrid">'+''.join(f'<div class="md">{x}</div>' for x in DAYS)
+   for d in C.itermonthdays(y,mm):b+=('<div class="md"></div>' if not d else f'<div class="md {"has" if (mm,d) in marks else ""}">{d}</div>')
+   b+='</div></div>'
+  b+='</div>';return page('가족 달력',b)
+ # month default
+ first=date(y,m,1);last=date(y,m,calendar.monthrange(y,m)[1]);es=event_rows(first,last);by={}
+ for e in es:
+  s=qdate(e['start_date']);en=qdate(e['end_date'])
+  if not s or not en:continue
+  d=max(s,first)
+  while d<=min(en,last):by.setdefault(d.day,[]).append(e);d+=timedelta(days=1)
+ pm=(first-timedelta(days=1));nm=(last+timedelta(days=1));C=calendar.Calendar(firstweekday=0)
+ b=f'<div class="toolbar"><div><a class="btn s" href="/calendar?view=month&year={pm.year}&month={pm.month}">← 이전 달</a> <b style="margin:0 10px">{y}년 {m}월</b> <a class="btn s" href="/calendar?view=month&year={nm.year}&month={nm.month}">다음 달 →</a></div><div class="seg"><a href="/calendar?view=week&date={first.isoformat()}">주</a><a class="on" href="/calendar?view=month&year={y}&month={m}">월</a><a href="/calendar?view=year&year={y}">연</a></div></div>'+('<div class="toolbar"><span></span><button class="btn" onclick="ne()">+ 일정 추가</button></div>' if admin() else '')+'<div class="monthbig"><div class="monthgrid">'+''.join(f'<div class="dow">{x}</div>' for x in DAYS)
+ for d in C.itermonthdates(y,m):
+  cls='cell'+(' out' if d.month!=m else '');b+=f'<div class="{cls}"><div class="num">{d.day}</div>'
+  if d.month==m:
+   for e in by.get(d.day,[]):b+=f'<span class="ce">{H(e["title"])}</span>'
+  b+='</div>'
+ b+='</div></div>'+event_modals(es);return page('가족 달력',b)
+
 @app.route('/riley')
 def riley():
- c=db();rs=c.execute("select * from academy where active=1 order by case day_of_week when '월' then 1 when '화' then 2 when '수' then 3 when '목' then 4 when '금' then 5 when '토' then 6 when '일' then 7 else 8 end,start_time,id").fetchall();c.close();by={d:[] for d in ['월','화','수','목','금','토','일','미정']}
- for r in rs:by.setdefault(r['day_of_week'],[]).append(r)
- b='<div class="toolbar"><b>요일별 일정</b>'+('<button class="btn" onclick="na()">+ 학원 일정 추가</button>' if admin() else '')+'</div><div class="week">'
- for d in ['월','화','수','목','금','토','일']:
-  b+=f'<div class="col"><h3>{d}</h3>'
-  for r in by[d]:
+ base=qdate(request.args.get('date','')) or date.today();start=base-timedelta(days=base.weekday());end=start+timedelta(days=6);prev=(start-timedelta(days=7)).isoformat();nxt=(start+timedelta(days=7)).isoformat()
+ c=db();rs=c.execute("select * from academy where active=1 order by case day_of_week when '월' then 1 when '화' then 2 when '수' then 3 when '목' then 4 when '금' then 5 when '토' then 6 when '일' then 7 else 8 end,start_time,id").fetchall();c.close();by={d:[] for d in DAYS};unknown=[]
+ for r in rs:(by[r['day_of_week']].append(r) if r['day_of_week'] in by else unknown.append(r))
+ b=f'<div class="toolbar"><div><a class="btn s" href="/riley?date={prev}">← 이전 주</a> <b style="margin:0 10px">{start.month}/{start.day} ~ {end.month}/{end.day}</b> <a class="btn s" href="/riley?date={nxt}">다음 주 →</a></div>'+('<button class="btn" onclick="na()">+ 학원 일정 추가</button>' if admin() else '')+'</div><div class="schedule">'
+ for i,dn in enumerate(DAYS):
+  day=start+timedelta(days=i);b+=f'<div class="sday"><div class="date">{day.month}/{day.day}</div><h3>{dn}요일</h3>'
+  for r in by[dn]:
    a=''
    if admin():
-    dat=' '.join('data-'+k+'="'+H(r[k])+'"' for k in ['id','day_of_week','start_time','end_time','academy','subject','location','notes']);a=f'<div><button class="btn s" {dat} onclick="ea(this)">수정</button><form method="post" action="/academy/{r["id"]}/delete" style="display:inline"><button class="btn d">삭제</button></form></div>'
-   b+=f'<div class="lesson"><b>{H(r["start_time"])} {H(r["academy"])}</b>{H(r["subject"])}<br>{H(r["notes"])}{a}</div>'
-  if admin():b+=f'<button class="btn s" onclick="na(\'{d}\')">+ 추가</button>'
+    dat=' '.join('data-'+k+'="'+H(r[k])+'"' for k in ['id','day_of_week','start_time','end_time','academy','subject','location','notes']);a=f'<div style="margin-top:6px"><button class="btn s" {dat} onclick="ea(this)">수정</button><form method="post" action="/academy/{r["id"]}/delete" style="display:inline"><button class="btn d">삭제</button></form></div>'
+   tm=(H(r['start_time'])+('~'+H(r['end_time']) if r['end_time'] else '')) or '시간 미정';b+=f'<div class="lesson"><b>{tm} · {H(r["academy"])}</b>{H(r["subject"])}<br>{H(r["notes"])}{a}</div>'
+  if admin():b+=f'<button class="btn s" onclick="na(\'{dn}\')">+ 추가</button>'
   b+='</div>'
  b+='</div>'
- if by['미정']:
-  b+='<h3>요일/시간 확인 필요</h3>'
-  for r in by['미정']:b+=f'<div class="event"><div><b>{H(r["academy"])}</b> · {H(r["subject"])}<br>{H(r["notes"])}</div></div>'
+ if unknown:b+='<h3 style="margin-top:18px">요일/시간 확인 필요</h3>'+''.join(f'<div class="event"><div><b>{H(r["academy"])}</b> · {H(r["subject"])}<br>{H(r["notes"])}</div></div>' for r in unknown)
  if admin():b+='''<div class="modal" id="am"><div class="card"><div class="head"><h2>학원 일정</h2><button class="btn s" onclick="x('am')">닫기</button></div><form class="form" id="af" method="post"><label>요일<select name="day_of_week"><option>월</option><option>화</option><option>수</option><option>목</option><option>금</option><option>토</option><option>일</option><option>미정</option></select></label><label>학원/수업<input name="academy" required></label><label>시작<input type="time" name="start_time"></label><label>종료<input type="time" name="end_time"></label><label>과목<input name="subject"></label><label>장소<input name="location"></label><label class="full">메모<textarea name="notes"></textarea></label><div class="full"><button class="btn">저장</button></div></form></div></div>'''
  return page('지유 주간 학원 일정',b)
+
 @app.route('/login',methods=['GET','POST'])
 def login():
  if request.method=='POST' and request.form.get('password')==ADMIN_PASSWORD:session['admin']=1;return redirect('/future')
@@ -125,14 +152,14 @@ def eva():must();c=db();v=[request.form.get(k,'') for k in ef];c.execute('insert
 @app.route('/event/<int:i>/edit',methods=['POST'])
 def eve(i):must();c=db();v=[request.form.get(k,'') for k in ef];c.execute('update calendar_events set '+','.join(k+'=?' for k in ef)+' where id=?',v+[i]);c.commit();c.close();return redirect(request.referrer or '/calendar')
 @app.route('/event/<int:i>/delete',methods=['POST'])
-def evd(i):must();c=db();c.execute('delete from calendar_events where id=?',(i,));c.commit();c.close();return redirect('/calendar')
+def evd(i):must();c=db();c.execute('delete from calendar_events where id=?',(i,));c.commit();c.close();return redirect(request.referrer or '/calendar')
 af=['day_of_week','start_time','end_time','academy','subject','location','notes']
 @app.route('/academy/add',methods=['POST'])
-def aa():must();c=db();v=[request.form.get(k,'') for k in af];c.execute('insert into academy('+','.join(af)+',active) values('+','.join('?'*len(v))+',1)',v);c.commit();c.close();return redirect('/riley')
+def aa():must();c=db();v=[request.form.get(k,'') for k in af];c.execute('insert into academy('+','.join(af)+',active) values('+','.join('?'*len(v))+',1)',v);c.commit();c.close();return redirect(request.referrer or '/riley')
 @app.route('/academy/<int:i>/edit',methods=['POST'])
-def ae(i):must();c=db();v=[request.form.get(k,'') for k in af];c.execute('update academy set '+','.join(k+'=?' for k in af)+' where id=?',v+[i]);c.commit();c.close();return redirect('/riley')
+def ae(i):must();c=db();v=[request.form.get(k,'') for k in af];c.execute('update academy set '+','.join(k+'=?' for k in af)+' where id=?',v+[i]);c.commit();c.close();return redirect(request.referrer or '/riley')
 @app.route('/academy/<int:i>/delete',methods=['POST'])
-def ad(i):must();c=db();c.execute('delete from academy where id=?',(i,));c.commit();c.close();return redirect('/riley')
+def ad(i):must();c=db();c.execute('delete from academy where id=?',(i,));c.commit();c.close();return redirect(request.referrer or '/riley')
 @app.route('/health')
 def health():return 'ok'
 if __name__=='__main__':app.run(host='0.0.0.0',port=int(os.getenv('PORT','8080')))
