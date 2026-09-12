@@ -14,8 +14,11 @@ base.CSS += '''
 '''
 
 HOME_CACHE_DAYS = 180
+CAL_CACHE_PAST_DAYS = 365
+CAL_CACHE_FUTURE_DAYS = 730
 HOME_CACHE_REFRESH_SECONDS = 600
 _HOME_SYNC_LOCK = threading.Lock()
+_LIVE_FAMILY_EVENTS = exp.main.family_events
 
 
 def _init_home_cache_schema():
@@ -68,12 +71,14 @@ def _clean_title(title):
     return t
 
 
-def _refresh_home_google_cache():
+def _refresh_google_cache():
     if not _HOME_SYNC_LOCK.acquire(blocking=False):
         return
     try:
-        today=date.today(); end=today+timedelta(days=HOME_CACHE_DAYS)
-        events=exp.main.family_events(today,end)
+        today=date.today()
+        start=today-timedelta(days=CAL_CACHE_PAST_DAYS)
+        end=today+timedelta(days=CAL_CACHE_FUTURE_DAYS)
+        events=_LIVE_FAMILY_EVENTS(start,end)
         google_rows=[]
         for raw in events:
             e=dict(raw)
@@ -85,7 +90,7 @@ def _refresh_home_google_cache():
                 continue
             google_rows.append((sd,ed,str(e.get('title') or ''),str(e.get('category') or ''),str(e.get('person') or ''),str(e.get('notes') or ''),'google'))
 
-        # Keep the last good snapshot when Google is configured but a refresh temporarily fails.
+        # Keep the last good snapshot if Google is temporarily unavailable.
         has_sources=bool(exp.main.gcal._sources())
         if has_sources and not google_rows:
             return
@@ -98,7 +103,7 @@ def _refresh_home_google_cache():
         c.execute("insert or replace into home_cache_meta(cache_key,cache_value) values('google_last_sync',?)",(now,))
         c.commit(); c.close()
     except Exception as e:
-        print(f'Home Google cache refresh failed: {type(e).__name__}', flush=True)
+        print(f'Google event DB cache refresh failed: {type(e).__name__}', flush=True)
     finally:
         _HOME_SYNC_LOCK.release()
 
@@ -106,27 +111,59 @@ def _refresh_home_google_cache():
 def _home_cache_loop():
     time.sleep(2)
     while True:
-        _refresh_home_google_cache()
+        _refresh_google_cache()
         time.sleep(HOME_CACHE_REFRESH_SECONDS)
 
 
-def _cached_family_events(today, days=HOME_CACHE_DAYS):
-    end=today+timedelta(days=days)
+def _cached_calendar_events(start, end):
+    """DB-only event source for the family calendar: local + cached Google + trips."""
     c=base.db()
-    local=[dict(x) for x in c.execute('select * from calendar_events where start_date<=? and end_date>=? order by start_date,id',(end.isoformat(),today.isoformat())).fetchall()]
-    cached=[dict(x) for x in c.execute('select start_date,end_date,title,category,person,notes,source from home_event_cache where start_date<=? and end_date>=? order by start_date,id',(end.isoformat(),today.isoformat())).fetchall()]
+    local=[dict(x) for x in c.execute(
+        'select * from calendar_events where start_date<=? and end_date>=? order by start_date,id',
+        (end.isoformat(),start.isoformat())
+    ).fetchall()]
+    cached=[dict(x) for x in c.execute(
+        'select start_date,end_date,title,category,person,notes,source from home_event_cache where start_date<=? and end_date>=? order by start_date,id',
+        (end.isoformat(),start.isoformat())
+    ).fetchall()]
+    trips=[dict(x) for x in c.execute(
+        "select id,start_date,end_date,title,region,companions from trips where start_date<=? and end_date>=? order by start_date,id",
+        (end.isoformat(),start.isoformat())
+    ).fetchall()]
     c.close()
+
+    out=[]
     for e in local:
         e['source']='local'
-    return local+cached
+        out.append(e)
+    out.extend(cached)
+    for r in trips:
+        out.append({
+            'id':f'trip:{r["id"]}',
+            'start_date':r.get('start_date') or '',
+            'end_date':r.get('end_date') or r.get('start_date') or '',
+            'title':r.get('title') or '',
+            'category':'여행',
+            'person':r.get('companions') or '',
+            'notes':r.get('region') or '',
+            'source':'trip',
+            'trip_id':r.get('id'),
+        })
+    out.sort(key=lambda x:(str(x.get('start_date') or ''),str(x.get('title') or '')))
+    return out
+
+
+def _cached_family_events(today, days=HOME_CACHE_DAYS):
+    return _cached_calendar_events(today,today+timedelta(days=days))
 
 
 def _upcoming_events(today, days=180, limit=10):
-    # Home is DB-only: no Google network request is made during page rendering.
     events=_cached_family_events(today,days)
     out=[]
     seen=set()
     for e in events:
+        if e.get('source')=='trip' or (e.get('category') or '')=='여행':
+            continue
         compact=(e.get('title') or '').replace(' ','')
         if '청소아줌마' in compact:
             continue
@@ -172,9 +209,12 @@ def clean_family_home():
 
 
 _init_home_cache_schema()
-threading.Thread(target=_home_cache_loop,daemon=True,name='home-google-cache').start()
+threading.Thread(target=_home_cache_loop,daemon=True,name='google-event-db-cache').start()
 
-# Replace any existing root endpoint, then also intercept GET / before routing.
+# Make the family calendar DB-only as well. The original live reader is kept only
+# for the background refresh above, so page requests no longer wait for Google.
+exp.main.family_events=_cached_calendar_events
+
 for rule in list(app.url_map.iter_rules()):
     if rule.rule=='/':
         app.view_functions[rule.endpoint]=clean_family_home
