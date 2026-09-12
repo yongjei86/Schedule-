@@ -1115,20 +1115,20 @@ def editable_trip_detail(trip_id):
     back='/past' if r['status']=='완료' else '/future'
     scls=_status_class(r['status'])
     stopts=''.join(f'<option value="{H(s)}" {"selected" if r["status"]==s else ""}>{H(s)}</option>' for s in TRIP_STATUSES)
-    status_row=f'<div class="date-quality"><div><b>여행 상태</b><div class="muted">예정 · 검토 중 · 장기 계획 · 완료</div></div><form method="post" action="/trip/{r["id"]}/status"><select name="status" class="status-select {scls}" onchange="this.form.submit()">{stopts}</select></form></div>'
     actions=(f'<div class="trip-actions"><a class="btn s" href="{back}">← 여행 목록</a>'
              f'<button class="btn" {trip_attrs(r)} onclick="et(this)">여행 정보 수정</button>'
              f'<button class="btn s" onclick="ni({r["id"]})">+ 세부 일정</button>'
              f'<form method="post" action="/trip/{r["id"]}/delete" onsubmit="return confirm(\'삭제할까요? 되돌릴 수 없습니다\')" style="display:inline-block;margin:0"><button class="btn d">삭제</button></form></div>')
     cards='<div class="trip-edit-grid">'
     for label,value in [('여행 일자',f'{r["start_date"]} ~ {r["end_date"]}'),('지역',' · '.join(x for x in [r['country'],r['region']] if x)),('함께',r['companions']),('숙소',r['lodging']),('교통/항공',r['transport'])]: cards+=f'<div class="trip-edit-card"><div class="label">{H(label)}</div><b>{H(value) or "-"}</b></div>'
+    cards+=f'<div class="trip-edit-card"><div class="label">상태</div><form method="post" action="/trip/{r["id"]}/status"><select name="status" class="status-select {scls}" onchange="this.form.submit()">{stopts}</select></form></div>'
     cards+='</div><div class="toolbar"><h2 style="margin:0">일자별 일정</h2><button class="btn s" onclick="ni('+str(r['id'])+')">+ 일정 추가</button></div>'
     if not its: cards+='<div class="trip-edit-card muted">아직 세부 일정이 없습니다.</div>'
     for x in its:
         left=' · '.join(v for v in [x['item_date'],x['day_label'],x['time_text']] if v) or '-'; cards+=f'<div class="itinerary-row"><div><b>{H(left)}</b></div><div><b>{H(x["title"])}</b>'+ (f'<br>{H(x["place"])}' if x['place'] else '') + (f'<br><span class="muted">{H(x["detail"])}</span>' if x['detail'] else '') + f'</div><div class="itinerary-actions"><button class="btn s" {itinerary_attrs(x)} onclick="ei(this)">수정</button><form method="post" action="/itinerary/{x["id"]}/delete" style="display:inline" onsubmit="return confirm(\'삭제할까요?\')"><button class="btn d">삭제</button></form></div></div>'
     notes=f'<h2 style="margin-top:20px">메모</h2><div class="trip-edit-card">{H(r["notes"]) or "-"}</div>'
     if r['start_date']=='2026-08-08' and '발리' in (r['title'] or ''): notes+='<div style="margin-top:10px"><a class="btn" href="/photos/bali-2026">📷 발리 사진</a></div>'
-    return page(r['title'],status_row+panel+actions+cards+notes+mods())
+    return page(r['title'],panel+actions+cards+notes+mods())
 
 for rule in list(app.url_map.iter_rules()):
     if rule.rule=='/trip/<int:trip_id>': app.view_functions[rule.endpoint]=editable_trip_detail; break
