@@ -1245,6 +1245,59 @@ for rule in list(app.url_map.iter_rules()):
         break
 
 
+def future_filtered():
+    year=(request.args.get('year') or '').strip()
+    country=(request.args.get('country') or '').strip()
+    people=(request.args.get('people') or '').strip()
+    status=(request.args.get('status') or '').strip()
+    c=db(); all_rows=c.execute("select * from trips where status!='완료' order by start_date asc,id asc").fetchall(); c.close()
+
+    years=sorted({(r['start_date'] or '')[:4] for r in all_rows if (r['start_date'] or '')[:4]})
+    countries=sorted({(r['country'] or '').strip() for r in all_rows if (r['country'] or '').strip()})
+    peoples=sorted({(r['companions'] or '').strip() for r in all_rows if (r['companions'] or '').strip()})
+    statuses=sorted({(r['status'] or '').strip() for r in all_rows if (r['status'] or '').strip()})
+
+    rows=[]
+    for r in all_rows:
+        if year and (r['start_date'] or '')[:4]!=year: continue
+        if country and (r['country'] or '').strip()!=country: continue
+        if people and (r['companions'] or '').strip()!=people: continue
+        if status and (r['status'] or '').strip()!=status: continue
+        rows.append(r)
+
+    def options(values,current,all_label):
+        s=f'<option value="">{all_label}</option>'
+        for v in values:
+            s+=f'<option value="{H(v)}" {"selected" if current==v else ""}>{H(v)}</option>'
+        return s
+
+    today=date.today()
+    body='<div class="filter-box"><form class="filter-form" method="get">'
+    body+=f'<div class="filter-field"><label>연도별</label><select name="year">{options(years,year,"전체 연도")}</select></div>'
+    body+=f'<div class="filter-field"><label>국가별</label><select name="country">{options(countries,country,"전체 국가")}</select></div>'
+    body+=f'<div class="filter-field"><label>인원별</label><select name="people">{options(peoples,people,"전체 인원")}</select></div>'
+    body+=f'<div class="filter-field"><label>상태별</label><select name="status">{options(statuses,status,"전체 상태")}</select></div>'
+    body+='<button class="btn">필터 적용</button><a class="btn s" href="/future">초기화</a></form></div>'
+    body+=f'<div class="past-summary"><b>향후 여행 {len(rows)}건</b><span class="muted">전체 {len(all_rows)}건</span></div><div class="past-grid">'
+    if not rows:
+        body+='<div class="home-card muted">조건에 맞는 여행이 없습니다.</div>'
+    for r in rows:
+        region=' · '.join(x for x in [r['country'],r['region']] if x)
+        sd=qdate(r['start_date'] or '')
+        dday=_dday_label(sd,today) if sd else '-'
+        body+=(f'<a class="past-card home-link" href="/trip/{r["id"]}">'
+               f'<div class="date">{H(r["start_date"])} ~ {H(r["end_date"])}<span class="dday" style="float:right">{H(dday)}</span></div>'
+               f'<b>{H(r["title"])}</b><div class="meta">{H(region) or "-"}</div>'
+               f'<div class="meta">함께: {H(r["companions"]) or "-"} · {H(r["status"])}</div></a>')
+    body+='</div>'
+    return page('향후 여행',body)
+
+for rule in list(app.url_map.iter_rules()):
+    if rule.rule=='/future':
+        app.view_functions[rule.endpoint]=future_filtered
+        break
+
+
 @app.route('/travel-stats')
 def travel_stats():
     c=db(); rows=c.execute("select * from trips where status='완료' order by start_date").fetchall(); c.close()
