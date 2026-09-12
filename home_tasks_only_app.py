@@ -2265,7 +2265,32 @@ def _tasks_card():
 
 
 def tasks_only_home():
-    return page('우리 가족 기록', _tasks_card())
+    today = date.today()
+    c = db()
+    domestic = _next_trip_by_type(c, today, '국내')
+    overseas = _next_trip_by_type(c, today, '해외')
+    c.close()
+    family_events = _upcoming_events(today)
+
+    body = '<div class="next-trip-grid">' + _trip_card(domestic, today, '다음 국내 여행') + _trip_card(overseas, today, '다음 해외 여행') + '</div>'
+    body += '<section class="home-card family-next"><h2>다음 가족 일정</h2><div class="home-family-list">'
+    if not family_events:
+        body += '<div class="muted" style="padding:10px 0">등록된 가족 일정이 없습니다.</div>'
+    for d, e in family_events:
+        kind, label = _event_kind(e)
+        end = str(e.get('end_date') or '')[:10]
+        date_text = d.isoformat() if not end or end == d.isoformat() else f'{d.isoformat()} ~ {end}'
+        dday = _dday_label(d, today)
+        today_cls = ' today' if dday == 'D-DAY' else ''
+        title = _clean_title(e.get('title'))
+        body += (f'<div class="home-family-row">'
+                 f'<span class="event-dot {kind}" title="{H(label)}"></span>'
+                 f'<div class="event-main"><div class="event-title">{H(title)}</div>'
+                 f'<div class="event-meta">{H(label)} · {H(date_text)}</div></div>'
+                 f'<span class="event-dday{today_cls}">{H(dday)}</span></div>')
+    body += '</div></section>'
+    body += _tasks_card()
+    return page('우리 가족 기록', body)
 
 
 # home_cleanup_app's before_request calls this module-level function dynamically,
