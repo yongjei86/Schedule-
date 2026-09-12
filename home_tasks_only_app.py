@@ -778,9 +778,13 @@ def _init_riley_workbook_schema():
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       notes TEXT,
+      day_of_week TEXT,
       done INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     )''')
+    cols={r['name'] for r in c.execute('PRAGMA table_info(riley_workbooks)')}
+    if 'day_of_week' not in cols:
+        c.execute('ALTER TABLE riley_workbooks ADD COLUMN day_of_week TEXT')
     c.commit(); c.close()
 _init_riley_workbook_schema()
 
@@ -790,28 +794,48 @@ def _workbook_rows():
 def _workbook_section():
     rows=_workbook_rows()
     open_n=sum(1 for r in rows if not r['done'])
+    by={d:[] for d in DAYS}; unknown=[]
+    for r in rows:
+        d=(r['day_of_week'] or '').strip()
+        (by[d] if d in by else unknown).append(r)
+    day_opts=''.join(f'<option>{d}</option>' for d in DAYS)
     body=(f'<section class="feature-card" style="margin-top:14px"><h2>지유 문제집 체크리스트 · 미완료 {open_n}건</h2>'
           '<form method="post" action="/riley/workbook/add" class="task-form">'
           '<label class="task-title">문제집/과제<input name="title" required placeholder="예: 디딤돌 수학 3단원"></label>'
+          f'<label>요일<select name="day_of_week">{day_opts}</select></label>'
           '<label>메모<input name="notes" placeholder="분량 등"></label>'
           '<button class="btn">추가</button></form>'
-          '<div class="feature-list" style="margin-top:10px">')
-    if not rows:
-        body+='<div class="muted">등록된 문제집이 없습니다.</div>'
-    for r in rows:
-        cls=' task-done' if r['done'] else ''
-        meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
-        body+=(f'<div class="feature-row"><div><b class="{cls}">{H(r["title"])}</b>{meta}</div><div class="task-actions">'
-               f'<form method="post" action="/riley/workbook/{r["id"]}/toggle"><button class="btn s">{"되돌리기" if r["done"] else "완료"}</button></form>'
-               f'<form method="post" action="/riley/workbook/{r["id"]}/delete" onsubmit="return confirm(\'삭제할까요?\')"><button class="btn d">삭제</button></form></div></div>')
-    body+='</div></section>'
+          '<div class="riley-week" style="margin-top:10px">')
+    for i,dn in enumerate(DAYS):
+        body+=f'<div class="rday"><h3>{dn}요일</h3>'
+        if not by[dn]: body+='<div class="muted">없음</div>'
+        for r in by[dn]:
+            cls=' task-done' if r['done'] else ''
+            meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
+            body+=(f'<div class="lesson"><b class="{cls}">{H(r["title"])}</b>{meta}'
+                   f'<div class="row-actions"><form method="post" action="/riley/workbook/{r["id"]}/toggle"><button class="btn s">{"되돌리기" if r["done"] else "완료"}</button></form>'
+                   f'<form method="post" action="/riley/workbook/{r["id"]}/delete" onsubmit="return confirm(\'삭제할까요?\')"><button class="btn d">삭제</button></form></div></div>')
+        body+='</div>'
+    body+='</div>'
+    if unknown:
+        body+='<div class="needs-check"><h3>요일 미정</h3>'
+        for r in unknown:
+            cls=' task-done' if r['done'] else ''
+            meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
+            body+=(f'<div class="needs-item"><div><b class="{cls}">{H(r["title"])}</b>{meta}</div><div class="row-actions">'
+                   f'<form method="post" action="/riley/workbook/{r["id"]}/toggle"><button class="btn s">{"되돌리기" if r["done"] else "완료"}</button></form>'
+                   f'<form method="post" action="/riley/workbook/{r["id"]}/delete" onsubmit="return confirm(\'삭제할까요?\')"><button class="btn d">삭제</button></form></div></div>')
+        body+='</div>'
+    body+='</section>'
     return body
 
 @app.route('/riley/workbook/add',methods=['POST'])
 def riley_workbook_add():
     title=(request.form.get('title') or '').strip()
     if title:
-        c=db(); c.execute('insert into riley_workbooks(title,notes,done,created_at) values(?,?,0,?)',(title,(request.form.get('notes') or '').strip(),datetime.now().isoformat(timespec='seconds'))); c.commit(); c.close()
+        day=(request.form.get('day_of_week') or '').strip()
+        if day not in DAYS: day=''
+        c=db(); c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at) values(?,?,?,0,?)',(title,(request.form.get('notes') or '').strip(),day,datetime.now().isoformat(timespec='seconds'))); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/workbook/<int:i>/toggle',methods=['POST'])
