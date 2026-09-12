@@ -1902,73 +1902,6 @@ def trip_expense_delete(trip_id,i):
     c=db(); c.execute('delete from trip_expenses where id=? and trip_id=?',(i,trip_id)); c.commit(); c.close(); return redirect(f'/trip/{trip_id}/plan')
 
 
-# ===== dashboard helpers =====
-def _visible_home_events(start,end):
-    rows=_cached_calendar_events(start,end)
-    out=[]
-    for e in rows:
-        if e.get('source')=='trip':
-            continue
-        compact=(e.get('title') or '').replace(' ','')
-        if '청소아줌마' in compact:
-            continue
-        out.append(e)
-    return out
-
-
-def _event_overlaps(e,d):
-    try:
-        s=qdate(str(e.get('start_date') or '')[:10]); en=qdate(str(e.get('end_date') or e.get('start_date') or '')[:10])
-        return bool(s and en and s<=d<=en)
-    except:
-        return False
-
-
-def _family_dashboard_html():
-    today=date.today(); week_end=today+timedelta(days=6)
-    events=_visible_home_events(today,week_end)
-    today_events=[e for e in events if _event_overlaps(e,today)]
-    week_events=sorted(events,key=lambda x:(str(x.get('start_date') or ''),str(x.get('title') or '')))
-
-    by_day={}
-    for e in week_events:
-        sd=qdate(str(e.get('start_date') or '')[:10])
-        if sd: by_day.setdefault(sd,[]).append(e)
-    clashes=[]
-    for d,arr in by_day.items():
-        persons={str(x.get('person') or '').strip() for x in arr if str(x.get('person') or '').strip()}
-        if len(arr)>=2 and len(persons)>=2:
-            clashes.append((d,arr))
-
-    tasks=_task_rows(False,5)
-    b='<div class="feature-grid">'
-    b+='<section class="feature-card"><h2>오늘 일정</h2><div class="feature-list">'
-    if not today_events: b+='<div class="muted">오늘 일정 없음</div>'
-    for e in today_events:
-        kind,label=_event_kind(e)
-        b+=f'<div class="feature-row"><div><b>{H(_clean_title(e.get("title")))}</b><div class="feature-meta">{H(label)}</div></div><span class="feature-badge">오늘</span></div>'
-    b+='</div></section>'
-
-    b+='<section class="feature-card"><h2>할 일</h2><div class="feature-list">'
-    if not tasks: b+='<div class="muted">미완료 할 일 없음</div>'
-    for t in tasks:
-        b+=f'<div class="feature-row"><div><b>{H(t["title"])}</b><div class="feature-meta">{H(_task_label(t))}</div></div><form method="post" action="/tasks/{t["id"]}/toggle"><button class="btn s">완료</button></form></div>'
-    b+='<div style="margin-top:8px"><a class="btn s" href="/tasks">전체 할 일 보기</a></div></div></section></div>'
-
-    b+='<section class="feature-card" style="margin-top:12px"><h2>이번 주 일정</h2>'
-    if clashes:
-        for d,arr in clashes:
-            names=' · '.join(_clean_title(x.get('title')) for x in arr[:3])
-            b+=f'<div class="feature-alert"><b>{d.strftime("%m/%d")} 일정 겹침</b> · {H(names)}</div>'
-    b+='<div class="feature-list">'
-    if not week_events: b+='<div class="muted">이번 주 일정 없음</div>'
-    for e in week_events[:12]:
-        sd=qdate(str(e.get('start_date') or '')[:10]); kind,label=_event_kind(e)
-        b+=f'<div class="feature-row"><div><b>{H(_clean_title(e.get("title")))}</b><div class="feature-meta">{H(label)} · {H(sd.strftime("%m/%d") if sd else "")}</div></div></div>'
-    b+='</div></section>'
-    return b
-
-
 # Inject the new family dashboard below the existing fast home and a trip-planner
 # button on every trip detail page without replacing the existing route handlers.
 @app.after_request
@@ -1977,10 +1910,7 @@ def family_feature_injection(response):
         if request.method!='GET' or response.status_code!=200 or 'text/html' not in (response.content_type or ''):
             return response
         html=response.get_data(as_text=True)
-        if request.path=='/':
-            dash=_family_dashboard_html()
-            html=html.replace('</main>',dash+'</main>',1)
-        elif request.path.startswith('/trip/') and request.path.count('/')==2:
+        if request.path.startswith('/trip/') and request.path.count('/')==2:
             parts=request.path.strip('/').split('/')
             if len(parts)==2 and parts[0]=='trip' and parts[1].isdigit():
                 trip_id=int(parts[1])
@@ -2335,32 +2265,7 @@ def _tasks_card():
 
 
 def tasks_only_home():
-    today = date.today()
-    c = db()
-    domestic = _next_trip_by_type(c, today, '국내')
-    overseas = _next_trip_by_type(c, today, '해외')
-    c.close()
-    family_events = _upcoming_events(today)
-
-    body = '<div class="next-trip-grid">' + _trip_card(domestic, today, '다음 국내 여행') + _trip_card(overseas, today, '다음 해외 여행') + '</div>'
-    body += '<section class="home-card family-next"><h2>다음 가족 일정</h2><div class="home-family-list">'
-    if not family_events:
-        body += '<div class="muted" style="padding:10px 0">등록된 가족 일정이 없습니다.</div>'
-    for d, e in family_events:
-        kind, label = _event_kind(e)
-        end = str(e.get('end_date') or '')[:10]
-        date_text = d.isoformat() if not end or end == d.isoformat() else f'{d.isoformat()} ~ {end}'
-        dday = _dday_label(d, today)
-        today_cls = ' today' if dday == 'D-DAY' else ''
-        title = _clean_title(e.get('title'))
-        body += (f'<div class="home-family-row">'
-                 f'<span class="event-dot {kind}" title="{H(label)}"></span>'
-                 f'<div class="event-main"><div class="event-title">{H(title)}</div>'
-                 f'<div class="event-meta">{H(label)} · {H(date_text)}</div></div>'
-                 f'<span class="event-dday{today_cls}">{H(dday)}</span></div>')
-    body += '</div></section>'
-    body += _tasks_card()
-    return page('우리 가족 기록', body)
+    return page('우리 가족 기록', _tasks_card())
 
 
 # home_cleanup_app's before_request calls this module-level function dynamically,
