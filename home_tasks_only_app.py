@@ -1243,6 +1243,9 @@ def _dday_label(target, today):
 def _next_trip_by_type(c, today, trip_type):
     return c.execute("select * from trips where start_date>=? and status!='완료' and trip_type=? order by start_date asc,id asc limit 1",(today.isoformat(),trip_type)).fetchone()
 
+def _next_trips_by_type(c, today, trip_type, limit=2):
+    return c.execute("select * from trips where start_date>=? and status!='완료' and trip_type=? order by start_date asc,id asc limit ?",(today.isoformat(),trip_type,limit)).fetchall()
+
 
 def _is_trip_event(e):
     d=dict(e)
@@ -2412,12 +2415,16 @@ def _tasks_card():
 def tasks_only_home():
     today = date.today()
     c = db()
-    domestic = _next_trip_by_type(c, today, '국내')
-    overseas = _next_trip_by_type(c, today, '해외')
+    domestic = _next_trips_by_type(c, today, '국내')
+    overseas = _next_trips_by_type(c, today, '해외')
     c.close()
     family_events = _upcoming_events(today)
 
-    body = '<div class="next-trip-grid">' + _trip_card(domestic, today, '다음 국내 여행') + _trip_card(overseas, today, '다음 해외 여행') + '</div>'
+    def _cards(rows, label):
+        titles = [f'다음 {label}', f'그 다음 {label}']
+        return ''.join(_trip_card(rows[i] if i < len(rows) else None, today, titles[i]) for i in range(2))
+
+    body = '<div class="next-trip-grid">' + _cards(domestic, '국내 여행') + _cards(overseas, '해외 여행') + '</div>'
     body += '<section class="home-card family-next"><h2>다음 가족 일정</h2><div class="home-family-list">'
     if not family_events:
         body += '<div class="muted" style="padding:10px 0">등록된 가족 일정이 없습니다.</div>'
