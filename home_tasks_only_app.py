@@ -799,7 +799,6 @@ def wb_edit_modal():
 
 def _wb_actions(r):
     return (f'<div class="row-actions">'
-            f'<form method="post" action="/riley/workbook/{r["id"]}/toggle" onclick="event.stopPropagation()"><button class="btn s">{"되돌리기" if r["done"] else "완료"}</button></form>'
             f'<button type="button" class="btn s" data-id="{r["id"]}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-day="{H(r["day_of_week"] or "")}" onclick="event.stopPropagation();editWb(this)">수정</button>'
             f'<form method="post" action="/riley/workbook/{r["id"]}/delete" onclick="event.stopPropagation()" onsubmit="return confirm(\'삭제할까요?\')"><button class="btn d">삭제</button></form></div>')
 
