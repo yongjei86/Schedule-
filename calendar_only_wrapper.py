@@ -7,6 +7,26 @@ import app as base
 app = recurring.app
 
 
+def _family_events_without_riley_academy(start, end):
+    """Family calendar keeps Riley's one-off events, but hides recurring Riley academy events."""
+    events = list(base.event_rows(start, end))
+    recurring_riley = recurring._recurring_timed_google(start, end, '지유')
+    recurring_keys = {
+        (x['date'].isoformat(), (x.get('title') or '').strip())
+        for x in recurring_riley
+    }
+
+    out = []
+    for e in events:
+        d = dict(e)
+        is_riley_google = d.get('source') == 'google' and (d.get('person') or '').strip() == '지유'
+        key = (str(d.get('start_date') or '')[:10], (d.get('title') or '').strip())
+        if is_riley_google and key in recurring_keys:
+            continue
+        out.append(e)
+    return out
+
+
 def family_calendar_only():
     view=(base.request.args.get('view') or 'month').lower()
     q=base.qdate(base.request.args.get('date','')) or date.today()
@@ -28,7 +48,7 @@ def family_calendar_only():
         nxt=nm.isoformat()
         title=f'{q.year}년 {q.month}월'
 
-    events=list(base.event_rows(start,end))
+    events=_family_events_without_riley_academy(start,end)
     tabs=(f'<div class="seg">'
           f'<a class="{"on" if view=="month" else ""}" href="/calendar?view=month&date={q.isoformat()}">월</a>'
           f'<a class="{"on" if view=="week" else ""}" href="/calendar?view=week&date={q.isoformat()}">주</a>'
