@@ -605,6 +605,23 @@ def _country_parts(s):
         s=s.replace(sep,'|')
     return [x.strip() for x in s.split('|') if x.strip()]
 
+FLAG_MAP={
+'한국':'🇰🇷','대한민국':'🇰🇷','일본':'🇯🇵','대만':'🇹🇼','홍콩':'🇭🇰','마카오':'🇲🇴','중국':'🇨🇳',
+'태국':'🇹🇭','베트남':'🇻🇳','인도네시아':'🇮🇩','미국':'🇺🇸','스페인':'🇪🇸','이탈리아':'🇮🇹',
+'싱가포르':'🇸🇬','호주':'🇦🇺','체코':'🇨🇿','오스트리아':'🇦🇹','헝가리':'🇭🇺','필리핀':'🇵🇭',
+'말레이시아':'🇲🇾','괌':'🇬🇺','사이판':'🇲🇵','프랑스':'🇫🇷','독일':'🇩🇪','영국':'🇬🇧',
+'스위스':'🇨🇭','그리스':'🇬🇷','튀르키예':'🇹🇷','터키':'🇹🇷','캐나다':'🇨🇦','뉴질랜드':'🇳🇿',
+'몰디브':'🇲🇻','두바이':'🇦🇪','아랍에미리트':'🇦🇪','인도':'🇮🇳','네덜란드':'🇳🇱','포르투갈':'🇵🇹',
+}
+def _flags_for(country,trip_type):
+    if (trip_type or '').strip()=='국내':
+        return '🇰🇷'
+    flags=[]
+    for p in _country_parts(country):
+        f=FLAG_MAP.get(p)
+        if f and f not in flags: flags.append(f)
+    return ' '.join(flags) or '🌍'
+
 @app.route('/travel-map')
 def travel_map():
     c=db(); rows=c.execute("select id,country,region,title,start_date from trips where status='완료' order by start_date").fetchall(); c.close()
@@ -1273,8 +1290,9 @@ def _trip_card(r, today, kind):
         return f'<div class="next-trip-card"><div class="kind">{kind}</div><div class="name">예정 없음</div></div>'
     td=_safe_date(r['start_date'])
     region=' · '.join(x for x in [r['country'],r['region']] if x)
+    flags=_flags_for(r['country'],r['trip_type'])
     return (f'<div class="next-trip-card"><div class="kind">{kind}</div>'
-            f'<div class="name"><a class="home-link" href="/trip/{r["id"]}">{H(r["title"])}</a></div>'
+            f'<div class="name">{flags} <a class="home-link" href="/trip/{r["id"]}">{H(r["title"])}</a></div>'
             f'<span class="dday">{_dday_label(td,today)}</span>'
             f'<div class="muted" style="margin-top:6px">{H(r["start_date"])} ~ {H(r["end_date"])}</div>'
             f'<div class="muted">{H(region) or "-"}</div></div>')
@@ -2425,8 +2443,8 @@ def tasks_only_home():
         return _trip_card(rows[i] if i < len(rows) else None, today, title)
 
     body = ('<div class="next-trip-grid">'
-            + _card_at(domestic, '국내 여행', 0) + _card_at(overseas, '해외 여행', 0)
-            + _card_at(domestic, '국내 여행', 1) + _card_at(overseas, '해외 여행', 1)
+            + _card_at(domestic, '국내 여행', 0) + _card_at(domestic, '국내 여행', 1)
+            + _card_at(overseas, '해외 여행', 0) + _card_at(overseas, '해외 여행', 1)
             + '</div>')
     body += '<section class="home-card family-next"><h2>다음 가족 일정</h2><div class="home-family-list">'
     if not family_events:
