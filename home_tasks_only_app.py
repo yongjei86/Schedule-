@@ -1670,7 +1670,7 @@ PWA_NAME = '우리 가족 기록'
 PWA_SHORT_NAME = '가족 기록'
 PWA_THEME = '#10253f'
 PWA_BG = '#f4f7fb'
-PWA_ICON = '/pwa-icon-v2.svg'
+PWA_ICON = '/pwa-icon-v3.svg'
 
 _manifest = {
     'name': PWA_NAME,
@@ -1693,29 +1693,28 @@ _manifest = {
     ],
 }
 
-# Clean travel mark: deep navy tile + ivory globe + warm gold airplane.
+# Vivid travel mark: indigo-to-cyan gradient tile + a paper-plane in flight.
 # The important artwork stays inside the maskable safe area so Android/Samsung launchers
 # can crop it to circles, squircles or rounded squares without losing details.
 _ICON_SVG = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
 <defs>
-  <linearGradient id="bg" x1="72" y1="54" x2="438" y2="462" gradientUnits="userSpaceOnUse">
-    <stop stop-color="#183A60"/>
-    <stop offset="1" stop-color="#0B1D32"/>
+  <linearGradient id="bg" x1="60" y1="40" x2="452" y2="472" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#4F46E5"/>
+    <stop offset="1" stop-color="#06B6D4"/>
   </linearGradient>
 </defs>
 <rect width="512" height="512" rx="120" fill="url(#bg)"/>
-<circle cx="256" cy="256" r="146" fill="#F8F5ED"/>
-<circle cx="256" cy="256" r="106" fill="none" stroke="#B9C4CE" stroke-width="12"/>
-<path d="M154 256h204M256 150c-31 30-48 67-48 106s17 76 48 106M256 150c31 30 48 67 48 106s-17 76-48 106" fill="none" stroke="#B9C4CE" stroke-width="12" stroke-linecap="round"/>
-<path d="M174 200c25 13 53 19 82 19s57-6 82-19M174 312c25-13 53-19 82-19s57 6 82 19" fill="none" stroke="#B9C4CE" stroke-width="10" stroke-linecap="round"/>
-<path d="M126 303c38-28 86-48 142-57l91-58c8-5 18-3 23 5 5 7 4 16-2 22l-69 64 50 11c10 2 17 11 16 21-1 9-9 16-18 17l-74 4-41 66c-5 8-15 11-23 7-8-4-12-13-9-22l23-69c-42 3-78 10-111 22-12 4-24-3-27-15-2-7 1-14 9-18z" fill="#D7A347"/>
-<path d="M318 218l42-27" stroke="#FFF9EC" stroke-width="9" stroke-linecap="round"/>
-<circle cx="116" cy="118" r="10" fill="#D7A347"/>
-<circle cx="396" cy="394" r="7" fill="#D7A347" opacity=".75"/>
+<circle cx="256" cy="256" r="200" fill="#FFFFFF" opacity=".07"/>
+<circle cx="94" cy="392" r="8" fill="#FFFFFF" opacity=".4"/>
+<circle cx="124" cy="360" r="10" fill="#FFFFFF" opacity=".55"/>
+<circle cx="158" cy="330" r="12" fill="#FFFFFF" opacity=".72"/>
+<path d="M109 382L403 256L109 130L109 228L319 256L109 284Z" fill="#FFFFFF"/>
+<path d="M109 228L319 256L109 284Z" fill="#C7D9FF"/>
+<circle cx="392" cy="128" r="9" fill="#FFD166"/>
 </svg>'''
 
 _SW = '''const CACHE='family-pwa-v2';
-const SHELL=['/manifest.webmanifest','/pwa-icon-v2.svg'];
+const SHELL=['/manifest.webmanifest','/pwa-icon-v3.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener('fetch',event=>{
@@ -1726,7 +1725,7 @@ self.addEventListener('fetch',event=>{
     event.respondWith(fetch(event.request).catch(()=>caches.match('/')));
     return;
   }
-  if(url.pathname==='/manifest.webmanifest'||url.pathname==='/pwa-icon-v2.svg'){
+  if(url.pathname==='/manifest.webmanifest'||url.pathname==='/pwa-icon-v3.svg'){
     event.respondWith(fetch(event.request).then(resp=>{const copy=resp.clone();caches.open(CACHE).then(c=>c.put(event.request,copy));return resp;}).catch(()=>caches.match(event.request)));
   }
 });'''
@@ -1735,11 +1734,14 @@ self.addEventListener('fetch',event=>{
 def pwa_manifest():
     return Response(json.dumps(_manifest, ensure_ascii=False), mimetype='application/manifest+json', headers={'Cache-Control':'no-cache'})
 
-@app.route('/pwa-icon-v2.svg')
-def pwa_icon_v2():
+@app.route('/pwa-icon-v3.svg')
+def pwa_icon_v3():
     return Response(_ICON_SVG, mimetype='image/svg+xml', headers={'Cache-Control':'public, max-age=86400'})
 
-# Keep old route alive so previously installed versions do not break while updating.
+# Keep old routes alive (serving the same updated artwork) so previously installed versions do not break.
+@app.route('/pwa-icon-v2.svg')
+def pwa_icon_v2():
+    return Response(_ICON_SVG, mimetype='image/svg+xml', headers={'Cache-Control':'no-cache'})
 @app.route('/pwa-icon.svg')
 def pwa_icon_legacy():
     return Response(_ICON_SVG, mimetype='image/svg+xml', headers={'Cache-Control':'no-cache'})
@@ -2306,7 +2308,7 @@ async function enableFamilyPush(){{
 
 
 # Add push handling to the existing service worker without changing its cache behavior.
-_SW += '''\nself.addEventListener('push',event=>{let data={};try{data=event.data?event.data.json():{};}catch(e){data={body:event.data?event.data.text():''};}const title=data.title||'우리 가족 기록';const options={body:data.body||'',icon:'/pwa-icon-v2.svg',badge:'/pwa-icon-v2.svg',data:{url:data.url||'/'}};event.waitUntil(self.registration.showNotification(title,options));});self.addEventListener('notificationclick',event=>{event.notification.close();const url=(event.notification.data&&event.notification.data.url)||'/';event.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{for(const c of list){if('focus'in c){c.navigate(url);return c.focus();}}return clients.openWindow(url);}));});'''
+_SW += '''\nself.addEventListener('push',event=>{let data={};try{data=event.data?event.data.json():{};}catch(e){data={body:event.data?event.data.text():''};}const title=data.title||'우리 가족 기록';const options={body:data.body||'',icon:'/pwa-icon-v3.svg',badge:'/pwa-icon-v3.svg',data:{url:data.url||'/'}};event.waitUntil(self.registration.showNotification(title,options));});self.addEventListener('notificationclick',event=>{event.notification.close();const url=(event.notification.data&&event.notification.data.url)||'/';event.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{for(const c of list){if('focus'in c){c.navigate(url);return c.focus();}}return clients.openWindow(url);}));});'''
 
 
 def _subscriptions():
