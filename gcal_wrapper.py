@@ -10,6 +10,15 @@ app = base.app
 KST = ZoneInfo('Asia/Seoul')
 _CACHE = {'key': None, 'ts': 0, 'events': []}
 
+# Keep Riley's weekly timetable as a true 7-column horizontal schedule even on mobile.
+# Small screens scroll horizontally instead of stacking each day vertically.
+base.CSS += '''
+.schedule{display:grid;grid-template-columns:repeat(7,minmax(135px,1fr));gap:8px;overflow-x:auto;align-items:stretch;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+.sday{min-width:135px;min-height:230px}
+@media(max-width:900px){.schedule{grid-template-columns:repeat(7,minmax(135px,1fr));overflow-x:auto}.sday{min-width:135px}}
+@media(max-width:560px){.schedule{grid-template-columns:repeat(7,minmax(125px,1fr));overflow-x:auto}.sday{min-width:125px}}
+'''
+
 def _sources():
     raw = os.getenv('GCAL_ICS_SOURCES', '').strip()
     if not raw:
@@ -56,7 +65,6 @@ def _google_events(start, end):
                 ed = _as_date(de)
                 if not sd:
                     continue
-                # Google all-day DTEND is exclusive.
                 if isinstance(ds, date) and not isinstance(ds, datetime) and isinstance(de, date) and not isinstance(de, datetime) and ed and ed > sd:
                     ed = ed - timedelta(days=1)
                 if not ed:
@@ -110,8 +118,6 @@ def merged_event_modals(es):
         b += '''<div class="modal" id="em"><div class="card"><div class="head"><h2>가족 일정</h2><button class="btn s" onclick="x('em')">닫기</button></div><form class="form" id="ef" method="post"><label>시작일<input type="date" name="start_date" required></label><label>종료일<input type="date" name="end_date" required></label><label class="full">일정명<input name="title" required></label><label>분류<input name="category"></label><label>사람<input name="person"></label><label class="full">메모<textarea name="notes"></textarea></label><div class="full"><button class="btn">저장</button></div></form></div></div>'''
     return b
 
-# Existing calendar screens call these globals dynamically, so replacing them
-# adds Google events without changing the rest of the application.
 base.event_rows = merged_event_rows
 base.event_modals = merged_event_modals
 
