@@ -107,8 +107,7 @@ def travel_stats():
     return base.page('여행 통계',body)
 
 
-@app.route('/travel-search')
-def travel_search():
+def travel_search_page():
     q=(base.request.args.get('q') or '').strip(); rows=[]
     if q:
         like='%'+q+'%'; c=base.db()
@@ -138,3 +137,13 @@ def travel_search():
     else:
         body+='<div class="home-card"><b>한 번에 찾기</b><div class="muted" style="margin-top:5px">여행명, 국가, 도시, 숙소, 항공·교통, 세부 일정, 장소, 메모를 모두 검색합니다.</div></div>'
     return base.page('통합 검색',body)
+
+
+_search_overridden=False
+for rule in list(app.url_map.iter_rules()):
+    if rule.rule=='/travel-search':
+        app.view_functions[rule.endpoint]=travel_search_page
+        _search_overridden=True
+        break
+if not _search_overridden:
+    app.add_url_rule('/travel-search','travel_search_page',travel_search_page)
