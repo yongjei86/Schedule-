@@ -43,7 +43,7 @@ JS+='''function showEventDetail(el){let d=el.dataset;document.getElementById("ed
 CSS+='''.fab-group{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:20}.fab{width:46px;height:46px;border-radius:50%;background:#0f4c81;color:#fff;border:0;font-size:20px;line-height:1;cursor:pointer;box-shadow:0 4px 14px #0f4c8155;display:flex;align-items:center;justify-content:center;transition:transform .12s ease,box-shadow .12s ease}.fab:hover{box-shadow:0 6px 18px #0f4c8166;transform:translateY(-1px)}.fab:active{transform:scale(.94)}@media(max-width:560px){.fab-group{right:14px;bottom:14px;gap:8px}.fab{width:42px;height:42px;font-size:18px}}'''
 CSS+='''.fm-event,.event-chip{cursor:pointer}.fm-event:hover,.event-chip:hover{filter:brightness(0.96)}'''
 CSS+='''.person-filter{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}.pf{border:1px solid #d7dfe8;background:#fff;color:#5c6b80;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;text-decoration:none;transition:all .12s ease}.pf:hover{border-color:#0f4c81;color:#0f4c81}.pf.on{color:#fff;border-color:transparent}.pf.on.yj{background:#315c9b}.pf.on.지유{background:#e98755}.pf.on.보미{background:#9a66ad}.pf.on.혜온{background:#46a081}.pf.on.가족{background:#c99a35}.pf.on.여행{background:#d64f5b}.pf.on:not(.yj):not(.지유):not(.보미):not(.혜온):not(.가족):not(.여행){background:#14263f}'''
-CSS+='''.trip-edit-card.editable{cursor:pointer}.trip-edit-card.editable:hover{background:#f7fbff;border-color:#cfe0f0}'''
+CSS+='''.view-value{cursor:pointer;display:block}.view-value:hover{color:#0f4c81}.inline-edit{display:none;flex-direction:column;gap:6px;margin-top:2px}.inline-edit input{padding:7px 9px;border:1px solid #d5dde7;border-radius:8px;font:inherit;font-size:13px}'''
 CSS+='''.future-card{display:block;color:inherit;text-decoration:none}.status-form{margin-top:8px}.status-select{width:100%;border:1px solid #d7dfe8;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:#eef2f6;color:#5c6b80}.status-select.planned{background:#e8f6ee;color:#1f7a4d;border-color:#bfe4cd}.status-select.review{background:#fff3e0;color:#b5680a;border-color:#f3d9ab}.status-select.longterm{background:#f1ecfb;color:#6a4fb0;border-color:#dccdf5}.status-select.done{background:#eef2f6;color:#5c6b80;border-color:#dfe6ee}.status-badge{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:#eef2f6;color:#5c6b80}.status-badge.planned{background:#e8f6ee;color:#1f7a4d}.status-badge.review{background:#fff3e0;color:#b5680a}.status-badge.longterm{background:#f1ecfb;color:#6a4fb0}.status-badge.done{background:#eef2f6;color:#5c6b80}'''
 CSS+='''*{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.btn,.nav a,.seg a,.pf{transition:filter .12s ease,transform .06s ease,background .12s ease,color .12s ease,box-shadow .12s ease}.btn:hover{filter:brightness(1.07)}.btn:active{transform:scale(.97)}.box,.card,.home-card,.dashcard,.next-trip-card,.feature-card,.plan-section,.monthbig,.mini,.wday,.sday,.status-card,.stat-card,.summary-card{box-shadow:0 1px 3px rgba(20,38,63,.06)}.trip:hover,.home-family-row:hover,.event:hover,.feature-row:hover{background:#f7fbff}.home-family-row,.feature-row,.plan-row,.summary-row{transition:background .12s ease}.hero{box-shadow:0 6px 20px rgba(15,76,129,.18)}'''
 JS+='''(function(){var t=document.getElementById("toTop");if(t)t.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})});var r=document.getElementById("refreshBtn");if(r)r.addEventListener("click",function(){location.reload()})})();'''
@@ -1095,6 +1095,25 @@ TRIP_STATUSES=('예정','검토 중','장기 계획','완료')
 def _status_class(s):
     return {'완료':'done','예정':'planned','검토 중':'review','장기 계획':'longterm'}.get((s or '').strip(),'other')
 
+TRANSPORT_OPTIONS=('비행기','기차','고속버스','자가용','배','기타')
+COMPANION_OPTIONS=('가족','용제','보미','지유','혜온')
+QUICK_EDIT_FIELDS=('start_date','end_date','country','region','lodging','transport','companions')
+
+def _select_options(options,current):
+    opts=list(options)
+    if current and current not in opts:
+        opts=[current]+opts
+    return ''.join(f'<option value="{H(o)}" {"selected" if o==current else ""}>{H(o)}</option>' for o in opts)
+
+@app.route('/trip/<int:trip_id>/quick-edit',methods=['POST'])
+def trip_quick_edit(trip_id):
+    updates={k:request.form[k] for k in QUICK_EDIT_FIELDS if k in request.form}
+    if not updates: return redirect(request.referrer or f'/trip/{trip_id}')
+    before=row_snapshot('trips',trip_id); backup_db('prechange')
+    c=db(); c.execute('update trips set '+','.join(f'{k}=?' for k in updates)+' where id=?',list(updates.values())+[trip_id]); c.commit(); c.close()
+    after=row_snapshot('trips',trip_id); log_change('trips',trip_id,'edit',before,after)
+    return redirect(request.referrer or f'/trip/{trip_id}')
+
 @app.route('/trip/<int:trip_id>/status',methods=['POST'])
 def set_trip_status(trip_id):
     status=(request.form.get('status') or '').strip()
@@ -1120,9 +1139,31 @@ def editable_trip_detail(trip_id):
              f'<button class="btn" {trip_attrs(r)} onclick="et(this)">여행 정보 수정</button>'
              f'<button class="btn s" onclick="ni({r["id"]})">+ 세부 일정</button>'
              f'<form method="post" action="/trip/{r["id"]}/delete" onsubmit="return confirm(\'삭제할까요? 되돌릴 수 없습니다\')" style="display:inline-block;margin:0"><button class="btn d">삭제</button></form></div>')
-    cards='<div class="trip-edit-grid">'
-    for label,value in [('여행 일자',f'{r["start_date"]} ~ {r["end_date"]}'),('지역',' · '.join(x for x in [r['country'],r['region']] if x)),('함께',r['companions']),('숙소',r['lodging']),('교통/항공',r['transport'])]: cards+=f'<div class="trip-edit-card editable" {trip_attrs(r)} onclick="et(this)"><div class="label">{H(label)}</div><b>{H(value) or "-"}</b></div>'
-    cards+=f'<div class="trip-edit-card"><div class="label">상태</div><form method="post" action="/trip/{r["id"]}/status"><select name="status" class="status-select {scls}" onchange="this.form.submit()">{stopts}</select></form></div>'
+    date_card=(f'<div class="trip-edit-card"><div class="label">여행 일자</div>'
+               f'<b class="view-value" onclick="this.nextElementSibling.style.display=\'flex\';this.style.display=\'none\'">{H(r["start_date"])} ~ {H(r["end_date"])}</b>'
+               f'<form class="inline-edit" method="post" action="/trip/{r["id"]}/quick-edit">'
+               f'<input type="date" name="start_date" value="{H(r["start_date"])}">'
+               f'<input type="date" name="end_date" value="{H(r["end_date"])}">'
+               f'<button class="btn s" type="submit">저장</button></form></div>')
+    region_card=(f'<div class="trip-edit-card"><div class="label">지역</div>'
+                 f'<b class="view-value" onclick="this.nextElementSibling.style.display=\'flex\';this.style.display=\'none\'">{H(" · ".join(x for x in [r["country"],r["region"]] if x)) or "-"}</b>'
+                 f'<form class="inline-edit" method="post" action="/trip/{r["id"]}/quick-edit">'
+                 f'<input name="country" placeholder="국가" value="{H(r["country"])}">'
+                 f'<input name="region" placeholder="지역" value="{H(r["region"])}">'
+                 f'<button class="btn s" type="submit">저장</button></form></div>')
+    companions_card=(f'<div class="trip-edit-card"><div class="label">함께</div>'
+                      f'<form method="post" action="/trip/{r["id"]}/quick-edit">'
+                      f'<select name="companions" class="status-select" onchange="this.form.submit()">{_select_options(COMPANION_OPTIONS,r["companions"])}</select></form></div>')
+    lodging_card=(f'<div class="trip-edit-card"><div class="label">숙소</div>'
+                  f'<b class="view-value" onclick="this.nextElementSibling.style.display=\'flex\';this.style.display=\'none\'">{H(r["lodging"]) or "-"}</b>'
+                  f'<form class="inline-edit" method="post" action="/trip/{r["id"]}/quick-edit">'
+                  f'<input name="lodging" value="{H(r["lodging"])}">'
+                  f'<button class="btn s" type="submit">저장</button></form></div>')
+    transport_card=(f'<div class="trip-edit-card"><div class="label">교통/항공</div>'
+                     f'<form method="post" action="/trip/{r["id"]}/quick-edit">'
+                     f'<select name="transport" class="status-select" onchange="this.form.submit()">{_select_options(TRANSPORT_OPTIONS,r["transport"])}</select></form></div>')
+    status_card=f'<div class="trip-edit-card"><div class="label">상태</div><form method="post" action="/trip/{r["id"]}/status"><select name="status" class="status-select {scls}" onchange="this.form.submit()">{stopts}</select></form></div>'
+    cards='<div class="trip-edit-grid">'+date_card+region_card+companions_card+lodging_card+transport_card+status_card
     cards+='</div><div class="toolbar"><h2 style="margin:0">일자별 일정</h2><button class="btn s" onclick="ni('+str(r['id'])+')">+ 일정 추가</button></div>'
     if not its: cards+='<div class="trip-edit-card muted">아직 세부 일정이 없습니다.</div>'
     for x in its:
