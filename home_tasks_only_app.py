@@ -1510,7 +1510,7 @@ COLORING_TEMPLATES=[
 <line x1="100" y1="205" x2="40" y2="210"/>
 <line x1="200" y1="195" x2="260" y2="185"/>
 <line x1="200" y1="205" x2="260" y2="210"/>
-'''},
+''','regions':[{'type':'circle','cx':150,'cy':170,'r':90},{'type':'polygon','points':[[70,110],[110,40],[130,110]]},{'type':'polygon','points':[[170,110],[190,40],[230,110]]}]},
     {'id':'dog','name':'강아지','emoji':'🐶','svg':'''
 <circle cx="150" cy="170" r="85"/>
 <ellipse cx="75" cy="165" rx="28" ry="55"/>
@@ -1519,7 +1519,7 @@ COLORING_TEMPLATES=[
 <circle cx="175" cy="160" r="8" fill="#2b2b2b"/>
 <ellipse cx="150" cy="195" rx="14" ry="10" fill="#2b2b2b"/>
 <path d="M130,210 Q150,228 170,210"/>
-'''},
+''','regions':[{'type':'circle','cx':150,'cy':170,'r':85},{'type':'ellipse','cx':75,'cy':165,'rx':28,'ry':55},{'type':'ellipse','cx':225,'cy':165,'rx':28,'ry':55}]},
     {'id':'rabbit','name':'토끼','emoji':'🐰','svg':'''
 <circle cx="150" cy="185" r="75"/>
 <ellipse cx="120" cy="70" rx="18" ry="60"/>
@@ -1527,29 +1527,29 @@ COLORING_TEMPLATES=[
 <circle cx="125" cy="175" r="8" fill="#2b2b2b"/>
 <circle cx="175" cy="175" r="8" fill="#2b2b2b"/>
 <polygon points="140,205 160,205 150,218"/>
-'''},
+''','regions':[{'type':'circle','cx':150,'cy':185,'r':75},{'type':'ellipse','cx':120,'cy':70,'rx':18,'ry':60},{'type':'ellipse','cx':180,'cy':70,'rx':18,'ry':60}]},
     {'id':'fish','name':'물고기','emoji':'🐟','svg':'''
 <ellipse cx="140" cy="150" rx="90" ry="55"/>
 <polygon points="230,150 285,105 285,195"/>
 <circle cx="95" cy="140" r="8" fill="#2b2b2b"/>
 <polygon points="120,100 150,55 175,100"/>
-'''},
+''','regions':[{'type':'ellipse','cx':140,'cy':150,'rx':90,'ry':55},{'type':'polygon','points':[[230,150],[285,105],[285,195]]},{'type':'polygon','points':[[120,100],[150,55],[175,100]]}]},
     {'id':'apple','name':'사과','emoji':'🍎','svg':'''
 <circle cx="150" cy="175" r="80"/>
 <path d="M130,98 Q150,112 170,98"/>
 <rect x="143" y="58" width="10" height="38"/>
 <ellipse cx="178" cy="70" rx="20" ry="10"/>
-'''},
+''','regions':[{'type':'circle','cx':150,'cy':175,'r':80},{'type':'rect','x':143,'y':58,'w':10,'h':38},{'type':'ellipse','cx':178,'cy':70,'rx':20,'ry':10}]},
     {'id':'car','name':'자동차','emoji':'🚗','svg':'''
 <rect x="45" y="150" width="210" height="70" rx="20"/>
 <rect x="90" y="98" width="120" height="60" rx="15"/>
 <line x1="150" y1="98" x2="150" y2="158"/>
 <circle cx="100" cy="222" r="26"/>
 <circle cx="200" cy="222" r="26"/>
-'''},
+''','regions':[{'type':'rect','x':45,'y':150,'w':210,'h':70},{'type':'rect','x':90,'y':98,'w':120,'h':60},{'type':'circle','cx':100,'cy':222,'r':26},{'type':'circle','cx':200,'cy':222,'r':26}]},
     {'id':'star','name':'별','emoji':'⭐','svg':'''
 <polygon points="150,40 172,118 255,118 189,165 213,245 150,195 87,245 111,165 45,118 128,118"/>
-'''},
+''','regions':[{'type':'polygon','points':[[150,40],[172,118],[255,118],[189,165],[213,245],[150,195],[87,245],[111,165],[45,118],[128,118]]}]},
     {'id':'flower','name':'꽃','emoji':'🌸','svg':'''
 <line x1="150" y1="170" x2="150" y2="270"/>
 <ellipse cx="170" cy="235" rx="22" ry="12"/>
@@ -1559,14 +1559,14 @@ COLORING_TEMPLATES=[
 <circle cx="121" cy="185" r="30"/>
 <circle cx="103" cy="130" r="30"/>
 <circle cx="150" cy="150" r="22" fill="#2b2b2b" fill-opacity="0.08"/>
-'''},
+''','regions':[{'type':'circle','cx':150,'cy':100,'r':30},{'type':'circle','cx':197,'cy':130,'r':30},{'type':'circle','cx':179,'cy':185,'r':30},{'type':'circle','cx':121,'cy':185,'r':30},{'type':'circle','cx':103,'cy':130,'r':30},{'type':'circle','cx':150,'cy':150,'r':22},{'type':'rect','x':145,'y':170,'w':10,'h':100},{'type':'ellipse','cx':170,'cy':235,'rx':22,'ry':12}]},
     {'id':'house','name':'집','emoji':'🏠','svg':'''
 <rect x="70" y="150" width="160" height="110"/>
 <polygon points="50,150 150,70 250,150"/>
 <rect x="135" y="200" width="30" height="60"/>
 <rect x="90" y="170" width="30" height="30"/>
 <rect x="180" y="170" width="30" height="30"/>
-'''},
+''','regions':[{'type':'rect','x':70,'y':150,'w':160,'h':110},{'type':'polygon','points':[[50,150],[150,70],[250,150]]},{'type':'rect','x':135,'y':200,'w':30,'h':60},{'type':'rect','x':90,'y':170,'w':30,'h':30},{'type':'rect','x':180,'y':170,'w':30,'h':30}]},
 ]
 
 @app.route('/hyeon/coloring')
@@ -1582,7 +1582,7 @@ def coloring_page():
 .cl-picker-row{{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px}}
 .cl-pick{{flex:0 0 auto;width:56px;height:56px;border-radius:16px;border:2px solid #e4e9f0;background:#fff;font-size:28px;cursor:pointer}}
 .cl-pick.on{{border-color:#0f4c81;background:#eaf3fb}}
-.cl-canvas-wrap{{position:relative;width:100%;max-width:340px;height:340px;margin:0 auto 14px;background:#fff;border:2px solid #e4e9f0;border-radius:20px;overflow:hidden}}
+.cl-canvas-wrap{{position:relative;width:100%;max-width:340px;aspect-ratio:1/1;margin:0 auto 14px;background:#fff;border:2px solid #e4e9f0;border-radius:20px;overflow:hidden}}
 .cl-canvas{{position:absolute;inset:0;touch-action:none}}
 .cl-outline{{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}}
 .cl-outline *{{fill:none;stroke:#2b2b2b;stroke-width:5;stroke-linejoin:round;stroke-linecap:round}}
@@ -1612,11 +1612,42 @@ function clSetColor(c,btn){{
   document.querySelectorAll('.cl-swatch').forEach(function(x){{x.classList.remove('on')}});
   btn.classList.add('on');
 }}
+const CL_VB=300;
+let clScale=1, clClipReady=false;
+function clBuildClipPath(regions){{
+  const path=new Path2D();
+  (regions||[]).forEach(function(r){{
+    if(r.type==='circle'){{
+      path.moveTo((r.cx+r.r)*clScale,r.cy*clScale);
+      path.ellipse(r.cx*clScale,r.cy*clScale,r.r*clScale,r.r*clScale,0,0,Math.PI*2);
+    }} else if(r.type==='ellipse'){{
+      path.moveTo((r.cx+r.rx)*clScale,r.cy*clScale);
+      path.ellipse(r.cx*clScale,r.cy*clScale,r.rx*clScale,r.ry*clScale,0,0,Math.PI*2);
+    }} else if(r.type==='rect'){{
+      path.rect(r.x*clScale,r.y*clScale,r.w*clScale,r.h*clScale);
+    }} else if(r.type==='polygon'){{
+      r.points.forEach(function(p,i){{
+        const px=p[0]*clScale, py=p[1]*clScale;
+        if(i===0) path.moveTo(px,py); else path.lineTo(px,py);
+      }});
+      path.closePath();
+    }}
+  }});
+  return path;
+}}
+function clApplyClip(){{
+  if(clClipReady) clCtx.restore();
+  clCtx.save();
+  clClipReady=true;
+  const path=clBuildClipPath(clCurrent.regions);
+  clCtx.clip(path);
+}}
 function clSelect(id){{
   clCurrent=CL_TEMPLATES.find(function(t){{return t.id===id}})||CL_TEMPLATES[0];
   document.querySelectorAll('.cl-pick').forEach(function(x){{x.classList.remove('on')}});
   document.getElementById('cl-pick-'+clCurrent.id).classList.add('on');
   document.getElementById('cl-outline').innerHTML=clCurrent.svg;
+  clApplyClip();
   clClear();
 }}
 function clClear(){{ if(clCtx) clCtx.clearRect(0,0,clCtx.canvas.width,clCtx.canvas.height); }}
@@ -1624,6 +1655,7 @@ function clInit(){{
   const cvs=document.getElementById('cl-canvas');
   const wrap=cvs.parentElement;
   cvs.width=wrap.clientWidth; cvs.height=wrap.clientHeight;
+  clScale=cvs.width/CL_VB;
   clCtx=cvs.getContext('2d');
   clCtx.lineCap='round'; clCtx.lineJoin='round'; clCtx.lineWidth=22;
   function pos(e){{
