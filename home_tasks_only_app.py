@@ -36,14 +36,21 @@ def qdate(s):
 def init():
  c=db();c.executescript('''CREATE TABLE IF NOT EXISTS trips(id INTEGER PRIMARY KEY,start_date TEXT,end_date TEXT,country TEXT,region TEXT,title TEXT,companions TEXT,trip_type TEXT,status TEXT,lodging TEXT,transport TEXT,notes TEXT);CREATE TABLE IF NOT EXISTS itinerary(id INTEGER PRIMARY KEY,trip_id INTEGER REFERENCES trips(id) ON DELETE CASCADE,item_date TEXT,day_label TEXT,time_text TEXT,title TEXT,place TEXT,detail TEXT,sort_order INTEGER DEFAULT 0);CREATE TABLE IF NOT EXISTS calendar_events(id INTEGER PRIMARY KEY,start_date TEXT,end_date TEXT,title TEXT,category TEXT,person TEXT,notes TEXT);CREATE TABLE IF NOT EXISTS academy(id INTEGER PRIMARY KEY,day_of_week TEXT,start_time TEXT,end_time TEXT,academy TEXT,subject TEXT,location TEXT,notes TEXT,active INTEGER DEFAULT 1);''');c.commit();c.close()
 init()
+def _init_academy_color_schema():
+    c=db()
+    cols={r['name'] for r in c.execute('PRAGMA table_info(academy)')}
+    if 'color' not in cols:
+        c.execute('ALTER TABLE academy ADD COLUMN color TEXT')
+    c.commit(); c.close()
+_init_academy_color_schema()
 
 CSS='''body{margin:0;background:#f4f7fb;color:#14263f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif}*{box-sizing:border-box}header{position:sticky;top:0;z-index:10;background:#f4f7fbf2;border-bottom:1px solid #e4e9f0}nav{max-width:1240px;margin:auto;padding:10px 16px;display:flex;justify-content:space-between;gap:10px}.nav{display:flex;gap:5px;overflow:auto}.nav a,.btn{white-space:nowrap;text-decoration:none;border:0;border-radius:9px;padding:8px 10px;font:inherit;font-size:13px;cursor:pointer}.nav a{color:#728096}.btn{background:#0f4c81;color:#fff}.btn.s{background:#fff;color:#14263f;border:1px solid #e4e9f0}.btn.d{background:#b64b50}.wrap{max-width:1240px;margin:auto;padding:18px 16px 50px}.hero{background:linear-gradient(145deg,#0f4c81,#173d66);color:#fff;border-radius:20px;padding:22px;margin-bottom:18px}.hero h1{margin:0}.toolbar{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap}.seg{display:flex;background:#eaf0f6;border-radius:10px;padding:3px}.seg a{padding:7px 11px;text-decoration:none;color:#65758b;border-radius:8px;font-size:13px}.seg a.on{background:#fff;color:#0f4c81;font-weight:800;box-shadow:0 1px 4px #00000014}.box{background:#fff;border:1px solid #e4e9f0;border-radius:15px;overflow:auto}table{width:100%;border-collapse:collapse;min-width:950px}th,td{padding:10px;border-bottom:1px solid #e4e9f0;text-align:left;font-size:13px}th{background:#fbfcfe;color:#728096}.trip{cursor:pointer}.trip:hover{background:#f7fbff}.detail td{background:#f8fafc;padding:14px}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.m{background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:10px}.m b{display:block;color:#728096;font-size:11px}.it{display:grid;grid-template-columns:90px 70px 1fr 1fr auto;gap:8px;background:#fff;border:1px solid #e4e9f0;border-radius:9px;padding:9px;margin-top:7px}.pill{display:inline-block;padding:4px 7px;border-radius:999px;background:#eaf3fb;color:#0f4c81;font-size:11px;font-weight:700}.event{background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:10px;margin-top:7px;display:flex;justify-content:space-between;gap:8px}.monthbig{background:#fff;border:1px solid #e4e9f0;border-radius:16px;padding:14px}.monthgrid{display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid #e4e9f0;border-top:1px solid #e4e9f0}.dow{padding:10px;text-align:center;font-size:12px;color:#718097;background:#fafbfd;border-right:1px solid #e4e9f0;border-bottom:1px solid #e4e9f0}.cell{min-height:112px;padding:7px;border-right:1px solid #e4e9f0;border-bottom:1px solid #e4e9f0;background:#fff}.cell.out{background:#fafbfd;color:#b1bac6}.num{font-size:12px;font-weight:800;margin-bottom:5px}.ce{display:block;background:#eaf3fb;color:#0f4c81;border-radius:6px;padding:4px 5px;margin:3px 0;font-size:11px;overflow:hidden}.weekcal{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.wday{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px;min-height:220px}.wday h3{margin:0 0 10px;text-align:center;font-size:14px}.yeargrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.mini{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px}.mini h3{text-align:center;margin:2px 0 8px}.minigrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}.md{font-size:10px;text-align:center;padding:4px;border-radius:4px}.md.has{background:#eaf3fb;color:#0f4c81;font-weight:800}.schedule{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.sday{background:#fff;border:1px solid #e4e9f0;border-radius:13px;min-height:230px;padding:10px}.sday .date{font-size:11px;color:#7a8798}.sday h3{margin:3px 0 10px}.lesson{background:#eaf3fb;border-radius:9px;padding:8px;margin-bottom:7px;font-size:12px}.lesson b{display:block;margin-bottom:3px}.modal{display:none;position:fixed;inset:0;background:#10203088;z-index:30;padding:16px;overflow:auto}.modal.show{display:block}.card{max-width:720px;margin:3vh auto;background:#fff;border-radius:16px;padding:16px}.head{display:flex;justify-content:space-between}.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}label{font-size:12px;color:#728096;display:grid;gap:4px}input,select,textarea{width:100%;padding:9px;border:1px solid #ccd5e0;border-radius:8px;font:inherit}textarea{min-height:70px}@media(max-width:900px){.schedule,.weekcal{grid-template-columns:repeat(2,1fr)}.yeargrid{grid-template-columns:repeat(2,1fr)}.meta{grid-template-columns:1fr}.it{grid-template-columns:80px 60px 1fr}.it .place{grid-column:3}.nav{max-width:72vw}.cell{min-height:90px}}@media(max-width:560px){.schedule,.weekcal,.yeargrid,.form{grid-template-columns:1fr}.full{grid-column:1}.hero h1{font-size:26px}.monthbig{padding:8px}.cell{min-height:74px;padding:4px}.ce{font-size:9px;padding:3px}.dow{padding:6px;font-size:10px}}'''
-JS='''function t(id){let e=document.getElementById("d"+id);e.style.display=e.style.display==="none"?"table-row":"none"}function o(id){document.getElementById(id).classList.add("show")}function x(id){document.getElementById(id).classList.remove("show")}function ntrip(){document.getElementById("tf").action="/trip/add";document.getElementById("tf").reset();o("tm")}function et(b){let d=b.dataset;document.getElementById("tf").action="/trip/"+d.id+"/edit";["start_date","end_date","country","region","title","companions","trip_type","status","lodging","transport","notes"].forEach(k=>document.querySelector("#tm [name="+k+"]").value=d[k]||"");o("tm")}function ni(id){document.getElementById("if").action="/itinerary/add";document.getElementById("if").reset();document.querySelector("#im [name=trip_id]").value=id;o("im")}function ei(b){let d=b.dataset;document.getElementById("if").action="/itinerary/"+d.id+"/edit";["trip_id","item_date","day_label","time_text","title","place","detail","sort_order"].forEach(k=>document.querySelector("#im [name="+k+"]").value=d[k]||"");o("im")}function ne(){document.getElementById("ef").action="/event/add";document.getElementById("ef").reset();o("em")}function ee(b){let d=b.dataset;document.getElementById("ef").action="/event/"+d.id+"/edit";["start_date","end_date","title","category","person","notes"].forEach(k=>document.querySelector("#em [name="+k+"]").value=d[k]||"");o("em")}function na(day){document.getElementById("af").action="/academy/add";document.getElementById("af").reset();if(day)document.querySelector("#am [name=day_of_week]").value=day;o("am")}function ea(b){let d=b.dataset;document.getElementById("af").action="/academy/"+d.id+"/edit";["day_of_week","start_time","end_time","academy","subject","location","notes"].forEach(k=>document.querySelector("#am [name="+k+"]").value=d[k]||"");o("am")}'''
+JS='''function t(id){let e=document.getElementById("d"+id);e.style.display=e.style.display==="none"?"table-row":"none"}function o(id){document.getElementById(id).classList.add("show")}function x(id){document.getElementById(id).classList.remove("show")}function ntrip(){document.getElementById("tf").action="/trip/add";document.getElementById("tf").reset();o("tm")}function et(b){let d=b.dataset;document.getElementById("tf").action="/trip/"+d.id+"/edit";["start_date","end_date","country","region","title","companions","trip_type","status","lodging","transport","notes"].forEach(k=>document.querySelector("#tm [name="+k+"]").value=d[k]||"");o("tm")}function ni(id){document.getElementById("if").action="/itinerary/add";document.getElementById("if").reset();document.querySelector("#im [name=trip_id]").value=id;o("im")}function ei(b){let d=b.dataset;document.getElementById("if").action="/itinerary/"+d.id+"/edit";["trip_id","item_date","day_label","time_text","title","place","detail","sort_order"].forEach(k=>document.querySelector("#im [name="+k+"]").value=d[k]||"");o("im")}function ne(){document.getElementById("ef").action="/event/add";document.getElementById("ef").reset();o("em")}function ee(b){let d=b.dataset;document.getElementById("ef").action="/event/"+d.id+"/edit";["start_date","end_date","title","category","person","notes"].forEach(k=>document.querySelector("#em [name="+k+"]").value=d[k]||"");o("em")}function na(day){let f=document.getElementById("af");f.action="/academy/add";f.reset();f.dataset.id="";document.getElementById("am-delete").style.display="none";if(day)document.querySelector("#am [name=day_of_week]").value=day;document.querySelector("#am [name=color]").value="#e98755";o("am")}function ea(b){let d=b.dataset;let f=document.getElementById("af");f.action="/academy/"+d.id+"/edit";f.dataset.id=d.id;["day_of_week","start_time","end_time","academy","subject","location","notes"].forEach(k=>document.querySelector("#am [name="+k+"]").value=d[k]||"");document.querySelector("#am [name=color]").value=d.color||"#e98755";document.getElementById("am-delete").style.display="inline-block";o("am")}function deleteAcademy(){let id=document.getElementById("af").dataset.id;if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/academy/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
 JS+='''function showEventDetail(el){let d=el.dataset;document.getElementById("ed-title").textContent=d.title||"";let range=d.start_date===d.end_date?d.start_date:d.start_date+" ~ "+d.end_date;document.getElementById("ed-date").textContent=range||"";let tm=d.start_time?(d.end_time&&d.end_time!==d.start_time?d.start_time+" ~ "+d.end_time:d.start_time):"종일";document.getElementById("ed-time").textContent=tm;document.getElementById("ed-kind").textContent=d.kind||"";document.getElementById("ed-person").textContent=d.person||"-";document.getElementById("ed-notes").textContent=d.notes||"-";let tl=document.getElementById("ed-triplink");tl.innerHTML=d.trip_id?'<a class="btn s" href="/trip/'+d.trip_id+'">여행 상세보기</a>':"";let df=document.getElementById("ed-delete-form");df.innerHTML='<button type="submit" class="btn d">삭제</button>';if(d.source==="local"&&d.id){df.action="/event/"+d.id+"/delete";df.style.display="block"}else if(d.key){df.action="/calendar-event/hide";let inp=document.createElement("input");inp.type="hidden";inp.name="key";inp.value=d.key;df.insertBefore(inp,df.firstChild);df.style.display="block"}else{df.style.display="none"}o("ed")}'''
 CSS+='''.fab-group{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:20}.fab{width:46px;height:46px;border-radius:50%;background:#0f4c81;color:#fff;border:0;font-size:20px;line-height:1;cursor:pointer;box-shadow:0 4px 14px #0f4c8155;display:flex;align-items:center;justify-content:center;transition:transform .12s ease,box-shadow .12s ease}.fab:hover{box-shadow:0 6px 18px #0f4c8166;transform:translateY(-1px)}.fab:active{transform:scale(.94)}@media(max-width:560px){.fab-group{right:14px;bottom:14px;gap:8px}.fab{width:42px;height:42px;font-size:18px}}'''
 CSS+='''.fm-event,.event-chip{cursor:pointer}.fm-event:hover,.event-chip:hover{filter:brightness(0.96)}'''
 CSS+='''.day-checks{display:flex;gap:8px;flex-wrap:wrap}.day-check{display:flex;align-items:center;gap:4px;width:auto;font-size:12px;color:#14263f}.day-check input{width:auto}'''
-JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\\"days\\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;document.getElementById("wbef").action="/riley/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\\"days\\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let gid=document.getElementById("wbef").dataset.gid;if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}'''
+JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\\"days\\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;document.getElementById("wbef").action="/riley/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";document.getElementById("wbe-color").value=d.color||"#0f4c81";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\\"days\\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let gid=document.getElementById("wbef").dataset.gid;if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}'''
 CSS+='''.person-filter{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}.pf{border:1px solid #d7dfe8;background:#fff;color:#5c6b80;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;text-decoration:none;transition:all .12s ease}.pf:hover{border-color:#0f4c81;color:#0f4c81}.pf.on{color:#fff;border-color:transparent}.pf.on.yj{background:#315c9b}.pf.on.지유{background:#e98755}.pf.on.보미{background:#9a66ad}.pf.on.혜온{background:#46a081}.pf.on.가족{background:#c99a35}.pf.on.여행{background:#d64f5b}.pf.on:not(.yj):not(.지유):not(.보미):not(.혜온):not(.가족):not(.여행){background:#14263f}'''
 CSS+='''.view-value{cursor:pointer;display:block}.view-value:hover{color:#0f4c81}.inline-edit{display:none;flex-direction:column;gap:6px;margin-top:2px}.inline-edit input{padding:7px 9px;border:1px solid #d5dde7;border-radius:8px;font:inherit;font-size:13px}'''
 CSS+='''.future-card{display:block;color:inherit;text-decoration:none}.status-form{margin-top:8px}.status-select{width:100%;border:1px solid #d7dfe8;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:#eef2f6;color:#5c6b80}.status-select.planned{background:#e8f6ee;color:#1f7a4d;border-color:#bfe4cd}.status-select.review{background:#fff3e0;color:#b5680a;border-color:#f3d9ab}.status-select.longterm{background:#f1ecfb;color:#6a4fb0;border-color:#dccdf5}.status-select.done{background:#eef2f6;color:#5c6b80;border-color:#dfe6ee}.status-badge{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:#eef2f6;color:#5c6b80}.status-badge.planned{background:#e8f6ee;color:#1f7a4d}.status-badge.review{background:#fff3e0;color:#b5680a}.status-badge.longterm{background:#f1ecfb;color:#6a4fb0}.status-badge.done{background:#eef2f6;color:#5c6b80}'''
@@ -185,7 +192,7 @@ def eva():must();c=db();v=[request.form.get(k,'') for k in ef];c.execute('insert
 def eve(i):must();c=db();v=[request.form.get(k,'') for k in ef];c.execute('update calendar_events set '+','.join(k+'=?' for k in ef)+' where id=?',v+[i]);c.commit();c.close();return redirect(request.referrer or '/calendar')
 @app.route('/event/<int:i>/delete',methods=['POST'])
 def evd(i):must();c=db();c.execute('delete from calendar_events where id=?',(i,));c.commit();c.close();return redirect(request.referrer or '/calendar')
-af=['day_of_week','start_time','end_time','academy','subject','location','notes']
+af=['day_of_week','start_time','end_time','academy','subject','location','notes','color']
 @app.route('/academy/add',methods=['POST'])
 def aa():must();c=db();v=[request.form.get(k,'') for k in af];c.execute('insert into academy('+','.join(af)+',active) values('+','.join('?'*len(v))+',1)',v);c.commit();c.close();return redirect(request.referrer or '/riley')
 @app.route('/academy/<int:i>/edit',methods=['POST'])
@@ -772,7 +779,7 @@ def family_calendar():
 
 def academy_modal():
     opts=''.join(f'<option>{d}</option>' for d in DAYS)+ '<option>미정</option>'
-    return f'''<div class="modal" id="am"><div class="card"><div class="head"><h2>지유 일정 추가/수정</h2><button class="btn s" onclick="x('am')">닫기</button></div><form class="form" id="af" method="post"><label>요일<select name="day_of_week">{opts}</select></label><label>시작 시간<input type="time" name="start_time"></label><label>종료 시간<input type="time" name="end_time"></label><label>학원/일정명<input name="academy" required></label><label>과목<input name="subject"></label><label>장소<input name="location"></label><label class="full">메모<textarea name="notes"></textarea></label><div class="full"><button class="btn">저장</button></div></form></div></div>'''
+    return f'''<div class="modal" id="am"><div class="card"><div class="head"><h2>지유 일정 추가/수정</h2><button class="btn s" onclick="x('am')">닫기</button></div><form class="form" id="af" method="post"><label>요일<select name="day_of_week">{opts}</select></label><label>시작 시간<input type="time" name="start_time"></label><label>종료 시간<input type="time" name="end_time"></label><label>학원/일정명<input name="academy" required></label><label>과목<input name="subject"></label><label>장소<input name="location"></label><label>색상<input type="color" name="color" value="#e98755"></label><label class="full">메모<textarea name="notes"></textarea></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" id="am-delete" style="display:none" onclick="deleteAcademy()">삭제</button></div></form></div></div>'''
 
 def _init_riley_workbook_schema():
     c=db()
@@ -789,6 +796,8 @@ def _init_riley_workbook_schema():
         c.execute('ALTER TABLE riley_workbooks ADD COLUMN day_of_week TEXT')
     if 'group_id' not in cols:
         c.execute('ALTER TABLE riley_workbooks ADD COLUMN group_id TEXT')
+    if 'color' not in cols:
+        c.execute('ALTER TABLE riley_workbooks ADD COLUMN color TEXT')
     c.execute("update riley_workbooks set group_id='g'||id where group_id is null or group_id=''")
     c.commit(); c.close()
 _init_riley_workbook_schema()
@@ -802,11 +811,11 @@ def _day_checkboxes():
     return boxes
 
 def wb_edit_modal():
-    return f'''<div class="modal" id="wbe"><div class="card"><div class="head"><h2>문제집 수정</h2><button class="btn s" onclick="x('wbe')">닫기</button></div><form class="form" id="wbef" method="post"><label class="full">문제집/과제<input name="title" id="wbe-title" required></label><label class="full">요일 (여러 개 선택 가능)<div class="day-checks" id="wbe-days">{_day_checkboxes()}</div></label><label>메모<input name="notes" id="wbe-notes"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteWb()">삭제</button></div></form></div></div>'''
+    return f'''<div class="modal" id="wbe"><div class="card"><div class="head"><h2>문제집 수정</h2><button class="btn s" onclick="x('wbe')">닫기</button></div><form class="form" id="wbef" method="post"><label class="full">문제집/과제<input name="title" id="wbe-title" required></label><label class="full">요일 (여러 개 선택 가능)<div class="day-checks" id="wbe-days">{_day_checkboxes()}</div></label><label>메모<input name="notes" id="wbe-notes"></label><label>색상<input type="color" name="color" id="wbe-color" value="#0f4c81"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteWb()">삭제</button></div></form></div></div>'''
 
 def _wb_attrs(r, group_days):
     days=','.join(d for d in DAYS if d in group_days.get(r['group_id'], set()))
-    return f'data-gid="{H(r["group_id"])}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-days="{H(days)}"'
+    return f'data-gid="{H(r["group_id"])}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-days="{H(days)}" data-color="{H(r["color"] or "")}"'
 
 def _workbook_section():
     rows=_workbook_rows()
@@ -824,6 +833,7 @@ def _workbook_section():
           '<label class="task-title">문제집/과제<input name="title" required placeholder="예: 디딤돌 수학 3단원"></label>'
           f'<label class="full">요일 (여러 개 선택 가능)<div class="day-checks">{_day_checkboxes()}</div></label>'
           '<label>메모<input name="notes" placeholder="분량 등"></label>'
+          '<label>색상<input type="color" name="color" value="#0f4c81"></label>'
           '<button class="btn">추가</button></form>'
           '<div class="riley-week" style="margin-top:10px">')
     for i,dn in enumerate(DAYS):
@@ -832,7 +842,8 @@ def _workbook_section():
         for r in by[dn]:
             cls=' task-done' if r['done'] else ''
             meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
-            body+=f'<div class="lesson" style="cursor:pointer" {_wb_attrs(r,group_days)} onclick="editWb(this)"><b class="{cls}">{H(r["title"])}</b>{meta}</div>'
+            style=f'cursor:pointer;border-left:4px solid {H(r["color"])}' if r['color'] else 'cursor:pointer'
+            body+=f'<div class="lesson" style="{style}" {_wb_attrs(r,group_days)} onclick="editWb(this)"><b class="{cls}">{H(r["title"])}</b>{meta}</div>'
         body+='</div>'
     body+='</div>'
     if unknown:
@@ -850,14 +861,15 @@ def riley_workbook_add():
     title=(request.form.get('title') or '').strip()
     if title:
         notes=(request.form.get('notes') or '').strip()
+        color=(request.form.get('color') or '').strip()
         days=[d for d in request.form.getlist('days') if d in DAYS]
         gid=secrets.token_hex(8)
         c=db()
         if days:
             for d in days:
-                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id) values(?,?,?,0,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid))
+                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color) values(?,?,?,0,?,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid,color))
         else:
-            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id) values(?,?,?,0,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid))
+            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color) values(?,?,?,0,?,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid,color))
         c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
@@ -866,14 +878,15 @@ def riley_workbook_group_edit(gid):
     title=(request.form.get('title') or '').strip()
     if title:
         notes=(request.form.get('notes') or '').strip()
+        color=(request.form.get('color') or '').strip()
         days=[d for d in request.form.getlist('days') if d in DAYS]
         c=db()
         c.execute('delete from riley_workbooks where group_id=?',(gid,))
         if days:
             for d in days:
-                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id) values(?,?,?,0,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid))
+                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color) values(?,?,?,0,?,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid,color))
         else:
-            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id) values(?,?,?,0,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid))
+            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color) values(?,?,?,0,?,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid,color))
         c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
@@ -903,7 +916,7 @@ def riley_week():
             if x.get('start','')==st and (x.get('title','').strip()==(r['academy'] or '').strip() or (r['academy'] or '') in x.get('title','') or x.get('title','') in (r['academy'] or '')):
                 duplicate=True; break
         if not duplicate:
-            by[d].append({'date':d,'start':st,'end':r['end_time'] or '','title':r['academy'] or '일정','location':r['location'] or '', 'subject':r['subject'] or '', 'notes':r['notes'] or '', 'source':'local','local_id':r['id'], 'day_of_week':dayname})
+            by[d].append({'date':d,'start':st,'end':r['end_time'] or '','title':r['academy'] or '일정','location':r['location'] or '', 'subject':r['subject'] or '', 'notes':r['notes'] or '', 'source':'local','local_id':r['id'], 'day_of_week':dayname, 'color':r['color'] or ''})
     for d in by: by[d].sort(key=lambda x:(x.get('start') or '99:99',x.get('title','')))
     prev=(mon-timedelta(days=7)).isoformat(); nxt=(mon+timedelta(days=7)).isoformat()
     head=f'<div class="riley-toolbar"><div><a class="btn s" href="/riley?date={prev}">← 이전 주</a> <a class="btn s" href="/riley?date={today.isoformat()}">이번 주</a> <a class="btn s" href="/riley?date={nxt}">다음 주 →</a></div><b>{mon.strftime("%Y.%m.%d")} ~ {sun.strftime("%m.%d")}</b></div>'
@@ -914,22 +927,26 @@ def riley_week():
         for x in by[d]:
             src=x.get('source'); tm=x.get('start') or '시간 미정'; tm += ('–'+x.get('end')) if x.get('end') else ''
             cls='rlesson' if src=='google' else 'rlesson local'
-            body+=f'<div class="{cls}"><b>{H(x.get("title"))}</b><div>{H(tm)}</div>'
+            if src=='local':
+                rid=x['local_id']; color=x.get('color') or ''
+                dat=f'data-id="{rid}" data-day_of_week="{H(x.get("day_of_week"))}" data-start_time="{H(x.get("start"))}" data-end_time="{H(x.get("end"))}" data-academy="{H(x.get("title"))}" data-subject="{H(x.get("subject"))}" data-location="{H(x.get("location"))}" data-notes="{H(x.get("notes"))}" data-color="{H(color)}"'
+                style=f' style="cursor:pointer;border-left-color:{H(color)}"' if color else ' style="cursor:pointer"'
+                body+=f'<div class="{cls}"{style} {dat} onclick="ea(this)">'
+            else:
+                body+=f'<div class="{cls}">'
+            body+=f'<b>{H(x.get("title"))}</b><div>{H(tm)}</div>'
             meta=' · '.join(v for v in [x.get('subject',''),x.get('location',''),x.get('notes','')] if v)
             if meta: body+=f'<div class="rmeta">{H(meta)}</div>'
-            if src=='local':
-                rid=x['local_id']; dat=' '.join('data-'+k+'="'+H(x.get(k,''))+'"' for k in ['day_of_week','start','end','title','subject','location','notes'])
-                # remap to fields expected by existing ea() JS
-                dat=f'data-id="{rid}" data-day_of_week="{H(x.get("day_of_week"))}" data-start_time="{H(x.get("start"))}" data-end_time="{H(x.get("end"))}" data-academy="{H(x.get("title"))}" data-subject="{H(x.get("subject"))}" data-location="{H(x.get("location"))}" data-notes="{H(x.get("notes"))}"'
-                body+=f'<div class="row-actions"><button class="btn s" {dat} onclick="ea(this)">수정</button><form method="post" action="/academy/{rid}/delete" onsubmit="return confirm(\'삭제할까요?\')"><button class="btn d">삭제</button></form></div>'
             body+='</div>'
         body+=f'<button class="btn s" onclick="na(\'{DAYS[i]}\')">+ 일정</button></div>'
     body+='</div>'
     if unknown:
         body+='<div class="needs-check"><h3>요일/시간 확인 필요</h3>'
         for r in unknown:
-            dat=f'data-id="{r["id"]}" data-day_of_week="{H(r["day_of_week"])}" data-start_time="{H(r["start_time"])}" data-end_time="{H(r["end_time"])}" data-academy="{H(r["academy"])}" data-subject="{H(r["subject"])}" data-location="{H(r["location"])}" data-notes="{H(r["notes"])}"'
-            body+=f'<div class="needs-item"><div><b>{H(r["academy"])}</b><div class="muted">요일 또는 시간이 미정이라 주간표 밖에 표시</div></div><div class="row-actions"><button class="btn s" {dat} onclick="ea(this)">수정</button><form method="post" action="/academy/{r["id"]}/delete"><button class="btn d">삭제</button></form></div></div>'
+            color=r['color'] or ''
+            dat=f'data-id="{r["id"]}" data-day_of_week="{H(r["day_of_week"])}" data-start_time="{H(r["start_time"])}" data-end_time="{H(r["end_time"])}" data-academy="{H(r["academy"])}" data-subject="{H(r["subject"])}" data-location="{H(r["location"])}" data-notes="{H(r["notes"])}" data-color="{H(color)}"'
+            style=f' style="cursor:pointer;border-left-color:{H(color)}"' if color else ' style="cursor:pointer"'
+            body+=f'<div class="needs-item"{style} {dat} onclick="ea(this)"><div><b>{H(r["academy"])}</b><div class="muted">요일 또는 시간이 미정이라 주간표 밖에 표시</div></div></div>'
         body+='</div>'
     body+='<p class="muted" style="margin-top:10px">주황색은 지유 Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'
     body+=_workbook_section()+academy_modal()+wb_edit_modal()
