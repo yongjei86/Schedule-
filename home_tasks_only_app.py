@@ -824,12 +824,24 @@ _init_riley_workbook_schema()
 def _award_credit(child,delta,reason):
     c=db()
     c.execute('insert into riley_credits(child,delta,reason,created_at) values(?,?,?,?)',
-              (child,delta,reason,datetime.now().isoformat(timespec='seconds')))
+              (child,delta,reason,datetime.now(KST).isoformat(timespec='seconds')))
     c.commit(); c.close()
 
 def _credit_total(child):
     c=db(); row=c.execute('select coalesce(sum(delta),0) t from riley_credits where child=?',(child,)).fetchone(); c.close()
     return row['t']
+
+def _credit_period_totals(child):
+    today=datetime.now(KST).date()
+    week_start=today-timedelta(days=today.weekday())
+    month_start=today.replace(day=1)
+    c=db()
+    def total_since(start_date):
+        row=c.execute("select coalesce(sum(delta),0) t from riley_credits where child=? and substr(created_at,1,10)>=?",(child,start_date.isoformat())).fetchone()
+        return row['t']
+    result={'today':total_since(today),'week':total_since(week_start),'month':total_since(month_start)}
+    c.close()
+    return result
 
 def _workbook_rows(child):
     c=db(); rows=[dict(x) for x in c.execute('select * from riley_workbooks where child=? order by done asc, id desc',(child,)).fetchall()]; c.close(); return rows
@@ -1071,9 +1083,11 @@ def _kid_portal(slug,child,academy_workbook=True):
     base=f'/{slug}'
     body=''
     if slug=='riley':
+        pt=_credit_period_totals(child)
         body+=(f'<div style="text-align:center;font-size:13px;font-weight:800;color:#748196;'
                f'background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:8px;margin-bottom:14px">'
-               f'🪙 {H(child)} 크레딧: {_credit_total(child)}개 (문제집 완료 +1 · 독서 기록 추가 +3)</div>')
+               f'🪙 {H(child)} 크레딧 · 오늘 +{pt["today"]} · 이번 주 +{pt["week"]} · 이번 달 +{pt["month"]} · 총 {_credit_total(child)}개'
+               f'<div style="font-weight:600;font-size:11px;color:#9aa5b1;margin-top:2px">문제집 완료 +1 · 독서 기록 추가 +3</div></div>')
     if academy_workbook:
         q=qdate(request.args.get('date','')) or date.today(); today=date.today()
         mon=q-timedelta(days=q.weekday()); sun=mon+timedelta(days=6)
@@ -1221,13 +1235,20 @@ def hangul_page():
         else: cls,icon='hg-sticker-day','·'
         today_cls=' today' if d==today else ''
         stickers+=f'<div class="{cls}{today_cls}"><div class="hg-sd-label">{DAYS[i]}</div><div class="hg-sd-icon">{icon}</div></div>'
-    c=db(); all_prog=c.execute('select cards_flipped,quiz_correct,letters_done from hangul_progress').fetchall(); c.close()
-    total_stars=0; total_trophies=0
-    for p in all_prog:
-        t=p['cards_flipped']+p['quiz_correct']+p['letters_done']
-        if t>=HANGUL_STAR_GOAL: total_trophies+=1
-        elif t>0: total_stars+=1
-    summary=f'<div class="hg-total-summary">지금까지 모은 스티커: ⭐ {total_stars}일 · 🏆 {total_trophies}일</div>'
+    month_start=today.replace(day=1)
+    c=db(); all_prog=c.execute('select activity_date,cards_flipped,quiz_correct,letters_done from hangul_progress').fetchall(); c.close()
+    def _tier_counts(rows):
+        stars=0; trophies=0
+        for p in rows:
+            t=p['cards_flipped']+p['quiz_correct']+p['letters_done']
+            if t>=HANGUL_STAR_GOAL: trophies+=1
+            elif t>0: stars+=1
+        return stars,trophies
+    week_rows=[p for p in all_prog if mon.isoformat()<=p['activity_date']<=(mon+timedelta(days=6)).isoformat()]
+    month_rows=[p for p in all_prog if p['activity_date']>=month_start.isoformat()]
+    today_rows=[p for p in all_prog if p['activity_date']==today.isoformat()]
+    ts,tt=_tier_counts(today_rows); ws,wt=_tier_counts(week_rows); ms,mt=_tier_counts(month_rows); ls,lt=_tier_counts(all_prog)
+    summary=(f'<div class="hg-total-summary">오늘 ⭐{ts} 🏆{tt} · 이번 주 ⭐{ws} 🏆{wt} · 이번 달 ⭐{ms} 🏆{mt} · 총 ⭐{ls} 🏆{lt}</div>')
     words_json=json.dumps(words,ensure_ascii=False)
     letters_json=json.dumps(letters,ensure_ascii=False)
     body=f'''
