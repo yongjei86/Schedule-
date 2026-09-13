@@ -37,4 +37,5 @@ for day in ('화','목'):
 
 c.commit(); c.close()
 import seed_riley_reading
+import add_riley_jeoncheondang18
 print('SQLite schema ready:',DB)
