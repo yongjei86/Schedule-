@@ -895,6 +895,91 @@ def riley_workbook_group_delete(gid):
     c=db(); c.execute('delete from riley_workbooks where group_id=?',(gid,)); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
+CSS+='''.reading-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.reading-card{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px}.reading-stars{color:#e9b949;font-size:14px;margin-bottom:4px;letter-spacing:1px}'''
+JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");f.action="/riley/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";o("rde")}function deleteReading(){let id=document.getElementById("rdef").dataset.id;if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
+
+def _init_reading_schema():
+    c=db()
+    c.execute('''CREATE TABLE IF NOT EXISTS riley_reading(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      language TEXT,
+      rating INTEGER DEFAULT 0,
+      summary TEXT,
+      created_at TEXT NOT NULL
+    )''')
+    c.commit(); c.close()
+_init_reading_schema()
+
+READING_LANGS=('한글','영어')
+
+def _reading_rows():
+    c=db(); rows=[dict(x) for x in c.execute('select * from riley_reading order by id desc').fetchall()]; c.close(); return rows
+
+def _stars(n):
+    n=max(0,min(5,int(n or 0)))
+    return '★'*n + '☆'*(5-n)
+
+def reading_edit_modal():
+    lang_opts=''.join(f'<option value="{l}">{l}</option>' for l in READING_LANGS)
+    star_opts=''.join(f'<option value="{i}">{"★"*i}</option>' for i in range(5,0,-1))
+    return f'''<div class="modal" id="rde"><div class="card"><div class="head"><h2>독서 기록 수정</h2><button class="btn s" onclick="x('rde')">닫기</button></div><form class="form" id="rdef" method="post"><label class="full">책 제목<input name="title" id="rde-title" required></label><label>언어<select name="language" id="rde-lang">{lang_opts}</select></label><label>별점<select name="rating" id="rde-rating">{star_opts}</select></label><label class="full">한줄 요약/소감<input name="summary" id="rde-summary"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteReading()">삭제</button></div></form></div></div>'''
+
+def _reading_section():
+    rows=_reading_rows()
+    lang_opts=''.join(f'<option value="{l}">{l}</option>' for l in READING_LANGS)
+    star_opts=''.join(f'<option value="{i}">{"★"*i}</option>' for i in range(5,0,-1))
+    body=(f'<section class="feature-card" style="margin-top:14px">'
+          f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">지유 Riley 독서 DB · {len(rows)}권</h2>'
+          '<button type="button" class="btn s" onclick="let f=document.getElementById(\'rd-add\');f.style.display=f.style.display===\'none\'?\'grid\':\'none\'">+ 추가</button></div>'
+          '<form method="post" action="/riley/reading/add" class="task-form" id="rd-add" style="display:none">'
+          '<label class="task-title">책 제목<input name="title" required placeholder="예: 흥부와 놀부"></label>'
+          f'<label>언어<select name="language">{lang_opts}</select></label>'
+          f'<label>별점<select name="rating">{star_opts}</select></label>'
+          '<label class="full">한줄 요약/소감<input name="summary" placeholder="느낀 점 등"></label>'
+          '<button class="btn">추가</button></form>'
+          '<div class="reading-grid" style="margin-top:10px">')
+    if not rows:
+        body+='<div class="muted">등록된 책이 없습니다.</div>'
+    for r in rows:
+        stars=_stars(r['rating'])
+        summary=f'<div class="feature-meta">{H(r["summary"])}</div>' if r['summary'] else ''
+        dat=f'data-id="{r["id"]}" data-title="{H(r["title"])}" data-language="{H(r["language"] or "")}" data-rating="{r["rating"] or 0}" data-summary="{H(r["summary"] or "")}"'
+        body+=(f'<div class="reading-card" style="cursor:pointer" {dat} onclick="editReading(this)">'
+               f'<div class="reading-stars">{stars}</div><b>{H(r["title"])}</b>'
+               f'<div class="muted">{H(r["language"]) or "-"}</div>{summary}</div>')
+    body+='</div></section>'
+    return body
+
+@app.route('/riley/reading/add',methods=['POST'])
+def riley_reading_add():
+    title=(request.form.get('title') or '').strip()
+    if title:
+        language=(request.form.get('language') or '').strip()
+        try: rating=int(request.form.get('rating') or 0)
+        except ValueError: rating=0
+        rating=max(0,min(5,rating))
+        summary=(request.form.get('summary') or '').strip()
+        c=db(); c.execute('insert into riley_reading(title,language,rating,summary,created_at) values(?,?,?,?,?)',(title,language,rating,summary,datetime.now().isoformat(timespec='seconds'))); c.commit(); c.close()
+    return redirect(request.referrer or '/riley')
+
+@app.route('/riley/reading/<int:i>/edit',methods=['POST'])
+def riley_reading_edit(i):
+    title=(request.form.get('title') or '').strip()
+    if title:
+        language=(request.form.get('language') or '').strip()
+        try: rating=int(request.form.get('rating') or 0)
+        except ValueError: rating=0
+        rating=max(0,min(5,rating))
+        summary=(request.form.get('summary') or '').strip()
+        c=db(); c.execute('update riley_reading set title=?,language=?,rating=?,summary=? where id=?',(title,language,rating,summary,i)); c.commit(); c.close()
+    return redirect(request.referrer or '/riley')
+
+@app.route('/riley/reading/<int:i>/delete',methods=['POST'])
+def riley_reading_delete(i):
+    c=db(); c.execute('delete from riley_reading where id=?',(i,)); c.commit(); c.close()
+    return redirect(request.referrer or '/riley')
+
 def riley_week():
     q=qdate(request.args.get('date','')) or date.today(); today=date.today()
     mon=q-timedelta(days=q.weekday()); sun=mon+timedelta(days=6)
@@ -949,8 +1034,8 @@ def riley_week():
             body+=f'<div class="needs-item"{style} {dat} onclick="ea(this)"><div><b>{H(r["academy"])}</b><div class="muted">요일 또는 시간이 미정이라 주간표 밖에 표시</div></div></div>'
         body+='</div>'
     body+='<p class="muted" style="margin-top:10px">주황색은 지유 Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'
-    body+=_workbook_section()+academy_modal()+wb_edit_modal()
-    return page('지유 주간 일정',body)
+    body+=_workbook_section()+_reading_section()+academy_modal()+wb_edit_modal()+reading_edit_modal()
+    return page('지유 포탈',body)
 
 for rule in list(app.url_map.iter_rules()):
     if rule.rule=='/calendar': app.view_functions[rule.endpoint]=family_calendar
@@ -2298,7 +2383,7 @@ def next_nav():
             '<a href="/future">향후 여행</a>'
             '<a href="/calendar">가족 달력</a>'
             '<a href="/tasks">할 일</a>'
-            '<a href="/riley">지유 주간 학원 일정</a>'
+            '<a href="/riley">지유 포탈</a>'
             '<a href="/notifications">알림</a>'
             '</div></nav></header>')
 
