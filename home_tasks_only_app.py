@@ -1041,69 +1041,74 @@ def riley_reading_delete(i):
     c=db(); c.execute('delete from riley_reading where id=?',(i,)); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
-def _kid_portal(slug,child):
+def _kid_portal(slug,child,academy_workbook=True):
     base=f'/{slug}'
-    q=qdate(request.args.get('date','')) or date.today(); today=date.today()
-    mon=q-timedelta(days=q.weekday()); sun=mon+timedelta(days=6)
-    ge=_timed_google(mon,sun,child)
-    by={mon+timedelta(days=i):[] for i in range(7)}
-    for x in ge:
-        x=dict(x); x['source']='google'; by[x['date']].append(x)
-    c=db(); local=c.execute('select * from academy where active=1 and child=? order by start_time,id',(child,)).fetchall(); c.close()
-    unknown=[]
-    for r in local:
-        dayname=(r['day_of_week'] or '').strip()
-        if dayname not in DAYS:
-            unknown.append(r); continue
-        d=mon+timedelta(days=DAYS.index(dayname))
-        # Deduplicate local fallback when Google has same title and time, or very similar title at same time.
-        st=r['start_time'] or ''
-        duplicate=False
-        for x in by[d]:
-            if x.get('start','')==st and (x.get('title','').strip()==(r['academy'] or '').strip() or (r['academy'] or '') in x.get('title','') or x.get('title','') in (r['academy'] or '')):
-                duplicate=True; break
-        if not duplicate:
-            by[d].append({'date':d,'start':st,'end':r['end_time'] or '','title':r['academy'] or '일정','location':r['location'] or '', 'subject':r['subject'] or '', 'notes':r['notes'] or '', 'source':'local','local_id':r['id'], 'day_of_week':dayname, 'color':r['color'] or ''})
-    for d in by: by[d].sort(key=lambda x:(x.get('start') or '99:99',x.get('title','')))
-    prev=(mon-timedelta(days=7)).isoformat(); nxt=(mon+timedelta(days=7)).isoformat()
-    head=f'<div class="riley-toolbar"><div><a class="btn s" href="{base}?date={prev}">← 이전 주</a> <a class="btn s" href="{base}?date={today.isoformat()}">이번 주</a> <a class="btn s" href="{base}?date={nxt}">다음 주 →</a></div><b>{mon.strftime("%Y.%m.%d")} ~ {sun.strftime("%m.%d")}</b></div>'
-    body=head+'<div class="riley-week">'
-    for i in range(7):
-        d=mon+timedelta(days=i); body+=f'<div class="rday {"today" if d==today else ""}"><div class="rdate">{d.strftime("%m/%d")}</div><h3>{DAYS[i]}</h3>'
-        if not by[d]: body+='<div class="muted">일정 없음</div>'
-        for x in by[d]:
-            src=x.get('source'); tm=x.get('start') or '시간 미정'; tm += ('–'+x.get('end')) if x.get('end') else ''
-            cls='rlesson' if src=='google' else 'rlesson local'
-            if src=='local':
-                rid=x['local_id']; color=x.get('color') or ''
-                dat=f'data-id="{rid}" data-day_of_week="{H(x.get("day_of_week"))}" data-start_time="{H(x.get("start"))}" data-end_time="{H(x.get("end"))}" data-academy="{H(x.get("title"))}" data-subject="{H(x.get("subject"))}" data-location="{H(x.get("location"))}" data-notes="{H(x.get("notes"))}" data-color="{H(color)}"'
-                style=f' style="cursor:pointer;border-left-color:{H(color)}"' if color else ' style="cursor:pointer"'
-                body+=f'<div class="{cls}"{style} {dat} onclick="ea(this)">'
-            else:
-                body+=f'<div class="{cls}">'
-            body+=f'<b>{H(x.get("title"))}</b><div>{H(tm)}</div>'
-            meta=' · '.join(v for v in [x.get('subject',''),x.get('location',''),x.get('notes','')] if v)
-            if meta: body+=f'<div class="rmeta">{H(meta)}</div>'
-            body+='</div>'
-        body+=f'<button class="btn s" onclick="na(\'{DAYS[i]}\')">+ 일정</button></div>'
-    body+='</div>'
-    if unknown:
-        body+='<div class="needs-check"><h3>요일/시간 확인 필요</h3>'
-        for r in unknown:
-            color=r['color'] or ''
-            dat=f'data-id="{r["id"]}" data-day_of_week="{H(r["day_of_week"])}" data-start_time="{H(r["start_time"])}" data-end_time="{H(r["end_time"])}" data-academy="{H(r["academy"])}" data-subject="{H(r["subject"])}" data-location="{H(r["location"])}" data-notes="{H(r["notes"])}" data-color="{H(color)}"'
-            style=f' style="cursor:pointer;border-left-color:{H(color)}"' if color else ' style="cursor:pointer"'
-            body+=f'<div class="needs-item"{style} {dat} onclick="ea(this)"><div><b>{H(r["academy"])}</b><div class="muted">요일 또는 시간이 미정이라 주간표 밖에 표시</div></div></div>'
+    body=''
+    if academy_workbook:
+        q=qdate(request.args.get('date','')) or date.today(); today=date.today()
+        mon=q-timedelta(days=q.weekday()); sun=mon+timedelta(days=6)
+        ge=_timed_google(mon,sun,child)
+        by={mon+timedelta(days=i):[] for i in range(7)}
+        for x in ge:
+            x=dict(x); x['source']='google'; by[x['date']].append(x)
+        c=db(); local=c.execute('select * from academy where active=1 and child=? order by start_time,id',(child,)).fetchall(); c.close()
+        unknown=[]
+        for r in local:
+            dayname=(r['day_of_week'] or '').strip()
+            if dayname not in DAYS:
+                unknown.append(r); continue
+            d=mon+timedelta(days=DAYS.index(dayname))
+            # Deduplicate local fallback when Google has same title and time, or very similar title at same time.
+            st=r['start_time'] or ''
+            duplicate=False
+            for x in by[d]:
+                if x.get('start','')==st and (x.get('title','').strip()==(r['academy'] or '').strip() or (r['academy'] or '') in x.get('title','') or x.get('title','') in (r['academy'] or '')):
+                    duplicate=True; break
+            if not duplicate:
+                by[d].append({'date':d,'start':st,'end':r['end_time'] or '','title':r['academy'] or '일정','location':r['location'] or '', 'subject':r['subject'] or '', 'notes':r['notes'] or '', 'source':'local','local_id':r['id'], 'day_of_week':dayname, 'color':r['color'] or ''})
+        for d in by: by[d].sort(key=lambda x:(x.get('start') or '99:99',x.get('title','')))
+        prev=(mon-timedelta(days=7)).isoformat(); nxt=(mon+timedelta(days=7)).isoformat()
+        head=f'<div class="riley-toolbar"><div><a class="btn s" href="{base}?date={prev}">← 이전 주</a> <a class="btn s" href="{base}?date={today.isoformat()}">이번 주</a> <a class="btn s" href="{base}?date={nxt}">다음 주 →</a></div><b>{mon.strftime("%Y.%m.%d")} ~ {sun.strftime("%m.%d")}</b></div>'
+        body+=head+'<div class="riley-week">'
+        for i in range(7):
+            d=mon+timedelta(days=i); body+=f'<div class="rday {"today" if d==today else ""}"><div class="rdate">{d.strftime("%m/%d")}</div><h3>{DAYS[i]}</h3>'
+            if not by[d]: body+='<div class="muted">일정 없음</div>'
+            for x in by[d]:
+                src=x.get('source'); tm=x.get('start') or '시간 미정'; tm += ('–'+x.get('end')) if x.get('end') else ''
+                cls='rlesson' if src=='google' else 'rlesson local'
+                if src=='local':
+                    rid=x['local_id']; color=x.get('color') or ''
+                    dat=f'data-id="{rid}" data-day_of_week="{H(x.get("day_of_week"))}" data-start_time="{H(x.get("start"))}" data-end_time="{H(x.get("end"))}" data-academy="{H(x.get("title"))}" data-subject="{H(x.get("subject"))}" data-location="{H(x.get("location"))}" data-notes="{H(x.get("notes"))}" data-color="{H(color)}"'
+                    style=f' style="cursor:pointer;border-left-color:{H(color)}"' if color else ' style="cursor:pointer"'
+                    body+=f'<div class="{cls}"{style} {dat} onclick="ea(this)">'
+                else:
+                    body+=f'<div class="{cls}">'
+                body+=f'<b>{H(x.get("title"))}</b><div>{H(tm)}</div>'
+                meta=' · '.join(v for v in [x.get('subject',''),x.get('location',''),x.get('notes','')] if v)
+                if meta: body+=f'<div class="rmeta">{H(meta)}</div>'
+                body+='</div>'
+            body+=f'<button class="btn s" onclick="na(\'{DAYS[i]}\')">+ 일정</button></div>'
         body+='</div>'
-    body+=f'<p class="muted" style="margin-top:10px">주황색은 {H(child)} Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'
-    body+=_workbook_section(child,base)+_reading_section(child,base)+academy_modal(child)+wb_edit_modal(base)+reading_edit_modal(base)
+        if unknown:
+            body+='<div class="needs-check"><h3>요일/시간 확인 필요</h3>'
+            for r in unknown:
+                color=r['color'] or ''
+                dat=f'data-id="{r["id"]}" data-day_of_week="{H(r["day_of_week"])}" data-start_time="{H(r["start_time"])}" data-end_time="{H(r["end_time"])}" data-academy="{H(r["academy"])}" data-subject="{H(r["subject"])}" data-location="{H(r["location"])}" data-notes="{H(r["notes"])}" data-color="{H(color)}"'
+                style=f' style="cursor:pointer;border-left-color:{H(color)}"' if color else ' style="cursor:pointer"'
+                body+=f'<div class="needs-item"{style} {dat} onclick="ea(this)"><div><b>{H(r["academy"])}</b><div class="muted">요일 또는 시간이 미정이라 주간표 밖에 표시</div></div></div>'
+            body+='</div>'
+        body+=f'<p class="muted" style="margin-top:10px">주황색은 {H(child)} Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'
+        body+=_workbook_section(child,base)
+    body+=_reading_section(child,base)+reading_edit_modal(base)
+    if academy_workbook:
+        body+=academy_modal(child)+wb_edit_modal(base)
     return page(f'{child} 포탈',body)
 
 def riley_week():
     return _kid_portal('riley','지유')
 
 def hyeon_week():
-    return _kid_portal('hyeon','혜온')
+    return _kid_portal('hyeon','혜온',academy_workbook=False)
 
 for rule in list(app.url_map.iter_rules()):
     if rule.rule=='/calendar': app.view_functions[rule.endpoint]=family_calendar
