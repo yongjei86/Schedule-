@@ -1,4 +1,4 @@
-import os, json, time, threading, sqlite3, calendar, html, secrets
+import os, json, time, threading, sqlite3, calendar, html, secrets, re
 import calendar as pycal
 from pathlib import Path
 from functools import wraps
@@ -896,7 +896,7 @@ def riley_workbook_group_delete(gid):
     return redirect(request.referrer or '/riley')
 
 CSS+='''.reading-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.reading-card{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px}.reading-stars{color:#e9b949;font-size:14px;margin-bottom:4px;letter-spacing:1px}'''
-JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");f.action="/riley/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-genre").value=d.genre||"기타";document.getElementById("rde-sr").value=d.sr_score||"";document.getElementById("rde-lexile").value=d.lexile_score||"";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";o("rde")}function deleteReading(){let id=document.getElementById("rdef").dataset.id;if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
+JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");f.action="/riley/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-genre").value=d.genre||"기타";document.getElementById("rde-sr").value=d.sr_score||"";document.getElementById("rde-lexile").value=d.lexile_score||"";document.getElementById("rde-date").value=d.read_date||"";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";o("rde")}function deleteReading(){let id=document.getElementById("rdef").dataset.id;if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
 JS+='''document.addEventListener("DOMContentLoaded",function(){var editBtn=document.querySelector(".trip-actions button[onclick^=\\"et(this)\\"]");var h1=document.querySelector(".hero h1");if(editBtn&&h1){h1.style.cursor="pointer";h1.title="클릭하여 여행 이름 수정";h1.onclick=function(){et(editBtn)}}})'''
 
 def _init_reading_schema():
@@ -918,6 +918,13 @@ def _init_reading_schema():
         c.execute('ALTER TABLE riley_reading ADD COLUMN sr_score TEXT')
     if 'lexile_score' not in cols:
         c.execute('ALTER TABLE riley_reading ADD COLUMN lexile_score TEXT')
+    if 'read_date' not in cols:
+        c.execute('ALTER TABLE riley_reading ADD COLUMN read_date TEXT')
+    for r in c.execute("select id,summary,read_date from riley_reading where summary like '%읽은 날짜:%'").fetchall():
+        m=re.search(r'읽은 날짜:\s*(\d{4}-\d{2}-\d{2})',r['summary'] or '')
+        if not m: continue
+        cleaned=re.sub(r'\s*·?\s*읽은 날짜:\s*\d{4}-\d{2}-\d{2}','',r['summary'] or '').strip()
+        c.execute('update riley_reading set summary=?,read_date=? where id=?',(cleaned,r['read_date'] or m.group(1),r['id']))
     c.commit(); c.close()
 _init_reading_schema()
 
@@ -935,7 +942,7 @@ def reading_edit_modal():
     lang_opts=''.join(f'<option value="{l}">{l}</option>' for l in READING_LANGS)
     genre_opts=''.join(f'<option value="{g}">{g}</option>' for g in READING_GENRES)
     star_opts=''.join(f'<option value="{i}">{"★"*i}</option>' for i in range(5,0,-1))
-    return f'''<div class="modal" id="rde"><div class="card"><div class="head"><h2>독서 기록 수정</h2><button class="btn s" onclick="x('rde')">닫기</button></div><form class="form" id="rdef" method="post"><label class="full">책 제목<input name="title" id="rde-title" required></label><label>언어<select name="language" id="rde-lang">{lang_opts}</select></label><label>장르<select name="genre" id="rde-genre">{genre_opts}</select></label><label>별점<select name="rating" id="rde-rating">{star_opts}</select></label><label>SR 지수<input name="sr_score" id="rde-sr" placeholder="예: 3.5"></label><label>렉사일 지수<input name="lexile_score" id="rde-lexile" placeholder="예: 650L"></label><label class="full">한줄 요약/소감<input name="summary" id="rde-summary"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteReading()">삭제</button></div></form></div></div>'''
+    return f'''<div class="modal" id="rde"><div class="card"><div class="head"><h2>독서 기록 수정</h2><button class="btn s" onclick="x('rde')">닫기</button></div><form class="form" id="rdef" method="post"><label class="full">책 제목<input name="title" id="rde-title" required></label><label>언어<select name="language" id="rde-lang">{lang_opts}</select></label><label>장르<select name="genre" id="rde-genre">{genre_opts}</select></label><label>별점<select name="rating" id="rde-rating">{star_opts}</select></label><label>SR 지수<input name="sr_score" id="rde-sr" placeholder="예: 3.5"></label><label>렉사일 지수<input name="lexile_score" id="rde-lexile" placeholder="예: 650L"></label><label>읽은 날짜<input type="date" name="read_date" id="rde-date"></label><label class="full">한줄 요약/소감<input name="summary" id="rde-summary"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteReading()">삭제</button></div></form></div></div>'''
 
 def _reading_section():
     rows=_reading_rows()
@@ -952,6 +959,7 @@ def _reading_section():
           f'<label>별점<select name="rating">{star_opts}</select></label>'
           '<label>SR 지수<input name="sr_score" placeholder="예: 3.5"></label>'
           '<label>렉사일 지수<input name="lexile_score" placeholder="예: 650L"></label>'
+          '<label>읽은 날짜<input type="date" name="read_date"></label>'
           '<label class="full">한줄 요약/소감<input name="summary" placeholder="느낀 점 등"></label>'
           '<button class="btn">추가</button></form>'
           '<div class="reading-grid" style="margin-top:10px">')
@@ -961,8 +969,8 @@ def _reading_section():
         stars=_stars(r['rating'])
         summary=f'<div class="feature-meta">{H(r["summary"])}</div>' if r['summary'] else ''
         level=' · '.join(v for v in [f'SR {r["sr_score"]}' if r['sr_score'] else '', f'Lexile {r["lexile_score"]}' if r['lexile_score'] else ''] if v)
-        meta=' · '.join(v for v in [r['language'],r['genre'],level] if v) or '-'
-        dat=f'data-id="{r["id"]}" data-title="{H(r["title"])}" data-language="{H(r["language"] or "")}" data-genre="{H(r["genre"] or "")}" data-sr_score="{H(r["sr_score"] or "")}" data-lexile_score="{H(r["lexile_score"] or "")}" data-rating="{r["rating"] or 0}" data-summary="{H(r["summary"] or "")}"'
+        meta=' · '.join(v for v in [r['language'],r['genre'],level,r['read_date']] if v) or '-'
+        dat=f'data-id="{r["id"]}" data-title="{H(r["title"])}" data-language="{H(r["language"] or "")}" data-genre="{H(r["genre"] or "")}" data-sr_score="{H(r["sr_score"] or "")}" data-lexile_score="{H(r["lexile_score"] or "")}" data-read_date="{H(r["read_date"] or "")}" data-rating="{r["rating"] or 0}" data-summary="{H(r["summary"] or "")}"'
         body+=(f'<div class="reading-card" style="cursor:pointer" {dat} onclick="editReading(this)">'
                f'<div class="reading-stars">{stars}</div><b>{H(r["title"])}</b>'
                f'<div class="muted">{H(meta)}</div>{summary}</div>')
@@ -977,11 +985,12 @@ def riley_reading_add():
         genre=(request.form.get('genre') or '').strip()
         sr_score=(request.form.get('sr_score') or '').strip()
         lexile_score=(request.form.get('lexile_score') or '').strip()
+        read_date=(request.form.get('read_date') or '').strip()
         try: rating=int(request.form.get('rating') or 0)
         except ValueError: rating=0
         rating=max(0,min(5,rating))
         summary=(request.form.get('summary') or '').strip()
-        c=db(); c.execute('insert into riley_reading(title,language,genre,sr_score,lexile_score,rating,summary,created_at) values(?,?,?,?,?,?,?,?)',(title,language,genre,sr_score,lexile_score,rating,summary,datetime.now().isoformat(timespec='seconds'))); c.commit(); c.close()
+        c=db(); c.execute('insert into riley_reading(title,language,genre,sr_score,lexile_score,read_date,rating,summary,created_at) values(?,?,?,?,?,?,?,?,?)',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,datetime.now().isoformat(timespec='seconds'))); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/reading/<int:i>/edit',methods=['POST'])
@@ -992,11 +1001,12 @@ def riley_reading_edit(i):
         genre=(request.form.get('genre') or '').strip()
         sr_score=(request.form.get('sr_score') or '').strip()
         lexile_score=(request.form.get('lexile_score') or '').strip()
+        read_date=(request.form.get('read_date') or '').strip()
         try: rating=int(request.form.get('rating') or 0)
         except ValueError: rating=0
         rating=max(0,min(5,rating))
         summary=(request.form.get('summary') or '').strip()
-        c=db(); c.execute('update riley_reading set title=?,language=?,genre=?,sr_score=?,lexile_score=?,rating=?,summary=? where id=?',(title,language,genre,sr_score,lexile_score,rating,summary,i)); c.commit(); c.close()
+        c=db(); c.execute('update riley_reading set title=?,language=?,genre=?,sr_score=?,lexile_score=?,read_date=?,rating=?,summary=? where id=?',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,i)); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/reading/<int:i>/delete',methods=['POST'])
