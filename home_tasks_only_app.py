@@ -1120,12 +1120,23 @@ def _init_hangul_schema():
       word TEXT NOT NULL,
       active INTEGER DEFAULT 1
     )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS hangul_letters(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      char TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      sound TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0
+    )''')
     c.execute('''CREATE TABLE IF NOT EXISTS hangul_progress(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       activity_date TEXT UNIQUE NOT NULL,
       cards_flipped INTEGER DEFAULT 0,
-      quiz_correct INTEGER DEFAULT 0
+      quiz_correct INTEGER DEFAULT 0,
+      letters_done INTEGER DEFAULT 0
     )''')
+    cols={r['name'] for r in c.execute('PRAGMA table_info(hangul_progress)')}
+    if 'letters_done' not in cols:
+        c.execute('ALTER TABLE hangul_progress ADD COLUMN letters_done INTEGER DEFAULT 0')
     n=c.execute('select count(*) c from hangul_words').fetchone()['c']
     if n==0:
         seed=[('🍎','사과'),('🍌','바나나'),('🚗','자동차'),('🦁','사자'),('🐘','코끼리'),('☂️','우산'),
@@ -1133,6 +1144,17 @@ def _init_hangul_schema():
               ('🐶','강아지'),('🐱','고양이'),('🐰','토끼'),('⭐','별')]
         for emoji,word in seed:
             c.execute('insert into hangul_words(emoji,word,active) values(?,?,1)',(emoji,word))
+    m=c.execute('select count(*) c from hangul_letters').fetchone()['c']
+    if m==0:
+        consonants=[('ㄱ','그'),('ㄴ','느'),('ㄷ','드'),('ㄹ','르'),('ㅁ','므'),('ㅂ','브'),('ㅅ','스'),
+                    ('ㅇ','으'),('ㅈ','즈'),('ㅊ','츠'),('ㅋ','크'),('ㅌ','트'),('ㅍ','프'),('ㅎ','흐')]
+        vowels=[('ㅏ','아'),('ㅑ','야'),('ㅓ','어'),('ㅕ','여'),('ㅗ','오'),('ㅛ','요'),('ㅜ','우'),
+                ('ㅠ','유'),('ㅡ','으'),('ㅣ','이')]
+        i=0
+        for ch,snd in consonants:
+            c.execute('insert into hangul_letters(char,kind,sound,sort_order) values(?,?,?,?)',(ch,'자음',snd,i)); i+=1
+        for ch,snd in vowels:
+            c.execute('insert into hangul_letters(char,kind,sound,sort_order) values(?,?,?,?)',(ch,'모음',snd,i)); i+=1
     c.commit(); c.close()
 _init_hangul_schema()
 
@@ -1147,11 +1169,13 @@ def hangul_log():
     kind=(request.form.get('kind') or '').strip()
     if kind=='card': _hangul_bump('cards_flipped')
     elif kind=='quiz': _hangul_bump('quiz_correct')
+    elif kind=='letter': _hangul_bump('letters_done')
     return ('',204)
 
 @app.route('/hyeon/hangul')
 def hangul_page():
     c=db(); words=[dict(x) for x in c.execute('select emoji,word from hangul_words where active=1').fetchall()]; c.close()
+    c=db(); letters=[dict(x) for x in c.execute('select char,kind,sound from hangul_letters order by sort_order').fetchall()]; c.close()
     today=date.today()
     mon=today-timedelta(days=today.weekday())
     c=db(); prog_rows=c.execute('select * from hangul_progress where activity_date>=? and activity_date<=?',(mon.isoformat(),(mon+timedelta(days=6)).isoformat())).fetchall(); c.close()
@@ -1160,12 +1184,13 @@ def hangul_page():
     for i in range(7):
         d=mon+timedelta(days=i)
         p=prog.get(d.isoformat())
-        done=bool(p and (p['cards_flipped']>0 or p['quiz_correct']>0))
+        done=bool(p and (p['cards_flipped']>0 or p['quiz_correct']>0 or p['letters_done']>0))
         cls='hg-sticker-day done' if done else 'hg-sticker-day'
         icon='⭐' if done else '·'
         today_cls=' today' if d==today else ''
         stickers+=f'<div class="{cls}{today_cls}"><div class="hg-sd-label">{DAYS[i]}</div><div class="hg-sd-icon">{icon}</div></div>'
     words_json=json.dumps(words,ensure_ascii=False)
+    letters_json=json.dumps(letters,ensure_ascii=False)
     body=f'''
 <style>
 .hg-topbar{{display:flex;gap:8px;margin-bottom:14px}}
@@ -1176,10 +1201,14 @@ def hangul_page():
 .hg-sticker-day.today{{border-color:#0f4c81;border-width:2px}}
 .hg-sd-label{{font-size:11px;color:#748196}}
 .hg-sd-icon{{font-size:22px;margin-top:4px}}
-.hg-card-grid,.hg-quiz-grid{{display:grid;gap:10px}}
+.hg-card-grid,.hg-quiz-grid,.hg-letter-grid{{display:grid;gap:10px}}
 .hg-card-grid{{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
 .hg-card{{aspect-ratio:1;border-radius:18px;border:2px solid #e4e9f0;background:#fff;font-size:40px;cursor:pointer;display:flex;align-items:center;justify-content:center}}
 .hg-card .back{{font-size:22px;font-weight:900;color:#0f4c81}}
+.hg-letter-section h3{{margin:16px 0 8px}}
+.hg-letter-grid{{grid-template-columns:repeat(auto-fill,minmax(72px,1fr))}}
+.hg-letter{{aspect-ratio:1;border-radius:16px;border:2px solid #e4e9f0;background:#fff;font-size:34px;font-weight:900;color:#0f4c81;cursor:pointer;display:flex;align-items:center;justify-content:center}}
+.hg-letter:active{{background:#eaf3fb}}
 .hg-quiz-grid{{grid-template-columns:1fr 1fr}}
 .hg-quiz-col{{display:flex;flex-direction:column;gap:10px}}
 .hg-quiz-item{{min-height:64px;border-radius:14px;border:2px solid #e4e9f0;background:#fff;font-size:28px;font-weight:800;cursor:pointer}}
@@ -1190,17 +1219,25 @@ def hangul_page():
 </style>
 <div class="hg-topbar">
 <a class="hg-btn" href="/hyeon">🏠</a>
-<button type="button" class="hg-btn on" id="hg-tab-cards" onclick="hgTab('cards')">🃏</button>
+<button type="button" class="hg-btn on" id="hg-tab-letters" onclick="hgTab('letters')">ㄱㄴ</button>
+<button type="button" class="hg-btn" id="hg-tab-cards" onclick="hgTab('cards')">🃏</button>
 <button type="button" class="hg-btn" id="hg-tab-quiz" onclick="hgTab('quiz')">🔗</button>
 </div>
 <div class="hg-sticker-board">{stickers}</div>
-<div id="hg-cards"><div class="hg-card-grid" id="hg-card-grid"></div></div>
+<div id="hg-letters">
+  <div class="hg-letter-section"><h3>자음</h3><div class="hg-letter-grid" id="hg-consonant-grid"></div></div>
+  <div class="hg-letter-section"><h3>모음</h3><div class="hg-letter-grid" id="hg-vowel-grid"></div></div>
+</div>
+<div id="hg-cards" style="display:none"><div class="hg-card-grid" id="hg-card-grid"></div></div>
 <div id="hg-quiz" style="display:none"><div class="hg-quiz-grid" id="hg-quiz-grid"></div></div>
 <script>
 const HG_WORDS={words_json};
+const HG_LETTERS={letters_json};
 function hgTab(which){{
+  document.getElementById('hg-letters').style.display=which==='letters'?'block':'none';
   document.getElementById('hg-cards').style.display=which==='cards'?'block':'none';
   document.getElementById('hg-quiz').style.display=which==='quiz'?'block':'none';
+  document.getElementById('hg-tab-letters').classList.toggle('on',which==='letters');
   document.getElementById('hg-tab-cards').classList.toggle('on',which==='cards');
   document.getElementById('hg-tab-quiz').classList.toggle('on',which==='quiz');
   if(which==='quiz') hgBuildQuiz();
@@ -1214,6 +1251,16 @@ function hgSpeak(text){{
 }}
 function hgLog(kind){{
   fetch('/hyeon/hangul/log',{{method:'POST',headers:{{'Content-Type':'application/x-www-form-urlencoded'}},body:'kind='+kind}}).catch(function(){{}});
+}}
+function hgBuildLetters(){{
+  const cGrid=document.getElementById('hg-consonant-grid'); cGrid.innerHTML='';
+  const vGrid=document.getElementById('hg-vowel-grid'); vGrid.innerHTML='';
+  HG_LETTERS.forEach(function(l){{
+    const b=document.createElement('button');
+    b.type='button'; b.className='hg-letter'; b.textContent=l.char;
+    b.onclick=function(){{ hgSpeak(l.sound); hgLog('letter'); }};
+    (l.kind==='자음'?cGrid:vGrid).appendChild(b);
+  }});
 }}
 function hgBuildCards(){{
   const grid=document.getElementById('hg-card-grid'); grid.innerHTML='';
@@ -1269,6 +1316,7 @@ function hgBuildQuiz(){{
     rightCol.appendChild(b);
   }});
 }}
+hgBuildLetters();
 hgBuildCards();
 </script>
 '''
