@@ -38,7 +38,7 @@ def sync_itinerary(trip_id, rows):
 
 
 # 2027 Italy-Spain winter family trip.
-# Only dates/details that were already fixed are written. Undecided intermediate city dates stay blank.
+# Only dates/details already fixed by the family plan are written; undecided intermediate dates stay blank.
 europe_id = upsert_trip(
     '2027-01-02','2027-01-23',
     '이탈리아·스페인',
