@@ -827,6 +827,27 @@ def _award_credit(child,delta,reason):
               (child,delta,reason,datetime.now(KST).isoformat(timespec='seconds')))
     c.commit(); c.close()
 
+CREDIT_RATE_DEFAULTS={'workbook':1,'reading':3}
+def _init_credit_rate_schema():
+    c=db()
+    c.execute('''CREATE TABLE IF NOT EXISTS credit_rates(
+      key TEXT PRIMARY KEY,
+      value INTEGER NOT NULL
+    )''')
+    for k,v in CREDIT_RATE_DEFAULTS.items():
+        c.execute('insert or ignore into credit_rates(key,value) values(?,?)',(k,v))
+    c.commit(); c.close()
+_init_credit_rate_schema()
+
+def _credit_rate(key):
+    c=db(); row=c.execute('select value from credit_rates where key=?',(key,)).fetchone(); c.close()
+    return row['value'] if row else CREDIT_RATE_DEFAULTS.get(key,0)
+
+def _set_credit_rate(key,value):
+    c=db()
+    c.execute('insert into credit_rates(key,value) values(?,?) on conflict(key) do update set value=excluded.value',(key,value))
+    c.commit(); c.close()
+
 def _credit_total(child):
     c=db(); row=c.execute('select coalesce(sum(delta),0) t from riley_credits where child=?',(child,)).fetchone(); c.close()
     return row['t']
@@ -933,7 +954,7 @@ def riley_workbook_group_edit(gid):
         done=1 if request.form.get('done') else 0
         days=[d for d in request.form.getlist('days') if d in DAYS]
         if done and not credited:
-            _award_credit(child,1,f'문제집 완료: {title}')
+            _award_credit(child,_credit_rate('workbook'),f'문제집 완료: {title}')
             credited=1
         c.execute('delete from riley_workbooks where group_id=?',(gid,))
         if days:
@@ -1053,7 +1074,7 @@ def riley_reading_add():
         summary=(request.form.get('summary') or '').strip()
         c=db(); c.execute('insert into riley_reading(title,language,genre,sr_score,lexile_score,read_date,rating,summary,created_at,child) values(?,?,?,?,?,?,?,?,?,?)',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,datetime.now().isoformat(timespec='seconds'),child)); c.commit(); c.close()
         if child=='지유':
-            _award_credit(child,3,f'독서 기록 추가: {title}')
+            _award_credit(child,_credit_rate('reading'),f'독서 기록 추가: {title}')
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/reading/<int:i>/edit',methods=['POST'])
@@ -1156,11 +1177,22 @@ def riley_week():
 def hyeon_week():
     return _kid_portal('hyeon','혜온',academy_workbook=False)
 
+@app.route('/riley/credits/rate',methods=['POST'])
+def riley_credits_rate_update():
+    for key in ('workbook','reading'):
+        try: v=int(request.form.get(key) or 0)
+        except ValueError: v=0
+        v=max(0,min(20,v))
+        _set_credit_rate(key,v)
+    return redirect('/riley/credits')
+
 @app.route('/riley/credits')
 def riley_credits_detail():
     child='지유'
     pt=_credit_period_totals(child)
     total=_credit_total(child)
+    wb_rate=_credit_rate('workbook')
+    rd_rate=_credit_rate('reading')
     c=db(); rows=[dict(x) for x in c.execute('select * from riley_credits where child=? order by created_at desc limit 200',(child,)).fetchall()]; c.close()
     by_day={}
     for r in rows:
@@ -1174,7 +1206,20 @@ def riley_credits_detail():
           f'<div class="stat-card"><span class="muted">이번 주</span><div class="big">+{pt["week"]}</div></div>'
           f'<div class="stat-card"><span class="muted">이번 달</span><div class="big">+{pt["month"]}</div></div>'
           f'<div class="stat-card"><span class="muted">전체</span><div class="big">{total}개</div></div></div>'
-          f'</section><section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">일자별 내역</h2>')
+          f'</section>'
+          f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">⚙️ 크레딧 지급 설정</h2>'
+          f'<form method="POST" action="/riley/credits/rate" style="display:flex;flex-direction:column;gap:12px">'
+          f'<label style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
+          f'<span>문제집 완료 시</span>'
+          f'<span><input type="number" name="workbook" value="{wb_rate}" min="0" max="20" style="width:70px;padding:8px;border:1px solid #e4e9f0;border-radius:10px;text-align:center"> 개</span>'
+          f'</label>'
+          f'<label style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
+          f'<span>책 1권 추가 시</span>'
+          f'<span><input type="number" name="reading" value="{rd_rate}" min="0" max="20" style="width:70px;padding:8px;border:1px solid #e4e9f0;border-radius:10px;text-align:center"> 개</span>'
+          f'</label>'
+          f'<button type="submit" class="btn">저장</button>'
+          f'</form></section>'
+          f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">일자별 내역</h2>')
     if not by_day:
         body+='<div class="muted">아직 적립된 크레딧이 없습니다.</div>'
     for d in sorted(by_day.keys(),reverse=True):
