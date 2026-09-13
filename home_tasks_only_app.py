@@ -1484,7 +1484,8 @@ def past_filtered():
         body+='<div class="home-card muted">조건에 맞는 여행이 없습니다.</div>'
     for r in rows:
         region=' · '.join(x for x in [r['country'],r['region']] if x)
-        body+=f'<a class="past-card home-link" href="/trip/{r["id"]}"><div class="date">{H(r["start_date"])} ~ {H(r["end_date"])}</div><b>{H(r["title"])}</b><div class="meta">{H(region) or "-"}</div><div class="meta">함께: {H(r["companions"]) or "-"}</div></a>'
+        flags=_flags_for(r['country'], r['trip_type'])
+        body+=f'<a class="past-card home-link" href="/trip/{r["id"]}"><div class="date">{H(r["start_date"])} ~ {H(r["end_date"])}</div><b>{flags} {H(r["title"])}</b><div class="meta">{H(region) or "-"}</div><div class="meta">함께: {H(r["companions"]) or "-"}</div></a>'
     body+='</div>'
     return page('과거 여행',body)
 
@@ -1507,9 +1508,10 @@ def future_filtered():
         sd=qdate(r['start_date'] or '')
         dday=_dday_label(sd,today) if sd else '-'
         scls=_status_class(r['status'])
+        flags=_flags_for(r['country'], r['trip_type'])
         body+=(f'<a class="past-card future-card" href="/trip/{r["id"]}">'
                f'<div class="date">{H(r["start_date"])} ~ {H(r["end_date"])}<span class="dday" style="float:right">{H(dday)}</span></div>'
-               f'<b>{H(r["title"])}</b><div class="meta">{H(region) or "-"}</div>'
+               f'<b>{flags} {H(r["title"])}</b><div class="meta">{H(region) or "-"}</div>'
                f'<div class="meta">함께: {H(r["companions"]) or "-"}</div>'
                f'<span class="status-badge {scls}">{H(r["status"])}</span>'
                f'</a>')
