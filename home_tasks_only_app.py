@@ -1099,6 +1099,8 @@ def _kid_portal(slug,child,academy_workbook=True):
             body+='</div>'
         body+=f'<p class="muted" style="margin-top:10px">주황색은 {H(child)} Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'
         body+=_workbook_section(child,base)
+    if slug=='hyeon':
+        body+='<div style="margin-bottom:14px"><a class="btn" href="/hyeon/hangul">🔤 한글 공부</a></div>'
     body+=_reading_section(child,base)+reading_edit_modal(base)
     if academy_workbook:
         body+=academy_modal(child)+wb_edit_modal(base)
@@ -1109,6 +1111,168 @@ def riley_week():
 
 def hyeon_week():
     return _kid_portal('hyeon','혜온',academy_workbook=False)
+
+def _init_hangul_schema():
+    c=db()
+    c.execute('''CREATE TABLE IF NOT EXISTS hangul_words(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      emoji TEXT NOT NULL,
+      word TEXT NOT NULL,
+      active INTEGER DEFAULT 1
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS hangul_progress(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      activity_date TEXT UNIQUE NOT NULL,
+      cards_flipped INTEGER DEFAULT 0,
+      quiz_correct INTEGER DEFAULT 0
+    )''')
+    n=c.execute('select count(*) c from hangul_words').fetchone()['c']
+    if n==0:
+        seed=[('🍎','사과'),('🍌','바나나'),('🚗','자동차'),('🦁','사자'),('🐘','코끼리'),('☂️','우산'),
+              ('🦋','나비'),('🍓','딸기'),('🐟','물고기'),('🐯','호랑이'),('🚂','기차'),('☁️','구름'),
+              ('🐶','강아지'),('🐱','고양이'),('🐰','토끼'),('⭐','별')]
+        for emoji,word in seed:
+            c.execute('insert into hangul_words(emoji,word,active) values(?,?,1)',(emoji,word))
+    c.commit(); c.close()
+_init_hangul_schema()
+
+def _hangul_bump(field):
+    today=date.today().isoformat()
+    c=db()
+    c.execute(f'insert into hangul_progress(activity_date,{field}) values(?,1) on conflict(activity_date) do update set {field}={field}+1',(today,))
+    c.commit(); c.close()
+
+@app.route('/hyeon/hangul/log',methods=['POST'])
+def hangul_log():
+    kind=(request.form.get('kind') or '').strip()
+    if kind=='card': _hangul_bump('cards_flipped')
+    elif kind=='quiz': _hangul_bump('quiz_correct')
+    return ('',204)
+
+@app.route('/hyeon/hangul')
+def hangul_page():
+    c=db(); words=[dict(x) for x in c.execute('select emoji,word from hangul_words where active=1').fetchall()]; c.close()
+    today=date.today()
+    mon=today-timedelta(days=today.weekday())
+    c=db(); prog_rows=c.execute('select * from hangul_progress where activity_date>=? and activity_date<=?',(mon.isoformat(),(mon+timedelta(days=6)).isoformat())).fetchall(); c.close()
+    prog={r['activity_date']:dict(r) for r in prog_rows}
+    stickers=''
+    for i in range(7):
+        d=mon+timedelta(days=i)
+        p=prog.get(d.isoformat())
+        done=bool(p and (p['cards_flipped']>0 or p['quiz_correct']>0))
+        cls='hg-sticker-day done' if done else 'hg-sticker-day'
+        icon='⭐' if done else '·'
+        today_cls=' today' if d==today else ''
+        stickers+=f'<div class="{cls}{today_cls}"><div class="hg-sd-label">{DAYS[i]}</div><div class="hg-sd-icon">{icon}</div></div>'
+    words_json=json.dumps(words,ensure_ascii=False)
+    body=f'''
+<style>
+.hg-topbar{{display:flex;gap:8px;margin-bottom:14px}}
+.hg-btn{{width:56px;height:56px;border-radius:16px;border:1px solid #e4e9f0;background:#fff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center}}
+.hg-btn.on{{background:#0f4c81;border-color:#0f4c81}}
+.hg-sticker-board{{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px}}
+.hg-sticker-day{{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:8px 4px;text-align:center}}
+.hg-sticker-day.today{{border-color:#0f4c81;border-width:2px}}
+.hg-sd-label{{font-size:11px;color:#748196}}
+.hg-sd-icon{{font-size:22px;margin-top:4px}}
+.hg-card-grid,.hg-quiz-grid{{display:grid;gap:10px}}
+.hg-card-grid{{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
+.hg-card{{aspect-ratio:1;border-radius:18px;border:2px solid #e4e9f0;background:#fff;font-size:40px;cursor:pointer;display:flex;align-items:center;justify-content:center}}
+.hg-card .back{{font-size:22px;font-weight:900;color:#0f4c81}}
+.hg-quiz-grid{{grid-template-columns:1fr 1fr}}
+.hg-quiz-col{{display:flex;flex-direction:column;gap:10px}}
+.hg-quiz-item{{min-height:64px;border-radius:14px;border:2px solid #e4e9f0;background:#fff;font-size:28px;font-weight:800;cursor:pointer}}
+.hg-quiz-item.sel{{border-color:#0f4c81}}
+.hg-quiz-item.matched{{background:#eafaf0;border-color:#3fa965;opacity:.55}}
+.hg-quiz-item.wrong{{background:#fdeceb;border-color:#d9534f}}
+@media(max-width:430px){{.hg-btn{{width:48px;height:48px;font-size:22px}}.hg-card{{font-size:32px}}}}
+</style>
+<div class="hg-topbar">
+<a class="hg-btn" href="/hyeon">🏠</a>
+<button type="button" class="hg-btn on" id="hg-tab-cards" onclick="hgTab('cards')">🃏</button>
+<button type="button" class="hg-btn" id="hg-tab-quiz" onclick="hgTab('quiz')">🔗</button>
+</div>
+<div class="hg-sticker-board">{stickers}</div>
+<div id="hg-cards"><div class="hg-card-grid" id="hg-card-grid"></div></div>
+<div id="hg-quiz" style="display:none"><div class="hg-quiz-grid" id="hg-quiz-grid"></div></div>
+<script>
+const HG_WORDS={words_json};
+function hgTab(which){{
+  document.getElementById('hg-cards').style.display=which==='cards'?'block':'none';
+  document.getElementById('hg-quiz').style.display=which==='quiz'?'block':'none';
+  document.getElementById('hg-tab-cards').classList.toggle('on',which==='cards');
+  document.getElementById('hg-tab-quiz').classList.toggle('on',which==='quiz');
+  if(which==='quiz') hgBuildQuiz();
+}}
+function hgSpeak(text){{
+  try{{
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='ko-KR'; u.rate=0.85;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  }}catch(e){{}}
+}}
+function hgLog(kind){{
+  fetch('/hyeon/hangul/log',{{method:'POST',headers:{{'Content-Type':'application/x-www-form-urlencoded'}},body:'kind='+kind}}).catch(function(){{}});
+}}
+function hgBuildCards(){{
+  const grid=document.getElementById('hg-card-grid'); grid.innerHTML='';
+  HG_WORDS.forEach(function(w){{
+    const card=document.createElement('button');
+    card.type='button'; card.className='hg-card';
+    card.innerHTML='<span class="front">'+w.emoji+'</span><span class="back" style="display:none">'+w.word+'</span>';
+    card.onclick=function(){{
+      const front=card.querySelector('.front'), back=card.querySelector('.back');
+      const flipped=back.style.display!=='none';
+      front.style.display=flipped?'':'none';
+      back.style.display=flipped?'none':'';
+      if(!flipped){{ hgSpeak(w.word); hgLog('card'); }}
+    }};
+    grid.appendChild(card);
+  }});
+}}
+let hgQuiz=null;
+function hgBuildQuiz(){{
+  const pool=HG_WORDS.slice().sort(function(){{return Math.random()-0.5}}).slice(0,6);
+  const left=pool.slice();
+  const right=pool.slice().sort(function(){{return Math.random()-0.5}});
+  hgQuiz={{selected:null, matched:new Set()}};
+  const grid=document.getElementById('hg-quiz-grid'); grid.innerHTML='';
+  const leftCol=document.createElement('div'); leftCol.className='hg-quiz-col'; leftCol.id='hg-quiz-left';
+  const rightCol=document.createElement('div'); rightCol.className='hg-quiz-col'; rightCol.id='hg-quiz-right';
+  grid.appendChild(leftCol); grid.appendChild(rightCol);
+  left.forEach(function(w){{
+    const b=document.createElement('button'); b.type='button'; b.className='hg-quiz-item'; b.textContent=w.emoji; b.dataset.word=w.word;
+    b.onclick=function(){{
+      if(hgQuiz.matched.has(w.word))return;
+      leftCol.querySelectorAll('.hg-quiz-item').forEach(function(x){{x.classList.remove('sel')}});
+      b.classList.add('sel'); hgQuiz.selected=w.word; hgSpeak(w.word);
+    }};
+    leftCol.appendChild(b);
+  }});
+  right.forEach(function(w){{
+    const b=document.createElement('button'); b.type='button'; b.className='hg-quiz-item'; b.textContent=w.word; b.dataset.word=w.word;
+    b.onclick=function(){{
+      if(hgQuiz.matched.has(w.word))return;
+      if(hgQuiz.selected===w.word){{
+        hgQuiz.matched.add(w.word);
+        b.classList.add('matched');
+        leftCol.querySelectorAll('.hg-quiz-item').forEach(function(x){{if(x.dataset.word===w.word){{x.classList.add('matched');x.classList.remove('sel')}}}});
+        hgSpeak('딩동댕');
+        hgLog('quiz');
+        hgQuiz.selected=null;
+      }} else if(hgQuiz.selected){{
+        b.classList.add('wrong');
+        setTimeout(function(){{b.classList.remove('wrong')}},400);
+      }}
+    }};
+    rightCol.appendChild(b);
+  }});
+}}
+hgBuildCards();
+</script>
+'''
+    return page('혜온 한글 공부',body)
 
 for rule in list(app.url_map.iter_rules()):
     if rule.rule=='/calendar': app.view_functions[rule.endpoint]=family_calendar
