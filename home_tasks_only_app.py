@@ -43,7 +43,7 @@ JS+='''function showEventDetail(el){let d=el.dataset;document.getElementById("ed
 CSS+='''.fab-group{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:20}.fab{width:46px;height:46px;border-radius:50%;background:#0f4c81;color:#fff;border:0;font-size:20px;line-height:1;cursor:pointer;box-shadow:0 4px 14px #0f4c8155;display:flex;align-items:center;justify-content:center;transition:transform .12s ease,box-shadow .12s ease}.fab:hover{box-shadow:0 6px 18px #0f4c8166;transform:translateY(-1px)}.fab:active{transform:scale(.94)}@media(max-width:560px){.fab-group{right:14px;bottom:14px;gap:8px}.fab{width:42px;height:42px;font-size:18px}}'''
 CSS+='''.fm-event,.event-chip{cursor:pointer}.fm-event:hover,.event-chip:hover{filter:brightness(0.96)}'''
 CSS+='''.day-checks{display:flex;gap:8px;flex-wrap:wrap}.day-check{display:flex;align-items:center;gap:4px;width:auto;font-size:12px;color:#14263f}.day-check input{width:auto}'''
-JS+='''function editWb(el){let d=el.dataset;document.getElementById("wbef").action="/riley/workbook/"+d.id+"/edit";document.getElementById("wbef").dataset.id=d.id;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";document.getElementById("wbe-day").value=d.day||"";o("wbe")}function deleteWb(){let id=document.getElementById("wbef").dataset.id;if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/workbook/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
+JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\\"days\\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;document.getElementById("wbef").action="/riley/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\\"days\\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let gid=document.getElementById("wbef").dataset.gid;if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}'''
 CSS+='''.person-filter{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}.pf{border:1px solid #d7dfe8;background:#fff;color:#5c6b80;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;text-decoration:none;transition:all .12s ease}.pf:hover{border-color:#0f4c81;color:#0f4c81}.pf.on{color:#fff;border-color:transparent}.pf.on.yj{background:#315c9b}.pf.on.지유{background:#e98755}.pf.on.보미{background:#9a66ad}.pf.on.혜온{background:#46a081}.pf.on.가족{background:#c99a35}.pf.on.여행{background:#d64f5b}.pf.on:not(.yj):not(.지유):not(.보미):not(.혜온):not(.가족):not(.여행){background:#14263f}'''
 CSS+='''.view-value{cursor:pointer;display:block}.view-value:hover{color:#0f4c81}.inline-edit{display:none;flex-direction:column;gap:6px;margin-top:2px}.inline-edit input{padding:7px 9px;border:1px solid #d5dde7;border-radius:8px;font:inherit;font-size:13px}'''
 CSS+='''.future-card{display:block;color:inherit;text-decoration:none}.status-form{margin-top:8px}.status-select{width:100%;border:1px solid #d7dfe8;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:#eef2f6;color:#5c6b80}.status-select.planned{background:#e8f6ee;color:#1f7a4d;border-color:#bfe4cd}.status-select.review{background:#fff3e0;color:#b5680a;border-color:#f3d9ab}.status-select.longterm{background:#f1ecfb;color:#6a4fb0;border-color:#dccdf5}.status-select.done{background:#eef2f6;color:#5c6b80;border-color:#dfe6ee}.status-badge{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:#eef2f6;color:#5c6b80}.status-badge.planned{background:#e8f6ee;color:#1f7a4d}.status-badge.review{background:#fff3e0;color:#b5680a}.status-badge.longterm{background:#f1ecfb;color:#6a4fb0}.status-badge.done{background:#eef2f6;color:#5c6b80}'''
@@ -787,33 +787,42 @@ def _init_riley_workbook_schema():
     cols={r['name'] for r in c.execute('PRAGMA table_info(riley_workbooks)')}
     if 'day_of_week' not in cols:
         c.execute('ALTER TABLE riley_workbooks ADD COLUMN day_of_week TEXT')
+    if 'group_id' not in cols:
+        c.execute('ALTER TABLE riley_workbooks ADD COLUMN group_id TEXT')
+    c.execute("update riley_workbooks set group_id='g'||id where group_id is null or group_id=''")
     c.commit(); c.close()
 _init_riley_workbook_schema()
 
 def _workbook_rows():
     c=db(); rows=[dict(x) for x in c.execute('select * from riley_workbooks order by done asc, id desc').fetchall()]; c.close(); return rows
 
-def wb_edit_modal():
-    day_opts=''.join(f'<option value="{d}">{d}</option>' for d in DAYS)+'<option value="">미정</option>'
-    return f'''<div class="modal" id="wbe"><div class="card"><div class="head"><h2>문제집 수정</h2><button class="btn s" onclick="x('wbe')">닫기</button></div><form class="form" id="wbef" method="post"><label class="full">문제집/과제<input name="title" id="wbe-title" required></label><label>요일<select name="day_of_week" id="wbe-day">{day_opts}</select></label><label>메모<input name="notes" id="wbe-notes"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteWb()">삭제</button></div></form></div></div>'''
+def _day_checkboxes():
+    boxes='<label class="day-check"><input type="checkbox" onchange="toggleAllDays(this)"> 매일</label>'
+    boxes+=''.join(f'<label class="day-check"><input type="checkbox" name="days" value="{d}"> {d}</label>' for d in DAYS)
+    return boxes
 
-def _wb_attrs(r):
-    return f'data-id="{r["id"]}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-day="{H(r["day_of_week"] or "")}"'
+def wb_edit_modal():
+    return f'''<div class="modal" id="wbe"><div class="card"><div class="head"><h2>문제집 수정</h2><button class="btn s" onclick="x('wbe')">닫기</button></div><form class="form" id="wbef" method="post"><label class="full">문제집/과제<input name="title" id="wbe-title" required></label><label class="full">요일 (여러 개 선택 가능)<div class="day-checks" id="wbe-days">{_day_checkboxes()}</div></label><label>메모<input name="notes" id="wbe-notes"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteWb()">삭제</button></div></form></div></div>'''
+
+def _wb_attrs(r, group_days):
+    days=','.join(d for d in DAYS if d in group_days.get(r['group_id'], set()))
+    return f'data-gid="{H(r["group_id"])}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-days="{H(days)}"'
 
 def _workbook_section():
     rows=_workbook_rows()
     open_n=sum(1 for r in rows if not r['done'])
     by={d:[] for d in DAYS}; unknown=[]
+    group_days={}
     for r in rows:
         d=(r['day_of_week'] or '').strip()
         (by[d] if d in by else unknown).append(r)
-    day_checks=''.join(f'<label class="day-check"><input type="checkbox" name="days" value="{d}"> {d}</label>' for d in DAYS)
+        group_days.setdefault(r['group_id'], set()).add(d)
     body=(f'<section class="feature-card" style="margin-top:14px">'
           f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">지유 문제집 체크리스트 · 미완료 {open_n}건</h2>'
           '<button type="button" class="btn s" onclick="let f=document.getElementById(\'wb-add\');f.style.display=f.style.display===\'none\'?\'grid\':\'none\'">+ 추가</button></div>'
           '<form method="post" action="/riley/workbook/add" class="task-form" id="wb-add" style="display:none">'
           '<label class="task-title">문제집/과제<input name="title" required placeholder="예: 디딤돌 수학 3단원"></label>'
-          f'<label class="full">요일 (여러 개 선택 가능)<div class="day-checks">{day_checks}</div></label>'
+          f'<label class="full">요일 (여러 개 선택 가능)<div class="day-checks">{_day_checkboxes()}</div></label>'
           '<label>메모<input name="notes" placeholder="분량 등"></label>'
           '<button class="btn">추가</button></form>'
           '<div class="riley-week" style="margin-top:10px">')
@@ -823,7 +832,7 @@ def _workbook_section():
         for r in by[dn]:
             cls=' task-done' if r['done'] else ''
             meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
-            body+=f'<div class="lesson" style="cursor:pointer" {_wb_attrs(r)} onclick="editWb(this)"><b class="{cls}">{H(r["title"])}</b>{meta}</div>'
+            body+=f'<div class="lesson" style="cursor:pointer" {_wb_attrs(r,group_days)} onclick="editWb(this)"><b class="{cls}">{H(r["title"])}</b>{meta}</div>'
         body+='</div>'
     body+='</div>'
     if unknown:
@@ -831,7 +840,7 @@ def _workbook_section():
         for r in unknown:
             cls=' task-done' if r['done'] else ''
             meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
-            body+=f'<div class="needs-item" style="cursor:pointer" {_wb_attrs(r)} onclick="editWb(this)"><div><b class="{cls}">{H(r["title"])}</b>{meta}</div></div>'
+            body+=f'<div class="needs-item" style="cursor:pointer" {_wb_attrs(r,group_days)} onclick="editWb(this)"><div><b class="{cls}">{H(r["title"])}</b>{meta}</div></div>'
         body+='</div>'
     body+='</section>'
     return body
@@ -842,33 +851,35 @@ def riley_workbook_add():
     if title:
         notes=(request.form.get('notes') or '').strip()
         days=[d for d in request.form.getlist('days') if d in DAYS]
+        gid=secrets.token_hex(8)
         c=db()
         if days:
             for d in days:
-                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at) values(?,?,?,0,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds')))
+                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id) values(?,?,?,0,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid))
         else:
-            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at) values(?,?,?,0,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds')))
+            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id) values(?,?,?,0,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid))
         c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
-@app.route('/riley/workbook/<int:i>/edit',methods=['POST'])
-def riley_workbook_edit(i):
+@app.route('/riley/workbook/group/<gid>/edit',methods=['POST'])
+def riley_workbook_group_edit(gid):
     title=(request.form.get('title') or '').strip()
     if title:
-        day=(request.form.get('day_of_week') or '').strip()
-        if day not in DAYS: day=''
         notes=(request.form.get('notes') or '').strip()
-        c=db(); c.execute('update riley_workbooks set title=?,notes=?,day_of_week=? where id=?',(title,notes,day,i)); c.commit(); c.close()
+        days=[d for d in request.form.getlist('days') if d in DAYS]
+        c=db()
+        c.execute('delete from riley_workbooks where group_id=?',(gid,))
+        if days:
+            for d in days:
+                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id) values(?,?,?,0,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid))
+        else:
+            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id) values(?,?,?,0,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid))
+        c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
-@app.route('/riley/workbook/<int:i>/toggle',methods=['POST'])
-def riley_workbook_toggle(i):
-    c=db(); c.execute('update riley_workbooks set done=case when done=1 then 0 else 1 end where id=?',(i,)); c.commit(); c.close()
-    return redirect(request.referrer or '/riley')
-
-@app.route('/riley/workbook/<int:i>/delete',methods=['POST'])
-def riley_workbook_delete(i):
-    c=db(); c.execute('delete from riley_workbooks where id=?',(i,)); c.commit(); c.close()
+@app.route('/riley/workbook/group/<gid>/delete',methods=['POST'])
+def riley_workbook_group_delete(gid):
+    c=db(); c.execute('delete from riley_workbooks where group_id=?',(gid,)); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 def riley_week():
