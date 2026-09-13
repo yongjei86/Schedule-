@@ -1084,10 +1084,10 @@ def _kid_portal(slug,child,academy_workbook=True):
     body=''
     if slug=='riley':
         pt=_credit_period_totals(child)
-        body+=(f'<div style="text-align:center;font-size:13px;font-weight:800;color:#748196;'
-               f'background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:8px;margin-bottom:14px">'
+        body+=(f'<a href="/riley/credits" style="display:block;text-align:center;font-size:13px;font-weight:800;color:#748196;'
+               f'background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:8px;margin-bottom:14px;text-decoration:none;cursor:pointer">'
                f'🪙 {H(child)} 크레딧 · 오늘 +{pt["today"]} · 이번 주 +{pt["week"]} · 이번 달 +{pt["month"]} · 총 {_credit_total(child)}개'
-               f'<div style="font-weight:600;font-size:11px;color:#9aa5b1;margin-top:2px">문제집 완료 +1 · 독서 기록 추가 +3</div></div>')
+               f'<div style="font-weight:600;font-size:11px;color:#9aa5b1;margin-top:2px">눌러서 자세히 보기</div></a>')
     if academy_workbook:
         q=qdate(request.args.get('date','')) or date.today(); today=date.today()
         mon=q-timedelta(days=q.weekday()); sun=mon+timedelta(days=6)
@@ -1156,6 +1156,37 @@ def riley_week():
 def hyeon_week():
     return _kid_portal('hyeon','혜온',academy_workbook=False)
 
+@app.route('/riley/credits')
+def riley_credits_detail():
+    child='지유'
+    pt=_credit_period_totals(child)
+    total=_credit_total(child)
+    c=db(); rows=[dict(x) for x in c.execute('select * from riley_credits where child=? order by created_at desc limit 200',(child,)).fetchall()]; c.close()
+    by_day={}
+    for r in rows:
+        d=r['created_at'][:10]
+        by_day.setdefault(d,{'total':0,'items':[]})
+        by_day[d]['total']+=r['delta']
+        by_day[d]['items'].append(r)
+    body=(f'<div class="toolbar"><a class="btn s" href="/riley">← 지유 포탈</a></div>'
+          f'<section class="feature-card"><h2 style="margin:0 0 10px">🪙 {H(child)} 크레딧 현황</h2>'
+          f'<div class="stat-grid"><div class="stat-card"><span class="muted">오늘</span><div class="big">+{pt["today"]}</div></div>'
+          f'<div class="stat-card"><span class="muted">이번 주</span><div class="big">+{pt["week"]}</div></div>'
+          f'<div class="stat-card"><span class="muted">이번 달</span><div class="big">+{pt["month"]}</div></div>'
+          f'<div class="stat-card"><span class="muted">전체</span><div class="big">{total}개</div></div></div>'
+          f'</section><section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">일자별 내역</h2>')
+    if not by_day:
+        body+='<div class="muted">아직 적립된 크레딧이 없습니다.</div>'
+    for d in sorted(by_day.keys(),reverse=True):
+        info=by_day[d]
+        body+=(f'<div style="padding:8px 0;border-bottom:1px solid #edf1f5">'
+               f'<div style="display:flex;justify-content:space-between"><b>{H(d)}</b><b>+{info["total"]}</b></div>')
+        for it in info['items']:
+            body+=f'<div class="feature-meta">{H(it["created_at"][11:16])} · {H(it["reason"] or "")} (+{it["delta"]})</div>'
+        body+='</div>'
+    body+='</section>'
+    return page(f'{child} 크레딧 현황',body)
+
 def _init_hangul_schema():
     c=db()
     c.execute('''CREATE TABLE IF NOT EXISTS hangul_words(
@@ -1216,6 +1247,8 @@ def hangul_log():
     elif kind=='letter': _hangul_bump('letters_done')
     return ('',204)
 
+HANGUL_STAR_GOAL=5
+
 @app.route('/hyeon/hangul')
 def hangul_page():
     c=db(); words=[dict(x) for x in c.execute('select emoji,word from hangul_words where active=1').fetchall()]; c.close()
@@ -1224,7 +1257,6 @@ def hangul_page():
     mon=today-timedelta(days=today.weekday())
     c=db(); prog_rows=c.execute('select * from hangul_progress where activity_date>=? and activity_date<=?',(mon.isoformat(),(mon+timedelta(days=6)).isoformat())).fetchall(); c.close()
     prog={r['activity_date']:dict(r) for r in prog_rows}
-    HANGUL_STAR_GOAL=5
     stickers=''
     for i in range(7):
         d=mon+timedelta(days=i)
@@ -1248,7 +1280,8 @@ def hangul_page():
     month_rows=[p for p in all_prog if p['activity_date']>=month_start.isoformat()]
     today_rows=[p for p in all_prog if p['activity_date']==today.isoformat()]
     ts,tt=_tier_counts(today_rows); ws,wt=_tier_counts(week_rows); ms,mt=_tier_counts(month_rows); ls,lt=_tier_counts(all_prog)
-    summary=(f'<div class="hg-total-summary">오늘 ⭐{ts} 🏆{tt} · 이번 주 ⭐{ws} 🏆{wt} · 이번 달 ⭐{ms} 🏆{mt} · 총 ⭐{ls} 🏆{lt}</div>')
+    summary=(f'<a href="/hyeon/hangul/stats" class="hg-total-summary" style="display:block;text-decoration:none;cursor:pointer">오늘 ⭐{ts} 🏆{tt} · 이번 주 ⭐{ws} 🏆{wt} · 이번 달 ⭐{ms} 🏆{mt} · 총 ⭐{ls} 🏆{lt}'
+               f'<div style="font-weight:600;font-size:11px;color:#9aa5b1;margin-top:2px">눌러서 자세히 보기</div></a>')
     words_json=json.dumps(words,ensure_ascii=False)
     letters_json=json.dumps(letters,ensure_ascii=False)
     body=f'''
@@ -1518,6 +1551,44 @@ hgBuildCards();
 </script>
 '''
     return page('혜온 한글 공부',body)
+
+@app.route('/hyeon/hangul/stats')
+def hangul_stats_detail():
+    today=datetime.now(KST).date()
+    mon=today-timedelta(days=today.weekday())
+    month_start=today.replace(day=1)
+    c=db(); all_prog=c.execute('select * from hangul_progress order by activity_date desc').fetchall(); c.close()
+    def tier(total):
+        if total>=HANGUL_STAR_GOAL: return '🏆'
+        elif total>0: return '⭐'
+        else: return '·'
+    def tier_counts(rows):
+        s=t=0
+        for p in rows:
+            tot=p['cards_flipped']+p['quiz_correct']+p['letters_done']
+            if tot>=HANGUL_STAR_GOAL: t+=1
+            elif tot>0: s+=1
+        return s,t
+    week_rows=[p for p in all_prog if mon.isoformat()<=p['activity_date']<=(mon+timedelta(days=6)).isoformat()]
+    month_rows=[p for p in all_prog if p['activity_date']>=month_start.isoformat()]
+    today_rows=[p for p in all_prog if p['activity_date']==today.isoformat()]
+    ts,tt=tier_counts(today_rows); ws,wt=tier_counts(week_rows); ms,mt=tier_counts(month_rows); ls,lt=tier_counts(all_prog)
+    body=(f'<div class="toolbar"><a class="btn s" href="/hyeon/hangul">← 한글 공부</a></div>'
+          f'<section class="feature-card"><h2 style="margin:0 0 10px">혜온 한글 공부 현황</h2>'
+          f'<div class="stat-grid"><div class="stat-card"><span class="muted">오늘</span><div class="big">⭐{ts} 🏆{tt}</div></div>'
+          f'<div class="stat-card"><span class="muted">이번 주</span><div class="big">⭐{ws} 🏆{wt}</div></div>'
+          f'<div class="stat-card"><span class="muted">이번 달</span><div class="big">⭐{ms} 🏆{mt}</div></div>'
+          f'<div class="stat-card"><span class="muted">전체</span><div class="big">⭐{ls} 🏆{lt}</div></div></div>'
+          f'</section><section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">일자별 내역</h2>')
+    if not all_prog:
+        body+='<div class="muted">아직 활동 기록이 없습니다.</div>'
+    for p in all_prog:
+        total=p['cards_flipped']+p['quiz_correct']+p['letters_done']
+        body+=(f'<div style="padding:8px 0;border-bottom:1px solid #edf1f5;display:flex;justify-content:space-between">'
+               f'<b>{H(p["activity_date"])}</b>'
+               f'<span>{tier(total)} 카드 {p["cards_flipped"]} · 퀴즈 {p["quiz_correct"]} · 자모 {p["letters_done"]}</span></div>')
+    body+='</section>'
+    return page('혜온 한글 공부 현황',body)
 
 COLORING_TEMPLATES=[
     {'id':'cat','name':'고양이','emoji':'🐱','svg':'''
