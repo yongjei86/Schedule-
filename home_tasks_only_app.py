@@ -1159,7 +1159,7 @@ def _init_hangul_schema():
 _init_hangul_schema()
 
 def _hangul_bump(field):
-    today=date.today().isoformat()
+    today=datetime.now(KST).date().isoformat()
     c=db()
     c.execute(f'insert into hangul_progress(activity_date,{field}) values(?,1) on conflict(activity_date) do update set {field}={field}+1',(today,))
     c.commit(); c.close()
@@ -1176,7 +1176,7 @@ def hangul_log():
 def hangul_page():
     c=db(); words=[dict(x) for x in c.execute('select emoji,word from hangul_words where active=1').fetchall()]; c.close()
     c=db(); letters=[dict(x) for x in c.execute('select char,kind,sound from hangul_letters order by sort_order').fetchall()]; c.close()
-    today=date.today()
+    today=datetime.now(KST).date()
     mon=today-timedelta(days=today.weekday())
     c=db(); prog_rows=c.execute('select * from hangul_progress where activity_date>=? and activity_date<=?',(mon.isoformat(),(mon+timedelta(days=6)).isoformat())).fetchall(); c.close()
     prog={r['activity_date']:dict(r) for r in prog_rows}
