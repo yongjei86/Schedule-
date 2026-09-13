@@ -1328,6 +1328,25 @@ function hgSpeak(text){{
 function hgLog(kind){{
   fetch('/hyeon/hangul/log',{{method:'POST',headers:{{'Content-Type':'application/x-www-form-urlencoded'}},body:'kind='+kind}}).catch(function(){{}});
 }}
+let hgAudioCtx=null;
+function hgChime(){{
+  try{{
+    if(!hgAudioCtx) hgAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(hgAudioCtx.state==='suspended') hgAudioCtx.resume();
+    const notes=[523.25,659.25,783.99];
+    notes.forEach(function(freq,i){{
+      const t=hgAudioCtx.currentTime+i*0.11;
+      const osc=hgAudioCtx.createOscillator();
+      const gain=hgAudioCtx.createGain();
+      osc.type='sine'; osc.frequency.value=freq;
+      gain.gain.setValueAtTime(0.0001,t);
+      gain.gain.linearRampToValueAtTime(0.25,t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001,t+0.3);
+      osc.connect(gain); gain.connect(hgAudioCtx.destination);
+      osc.start(t); osc.stop(t+0.32);
+    }});
+  }}catch(e){{}}
+}}
 function hgBuildLetters(){{
   const cGrid=document.getElementById('hg-consonant-grid'); cGrid.innerHTML='';
   const vGrid=document.getElementById('hg-vowel-grid'); vGrid.innerHTML='';
@@ -1460,9 +1479,10 @@ function hgTraceShow(){{
       const p=(e.touches&&e.touches[0])||e;
       return [p.clientX-r.left,p.clientY-r.top];
     }}
-    function start(e){{ e.preventDefault(); hgTraceDrawing=true; const[x,y]=pos(e); hgTraceCtx.beginPath(); hgTraceCtx.moveTo(x,y); }}
-    function move(e){{ if(!hgTraceDrawing)return; e.preventDefault(); const[x,y]=pos(e); hgTraceCtx.lineTo(x,y); hgTraceCtx.stroke(); }}
-    function end(e){{ if(hgTraceDrawing){{hgTraceDrawing=false; hgLog('letter');}} }}
+    let hgTraceMoveCount=0;
+    function start(e){{ e.preventDefault(); hgTraceDrawing=true; hgTraceMoveCount=0; const[x,y]=pos(e); hgTraceCtx.beginPath(); hgTraceCtx.moveTo(x,y); }}
+    function move(e){{ if(!hgTraceDrawing)return; e.preventDefault(); const[x,y]=pos(e); hgTraceCtx.lineTo(x,y); hgTraceCtx.stroke(); hgTraceMoveCount++; }}
+    function end(e){{ if(hgTraceDrawing){{hgTraceDrawing=false; hgLog('letter'); if(hgTraceMoveCount>=4) hgChime();}} }}
     cvs.addEventListener('mousedown',start); cvs.addEventListener('mousemove',move); window.addEventListener('mouseup',end);
     cvs.addEventListener('touchstart',start,{{passive:false}}); cvs.addEventListener('touchmove',move,{{passive:false}}); cvs.addEventListener('touchend',end);
   }}
