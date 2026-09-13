@@ -1130,7 +1130,7 @@ def _kid_portal(slug,child,academy_workbook=True):
         body+=f'<p class="muted" style="margin-top:10px">주황색은 {H(child)} Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'
         body+=_workbook_section(child,base)
     if slug=='hyeon':
-        body+='<div style="margin-bottom:14px"><a class="btn" href="/hyeon/hangul">🔤 한글 공부</a></div>'
+        body+='<div style="margin-bottom:14px;display:flex;gap:8px"><a class="btn" href="/hyeon/hangul">🔤 한글 공부</a><a class="btn" href="/hyeon/coloring">🎨 색칠 공부</a></div>'
     body+=_reading_section(child,base)+reading_edit_modal(base)
     if academy_workbook:
         body+=academy_modal(child)+wb_edit_modal(base)
@@ -1477,6 +1477,152 @@ hgBuildCards();
 </script>
 '''
     return page('혜온 한글 공부',body)
+
+COLORING_TEMPLATES=[
+    {'id':'cat','name':'고양이','emoji':'🐱','svg':'''
+<circle cx="150" cy="170" r="90"/>
+<polygon points="70,110 110,40 130,110"/>
+<polygon points="170,110 190,40 230,110"/>
+<circle cx="120" cy="160" r="8" fill="#2b2b2b"/>
+<circle cx="180" cy="160" r="8" fill="#2b2b2b"/>
+<polygon points="140,190 160,190 150,205"/>
+<line x1="100" y1="195" x2="40" y2="185"/>
+<line x1="100" y1="205" x2="40" y2="210"/>
+<line x1="200" y1="195" x2="260" y2="185"/>
+<line x1="200" y1="205" x2="260" y2="210"/>
+'''},
+    {'id':'dog','name':'강아지','emoji':'🐶','svg':'''
+<circle cx="150" cy="170" r="85"/>
+<ellipse cx="75" cy="165" rx="28" ry="55"/>
+<ellipse cx="225" cy="165" rx="28" ry="55"/>
+<circle cx="125" cy="160" r="8" fill="#2b2b2b"/>
+<circle cx="175" cy="160" r="8" fill="#2b2b2b"/>
+<ellipse cx="150" cy="195" rx="14" ry="10" fill="#2b2b2b"/>
+<path d="M130,210 Q150,228 170,210"/>
+'''},
+    {'id':'rabbit','name':'토끼','emoji':'🐰','svg':'''
+<circle cx="150" cy="185" r="75"/>
+<ellipse cx="120" cy="70" rx="18" ry="60"/>
+<ellipse cx="180" cy="70" rx="18" ry="60"/>
+<circle cx="125" cy="175" r="8" fill="#2b2b2b"/>
+<circle cx="175" cy="175" r="8" fill="#2b2b2b"/>
+<polygon points="140,205 160,205 150,218"/>
+'''},
+    {'id':'fish','name':'물고기','emoji':'🐟','svg':'''
+<ellipse cx="140" cy="150" rx="90" ry="55"/>
+<polygon points="230,150 285,105 285,195"/>
+<circle cx="95" cy="140" r="8" fill="#2b2b2b"/>
+<polygon points="120,100 150,55 175,100"/>
+'''},
+    {'id':'apple','name':'사과','emoji':'🍎','svg':'''
+<circle cx="150" cy="175" r="80"/>
+<path d="M130,98 Q150,112 170,98"/>
+<rect x="143" y="58" width="10" height="38"/>
+<ellipse cx="178" cy="70" rx="20" ry="10"/>
+'''},
+    {'id':'car','name':'자동차','emoji':'🚗','svg':'''
+<rect x="45" y="150" width="210" height="70" rx="20"/>
+<rect x="90" y="98" width="120" height="60" rx="15"/>
+<line x1="150" y1="98" x2="150" y2="158"/>
+<circle cx="100" cy="222" r="26"/>
+<circle cx="200" cy="222" r="26"/>
+'''},
+    {'id':'star','name':'별','emoji':'⭐','svg':'''
+<polygon points="150,40 172,118 255,118 189,165 213,245 150,195 87,245 111,165 45,118 128,118"/>
+'''},
+    {'id':'flower','name':'꽃','emoji':'🌸','svg':'''
+<line x1="150" y1="170" x2="150" y2="270"/>
+<ellipse cx="170" cy="235" rx="22" ry="12"/>
+<circle cx="150" cy="100" r="30"/>
+<circle cx="197" cy="130" r="30"/>
+<circle cx="179" cy="185" r="30"/>
+<circle cx="121" cy="185" r="30"/>
+<circle cx="103" cy="130" r="30"/>
+<circle cx="150" cy="150" r="22" fill="#2b2b2b" fill-opacity="0.08"/>
+'''},
+    {'id':'house','name':'집','emoji':'🏠','svg':'''
+<rect x="70" y="150" width="160" height="110"/>
+<polygon points="50,150 150,70 250,150"/>
+<rect x="135" y="200" width="30" height="60"/>
+<rect x="90" y="170" width="30" height="30"/>
+<rect x="180" y="170" width="30" height="30"/>
+'''},
+]
+
+@app.route('/hyeon/coloring')
+def coloring_page():
+    templates_json=json.dumps(COLORING_TEMPLATES,ensure_ascii=False)
+    colors=['#e74c3c','#f39c12','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#e84393','#8d6e63','#2b2b2b']
+    color_btns=''.join(f'<button type="button" class="cl-swatch" style="background:{c}" onclick="clSetColor(\'{c}\',this)"></button>' for c in colors)
+    picker=''.join(f'<button type="button" class="cl-pick" id="cl-pick-{t["id"]}" onclick="clSelect(\'{t["id"]}\')">{t["emoji"]}</button>' for t in COLORING_TEMPLATES)
+    body=f'''
+<style>
+.hg-topbar{{display:flex;gap:8px;margin-bottom:14px}}
+.hg-btn{{width:56px;height:56px;border-radius:16px;border:1px solid #e4e9f0;background:#fff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center}}
+.cl-picker-row{{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px}}
+.cl-pick{{flex:0 0 auto;width:56px;height:56px;border-radius:16px;border:2px solid #e4e9f0;background:#fff;font-size:28px;cursor:pointer}}
+.cl-pick.on{{border-color:#0f4c81;background:#eaf3fb}}
+.cl-canvas-wrap{{position:relative;width:100%;max-width:340px;height:340px;margin:0 auto 14px;background:#fff;border:2px solid #e4e9f0;border-radius:20px;overflow:hidden}}
+.cl-canvas{{position:absolute;inset:0;touch-action:none}}
+.cl-outline{{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}}
+.cl-outline *{{fill:none;stroke:#2b2b2b;stroke-width:5;stroke-linejoin:round;stroke-linecap:round}}
+.cl-palette{{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}}
+.cl-swatch{{width:44px;height:44px;border-radius:50%;border:2px solid #e4e9f0;cursor:pointer}}
+.cl-swatch.on{{border-color:#14263f;border-width:3px}}
+.cl-tools{{display:flex;gap:8px;justify-content:center}}
+@media(max-width:430px){{.hg-btn{{width:48px;height:48px;font-size:22px}}}}
+</style>
+<div class="hg-topbar">
+<a class="hg-btn" href="/hyeon">🏠</a>
+<button type="button" class="hg-btn" onclick="clClear()">🔄</button>
+</div>
+<div class="cl-picker-row">{picker}</div>
+<div class="cl-canvas-wrap">
+  <canvas class="cl-canvas" id="cl-canvas"></canvas>
+  <svg class="cl-outline" id="cl-outline" viewBox="0 0 300 300"></svg>
+</div>
+<div class="cl-palette">{color_btns}</div>
+<script>
+const CL_TEMPLATES={templates_json};
+let clColor='#e74c3c';
+let clCurrent=CL_TEMPLATES[0];
+let clCtx=null, clDrawing=false;
+function clSetColor(c,btn){{
+  clColor=c;
+  document.querySelectorAll('.cl-swatch').forEach(function(x){{x.classList.remove('on')}});
+  btn.classList.add('on');
+}}
+function clSelect(id){{
+  clCurrent=CL_TEMPLATES.find(function(t){{return t.id===id}})||CL_TEMPLATES[0];
+  document.querySelectorAll('.cl-pick').forEach(function(x){{x.classList.remove('on')}});
+  document.getElementById('cl-pick-'+clCurrent.id).classList.add('on');
+  document.getElementById('cl-outline').innerHTML=clCurrent.svg;
+  clClear();
+}}
+function clClear(){{ if(clCtx) clCtx.clearRect(0,0,clCtx.canvas.width,clCtx.canvas.height); }}
+function clInit(){{
+  const cvs=document.getElementById('cl-canvas');
+  const wrap=cvs.parentElement;
+  cvs.width=wrap.clientWidth; cvs.height=wrap.clientHeight;
+  clCtx=cvs.getContext('2d');
+  clCtx.lineCap='round'; clCtx.lineJoin='round'; clCtx.lineWidth=22;
+  function pos(e){{
+    const r=cvs.getBoundingClientRect();
+    const p=(e.touches&&e.touches[0])||e;
+    return [p.clientX-r.left,p.clientY-r.top];
+  }}
+  function start(e){{ e.preventDefault(); clDrawing=true; clCtx.strokeStyle=clColor; const[x,y]=pos(e); clCtx.beginPath(); clCtx.moveTo(x,y); clCtx.lineTo(x+0.1,y+0.1); clCtx.stroke(); }}
+  function move(e){{ if(!clDrawing)return; e.preventDefault(); clCtx.strokeStyle=clColor; const[x,y]=pos(e); clCtx.lineTo(x,y); clCtx.stroke(); }}
+  function end(e){{ clDrawing=false; }}
+  cvs.addEventListener('mousedown',start); cvs.addEventListener('mousemove',move); window.addEventListener('mouseup',end);
+  cvs.addEventListener('touchstart',start,{{passive:false}}); cvs.addEventListener('touchmove',move,{{passive:false}}); cvs.addEventListener('touchend',end);
+}}
+clInit();
+clSelect(CL_TEMPLATES[0].id);
+document.querySelector('.cl-swatch').classList.add('on');
+</script>
+'''
+    return page('혜온 색칠 공부',body)
 
 for rule in list(app.url_map.iter_rules()):
     if rule.rule=='/calendar': app.view_functions[rule.endpoint]=family_calendar
