@@ -1246,7 +1246,7 @@ def _status_class(s):
 
 TRANSPORT_OPTIONS=('비행기','기차','고속버스','자가용','배','기타')
 COMPANION_OPTIONS=('가족','용제','보미','지유','혜온')
-QUICK_EDIT_FIELDS=('start_date','end_date','country','region','lodging','transport','companions')
+QUICK_EDIT_FIELDS=('title','start_date','end_date','country','region','lodging','transport','companions')
 
 def _select_options(options,current):
     opts=list(options)
@@ -1276,11 +1276,7 @@ def trip_attrs(r):
 def itinerary_attrs(x):
     keys=['id','trip_id','item_date','day_label','time_text','title','place','detail','sort_order']; return ' '.join('data-'+k+'="'+H(x[k])+'"' for k in keys)
 
-def editable_trip_detail(trip_id):
-    c=db(); r=c.execute('select * from trips where id=?',(trip_id,)).fetchone(); its=c.execute('select * from itinerary where trip_id=? order by sort_order,item_date,id',(trip_id,)).fetchall(); c.close()
-    if not r: return abort(404)
-    dq=date_quality(trip_id); opts=''.join(f'<button class="date-q {"on" if dq==x else ""}" name="date_status" value="{x}">{x}</button>' for x in ('확정','대략','미정'))
-    panel=f'<div class="date-quality"><div><b>여행 날짜 정확도</b><div class="muted">확정 · 대략 · 미정으로 구분</div></div><form method="post" action="/trip/{trip_id}/date-status" class="date-q-form">{opts}</form></div>'
+def _trip_overview(r):
     back='/past' if r['status']=='완료' else '/future'
     scls=_status_class(r['status'])
     stopts=''.join(f'<option value="{H(s)}" {"selected" if r["status"]==s else ""}>{H(s)}</option>' for s in TRIP_STATUSES)
@@ -1288,6 +1284,11 @@ def editable_trip_detail(trip_id):
              f'<button class="btn" {trip_attrs(r)} onclick="et(this)">여행 정보 수정</button>'
              f'<button class="btn s" onclick="ni({r["id"]})">+ 세부 일정</button>'
              f'<form method="post" action="/trip/{r["id"]}/delete" onsubmit="return confirm(\'삭제할까요? 되돌릴 수 없습니다\')" style="display:inline-block;margin:0"><button class="btn d">삭제</button></form></div>')
+    title_card=(f'<div class="trip-edit-card"><div class="label">여행 이름</div>'
+                f'<b class="view-value" onclick="this.nextElementSibling.style.display=\'flex\';this.style.display=\'none\'">{H(r["title"])}</b>'
+                f'<form class="inline-edit" method="post" action="/trip/{r["id"]}/quick-edit">'
+                f'<input name="title" value="{H(r["title"])}" required>'
+                f'<button class="btn s" type="submit">저장</button></form></div>')
     date_card=(f'<div class="trip-edit-card"><div class="label">여행 일자</div>'
                f'<b class="view-value" onclick="this.nextElementSibling.style.display=\'flex\';this.style.display=\'none\'">{H(r["start_date"])} ~ {H(r["end_date"])}</b>'
                f'<form class="inline-edit" method="post" action="/trip/{r["id"]}/quick-edit">'
@@ -1312,8 +1313,16 @@ def editable_trip_detail(trip_id):
                      f'<form method="post" action="/trip/{r["id"]}/quick-edit">'
                      f'<select name="transport" class="status-select" onchange="this.form.submit()">{_select_options(TRANSPORT_OPTIONS,r["transport"])}</select></form></div>')
     status_card=f'<div class="trip-edit-card"><div class="label">상태</div><form method="post" action="/trip/{r["id"]}/status"><select name="status" class="status-select {scls}" onchange="this.form.submit()">{stopts}</select></form></div>'
-    cards='<div class="trip-edit-grid">'+date_card+region_card+companions_card+lodging_card+transport_card+status_card
-    cards+='</div><div class="toolbar"><h2 style="margin:0">일자별 일정</h2><button class="btn s" onclick="ni('+str(r['id'])+')">+ 일정 추가</button></div>'
+    cards='<div class="trip-edit-grid">'+title_card+date_card+region_card+companions_card+lodging_card+transport_card+status_card+'</div>'
+    return actions,cards
+
+def editable_trip_detail(trip_id):
+    c=db(); r=c.execute('select * from trips where id=?',(trip_id,)).fetchone(); its=c.execute('select * from itinerary where trip_id=? order by sort_order,item_date,id',(trip_id,)).fetchall(); c.close()
+    if not r: return abort(404)
+    dq=date_quality(trip_id); opts=''.join(f'<button class="date-q {"on" if dq==x else ""}" name="date_status" value="{x}">{x}</button>' for x in ('확정','대략','미정'))
+    panel=f'<div class="date-quality"><div><b>여행 날짜 정확도</b><div class="muted">확정 · 대략 · 미정으로 구분</div></div><form method="post" action="/trip/{trip_id}/date-status" class="date-q-form">{opts}</form></div>'
+    actions,cards=_trip_overview(r)
+    cards+='<div class="toolbar"><h2 style="margin:0">일자별 일정</h2><button class="btn s" onclick="ni('+str(r['id'])+')">+ 일정 추가</button></div>'
     if not its: cards+='<div class="trip-edit-card muted">아직 세부 일정이 없습니다.</div>'
     for x in its:
         left=' · '.join(v for v in [x['item_date'],x['day_label'],x['time_text']] if v) or '-'; cards+=f'<div class="itinerary-row"><div><b>{H(left)}</b></div><div><b>{H(x["title"])}</b>'+ (f'<br>{H(x["place"])}' if x['place'] else '') + (f'<br><span class="muted">{H(x["detail"])}</span>' if x['detail'] else '') + f'</div><div class="itinerary-actions"><button class="btn s" {itinerary_attrs(x)} onclick="ei(this)">수정</button><form method="post" action="/itinerary/{x["id"]}/delete" style="display:inline" onsubmit="return confirm(\'삭제할까요?\')"><button class="btn d">삭제</button></form></div></div>'
@@ -2688,16 +2697,10 @@ def trip_day_detail(trip_id):
     if not _trip_day_target(trip):
         return _trip_day_previous_view(trip_id)
 
-    back = '/past' if trip['status'] == '완료' else '/future'
-    actions = (f'<div class="trip-actions"><a class="btn s" href="{back}">← 여행 목록</a>'
-               f'<a class="btn" href="/trip/{trip_id}/plan">여행 준비</a></div>')
-    overview = (f'<div class="trip-overview">'
-                f'<div class="dashcard"><span class="muted">여행 일자</span><h3>{H(trip["start_date"])} ~ {H(trip["end_date"])}</h3></div>'
-                f'<div class="dashcard"><span class="muted">지역</span><h3>{H(trip["region"])}</h3></div>'
-                f'<div class="dashcard"><span class="muted">함께</span><h3>{H(trip["companions"])}</h3></div>'
-                f'</div>')
+    actions,cards=_trip_overview(trip)
+    actions=actions.replace('</div>', f'<a class="btn s" href="/trip/{trip_id}/plan">여행 준비</a></div>')
 
-    body = actions + overview + '<h2 class="sectiontitle">날짜별 일정</h2><div class="muted">날짜 카드를 누르면 도시·호텔·주요 방문지를 바로 수정할 수 있습니다.</div><div class="trip-day-grid">'
+    body = actions + cards + '<h2 class="sectiontitle">날짜별 일정</h2><div class="muted">날짜 카드를 누르면 도시·호텔·주요 방문지를 바로 수정할 수 있습니다.</div><div class="trip-day-grid">'
     if not days:
         body += '<div class="dashcard muted">날짜별 일정이 없습니다.</div>'
     for r in days:
