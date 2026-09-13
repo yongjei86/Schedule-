@@ -896,7 +896,7 @@ def riley_workbook_group_delete(gid):
     return redirect(request.referrer or '/riley')
 
 CSS+='''.reading-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.reading-card{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px}.reading-stars{color:#e9b949;font-size:14px;margin-bottom:4px;letter-spacing:1px}'''
-JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");f.action="/riley/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";o("rde")}function deleteReading(){let id=document.getElementById("rdef").dataset.id;if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
+JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");f.action="/riley/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-genre").value=d.genre||"기타";document.getElementById("rde-level").value=d.level_score||"";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";o("rde")}function deleteReading(){let id=document.getElementById("rdef").dataset.id;if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
 JS+='''document.addEventListener("DOMContentLoaded",function(){var editBtn=document.querySelector(".trip-actions button[onclick^=\\"et(this)\\"]");var h1=document.querySelector(".hero h1");if(editBtn&&h1){h1.style.cursor="pointer";h1.title="클릭하여 여행 이름 수정";h1.onclick=function(){et(editBtn)}}})'''
 
 def _init_reading_schema():
@@ -909,10 +909,16 @@ def _init_reading_schema():
       summary TEXT,
       created_at TEXT NOT NULL
     )''')
+    cols={r['name'] for r in c.execute('PRAGMA table_info(riley_reading)')}
+    if 'genre' not in cols:
+        c.execute('ALTER TABLE riley_reading ADD COLUMN genre TEXT')
+    if 'level_score' not in cols:
+        c.execute('ALTER TABLE riley_reading ADD COLUMN level_score TEXT')
     c.commit(); c.close()
 _init_reading_schema()
 
 READING_LANGS=('한글','영어')
+READING_GENRES=('동화','그림책','과학','역사','전래동화','만화','위인전','창작','기타')
 
 def _reading_rows():
     c=db(); rows=[dict(x) for x in c.execute('select * from riley_reading order by id desc').fetchall()]; c.close(); return rows
@@ -923,12 +929,14 @@ def _stars(n):
 
 def reading_edit_modal():
     lang_opts=''.join(f'<option value="{l}">{l}</option>' for l in READING_LANGS)
+    genre_opts=''.join(f'<option value="{g}">{g}</option>' for g in READING_GENRES)
     star_opts=''.join(f'<option value="{i}">{"★"*i}</option>' for i in range(5,0,-1))
-    return f'''<div class="modal" id="rde"><div class="card"><div class="head"><h2>독서 기록 수정</h2><button class="btn s" onclick="x('rde')">닫기</button></div><form class="form" id="rdef" method="post"><label class="full">책 제목<input name="title" id="rde-title" required></label><label>언어<select name="language" id="rde-lang">{lang_opts}</select></label><label>별점<select name="rating" id="rde-rating">{star_opts}</select></label><label class="full">한줄 요약/소감<input name="summary" id="rde-summary"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteReading()">삭제</button></div></form></div></div>'''
+    return f'''<div class="modal" id="rde"><div class="card"><div class="head"><h2>독서 기록 수정</h2><button class="btn s" onclick="x('rde')">닫기</button></div><form class="form" id="rdef" method="post"><label class="full">책 제목<input name="title" id="rde-title" required></label><label>언어<select name="language" id="rde-lang">{lang_opts}</select></label><label>장르<select name="genre" id="rde-genre">{genre_opts}</select></label><label>별점<select name="rating" id="rde-rating">{star_opts}</select></label><label>SR/렉사일 지수<input name="level_score" id="rde-level" placeholder="예: SR 3.5, Lexile 650L"></label><label class="full">한줄 요약/소감<input name="summary" id="rde-summary"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteReading()">삭제</button></div></form></div></div>'''
 
 def _reading_section():
     rows=_reading_rows()
     lang_opts=''.join(f'<option value="{l}">{l}</option>' for l in READING_LANGS)
+    genre_opts=''.join(f'<option value="{g}">{g}</option>' for g in READING_GENRES)
     star_opts=''.join(f'<option value="{i}">{"★"*i}</option>' for i in range(5,0,-1))
     body=(f'<section class="feature-card" style="margin-top:14px">'
           f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">지유 Riley 독서 DB · {len(rows)}권</h2>'
@@ -936,7 +944,9 @@ def _reading_section():
           '<form method="post" action="/riley/reading/add" class="task-form" id="rd-add" style="display:none">'
           '<label class="task-title">책 제목<input name="title" required placeholder="예: 흥부와 놀부"></label>'
           f'<label>언어<select name="language">{lang_opts}</select></label>'
+          f'<label>장르<select name="genre">{genre_opts}</select></label>'
           f'<label>별점<select name="rating">{star_opts}</select></label>'
+          '<label>SR/렉사일 지수<input name="level_score" placeholder="예: SR 3.5, Lexile 650L"></label>'
           '<label class="full">한줄 요약/소감<input name="summary" placeholder="느낀 점 등"></label>'
           '<button class="btn">추가</button></form>'
           '<div class="reading-grid" style="margin-top:10px">')
@@ -945,10 +955,11 @@ def _reading_section():
     for r in rows:
         stars=_stars(r['rating'])
         summary=f'<div class="feature-meta">{H(r["summary"])}</div>' if r['summary'] else ''
-        dat=f'data-id="{r["id"]}" data-title="{H(r["title"])}" data-language="{H(r["language"] or "")}" data-rating="{r["rating"] or 0}" data-summary="{H(r["summary"] or "")}"'
+        meta=' · '.join(v for v in [r['language'],r['genre'],r['level_score']] if v) or '-'
+        dat=f'data-id="{r["id"]}" data-title="{H(r["title"])}" data-language="{H(r["language"] or "")}" data-genre="{H(r["genre"] or "")}" data-level_score="{H(r["level_score"] or "")}" data-rating="{r["rating"] or 0}" data-summary="{H(r["summary"] or "")}"'
         body+=(f'<div class="reading-card" style="cursor:pointer" {dat} onclick="editReading(this)">'
                f'<div class="reading-stars">{stars}</div><b>{H(r["title"])}</b>'
-               f'<div class="muted">{H(r["language"]) or "-"}</div>{summary}</div>')
+               f'<div class="muted">{H(meta)}</div>{summary}</div>')
     body+='</div></section>'
     return body
 
@@ -957,11 +968,13 @@ def riley_reading_add():
     title=(request.form.get('title') or '').strip()
     if title:
         language=(request.form.get('language') or '').strip()
+        genre=(request.form.get('genre') or '').strip()
+        level_score=(request.form.get('level_score') or '').strip()
         try: rating=int(request.form.get('rating') or 0)
         except ValueError: rating=0
         rating=max(0,min(5,rating))
         summary=(request.form.get('summary') or '').strip()
-        c=db(); c.execute('insert into riley_reading(title,language,rating,summary,created_at) values(?,?,?,?,?)',(title,language,rating,summary,datetime.now().isoformat(timespec='seconds'))); c.commit(); c.close()
+        c=db(); c.execute('insert into riley_reading(title,language,genre,level_score,rating,summary,created_at) values(?,?,?,?,?,?,?)',(title,language,genre,level_score,rating,summary,datetime.now().isoformat(timespec='seconds'))); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/reading/<int:i>/edit',methods=['POST'])
@@ -969,11 +982,13 @@ def riley_reading_edit(i):
     title=(request.form.get('title') or '').strip()
     if title:
         language=(request.form.get('language') or '').strip()
+        genre=(request.form.get('genre') or '').strip()
+        level_score=(request.form.get('level_score') or '').strip()
         try: rating=int(request.form.get('rating') or 0)
         except ValueError: rating=0
         rating=max(0,min(5,rating))
         summary=(request.form.get('summary') or '').strip()
-        c=db(); c.execute('update riley_reading set title=?,language=?,rating=?,summary=? where id=?',(title,language,rating,summary,i)); c.commit(); c.close()
+        c=db(); c.execute('update riley_reading set title=?,language=?,genre=?,level_score=?,rating=?,summary=? where id=?',(title,language,genre,level_score,rating,summary,i)); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/reading/<int:i>/delete',methods=['POST'])
