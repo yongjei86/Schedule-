@@ -1219,7 +1219,10 @@ def hangul_page():
 .hg-combine-row.pick{{grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}}
 .hg-pick{{aspect-ratio:1;border-radius:14px;border:2px solid #e4e9f0;background:#fff;font-size:26px;font-weight:900;color:#0f4c81;cursor:pointer}}
 .hg-pick.sel{{background:#0f4c81;color:#fff}}
-.hg-combine-result{{display:flex;align-items:center;justify-content:center;height:180px;background:#fff;border:2px dashed #d7dfe8;border-radius:20px;font-size:96px;font-weight:900;color:#0f4c81;margin:14px 0}}
+.hg-combine-eq{{text-align:center;font-size:22px;font-weight:800;color:#748196;min-height:28px}}
+.hg-combine-result{{display:flex;align-items:center;justify-content:center;height:180px;background:#fff;border:2px dashed #d7dfe8;border-radius:20px;font-size:96px;font-weight:900;color:#0f4c81;margin:8px 0}}
+.hg-combine-word{{display:flex;align-items:center;justify-content:center;gap:10px;font-size:26px;font-weight:800;color:#14263f;margin-bottom:14px}}
+.hg-combine-word span:first-child{{font-size:44px}}
 .hg-trace-toolbar{{display:flex;gap:8px;justify-content:center;margin-bottom:12px}}
 .hg-trace-wrap{{position:relative;width:100%;max-width:320px;height:320px;margin:0 auto;background:#fff;border:2px solid #e4e9f0;border-radius:20px;overflow:hidden}}
 .hg-trace-guide{{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:220px;font-weight:900;color:#e4e9f0;user-select:none}}
@@ -1240,7 +1243,9 @@ def hangul_page():
   <div class="hg-letter-section"><h3>모음</h3><div class="hg-letter-grid" id="hg-vowel-grid"></div></div>
 </div>
 <div id="hg-combine" style="display:none">
+  <div class="hg-combine-eq" id="hg-combine-eq">&nbsp;</div>
   <div class="hg-combine-result" id="hg-combine-result">?</div>
+  <div class="hg-combine-word" id="hg-combine-word" style="display:none"><span id="hg-combine-emoji"></span><span id="hg-combine-wordtext"></span></div>
   <div class="hg-letter-section"><h3>자음</h3><div class="hg-combine-row pick" id="hg-combine-cons"></div></div>
   <div class="hg-letter-section"><h3>모음</h3><div class="hg-combine-row pick" id="hg-combine-vowel"></div></div>
 </div>
@@ -1367,16 +1372,35 @@ function hgBuildCombine(){{
     vowelGrid.appendChild(b);
   }});
 }}
+const HG_SYLLABLE_WORDS={{
+  '가':['가방','🎒'],'나':['나비','🦋'],'다':['다리','🦵'],'라':['라면','🍜'],'마':['마이크','🎤'],
+  '바':['바나나','🍌'],'사':['사과','🍎'],'아':['아기','👶'],'자':['자동차','🚗'],'차':['차','🚙'],
+  '카':['카메라','📷'],'타':['타조','🐦'],'파':['파리','🪰'],'하':['하마','🦛']
+}};
 function hgTryCombine(){{
   const c=hgCombine.cons, v=hgCombine.vowel;
+  const eq=document.getElementById('hg-combine-eq');
   const out=document.getElementById('hg-combine-result');
+  const wordBox=document.getElementById('hg-combine-word');
+  wordBox.style.display='none';
   if(c&&v!==null&&v!==undefined&&HG_CONS_IDX[c]!==undefined&&HG_VOWEL_IDX[v]!==undefined){{
     const code=0xAC00+HG_CONS_IDX[c]*588+HG_VOWEL_IDX[v]*28;
     const syll=String.fromCharCode(code);
+    eq.textContent=c+' + '+v;
     out.textContent=syll;
-    hgSpeak(syll);
+    hgSpeak(syll+'!');
     hgLog('letter');
+    const wordData=HG_SYLLABLE_WORDS[syll];
+    if(wordData){{
+      setTimeout(function(){{
+        document.getElementById('hg-combine-emoji').textContent=wordData[1];
+        document.getElementById('hg-combine-wordtext').textContent=wordData[0];
+        wordBox.style.display='flex';
+        hgSpeak(syll+', '+wordData[0]+'!');
+      }},600);
+    }}
   }} else {{
+    eq.innerHTML='&nbsp;';
     out.textContent=(c||'')+(v||'')||'?';
   }}
 }}
