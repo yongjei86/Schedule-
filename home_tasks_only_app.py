@@ -53,7 +53,7 @@ JS+='''function showEventDetail(el){let d=el.dataset;document.getElementById("ed
 CSS+='''.fab-group{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:20}.fab{width:46px;height:46px;border-radius:50%;background:#0f4c81;color:#fff;border:0;font-size:20px;line-height:1;cursor:pointer;box-shadow:0 4px 14px #0f4c8155;display:flex;align-items:center;justify-content:center;transition:transform .12s ease,box-shadow .12s ease}.fab:hover{box-shadow:0 6px 18px #0f4c8166;transform:translateY(-1px)}.fab:active{transform:scale(.94)}@media(max-width:560px){.fab-group{right:14px;bottom:14px;gap:8px}.fab{width:42px;height:42px;font-size:18px}}'''
 CSS+='''.fm-event,.event-chip{cursor:pointer}.fm-event:hover,.event-chip:hover{filter:brightness(0.96)}'''
 CSS+='''.day-checks{display:flex;gap:8px;flex-wrap:wrap}.day-check{display:flex;align-items:center;gap:4px;width:auto;font-size:12px;color:#14263f}.day-check input{width:auto}'''
-JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\\"days\\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;let base=d.base||document.getElementById("wbef").dataset.base||"/riley";document.getElementById("wbef").action=base+"/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbef").dataset.base=base;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";document.getElementById("wbe-color").value=d.color||"#0f4c81";document.getElementById("wbe-done").checked=d.done==="1";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\\"days\\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let f0=document.getElementById("wbef");let gid=f0.dataset.gid;let base=f0.dataset.base||"/riley";if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}'''
+JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\\"days\\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;let base=d.base||document.getElementById("wbef").dataset.base||"/riley";document.getElementById("wbef").action=base+"/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbef").dataset.base=base;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";document.getElementById("wbe-color").value=d.color||"#0f4c81";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\\"days\\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let f0=document.getElementById("wbef");let gid=f0.dataset.gid;let base=f0.dataset.base||"/riley";if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}let wbEditMode=false;function wbToggleEditMode(btn){wbEditMode=!wbEditMode;btn.classList.toggle("on",wbEditMode)}function wbItemClick(el){if(wbEditMode){editWb(el);return}let f=document.createElement("form");f.method="post";f.action=(el.dataset.base||"/riley")+"/workbook/"+el.dataset.id+"/toggle";document.body.appendChild(f);f.submit()}'''
 CSS+='''.person-filter{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}.pf{border:1px solid #d7dfe8;background:#fff;color:#5c6b80;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;text-decoration:none;transition:all .12s ease}.pf:hover{border-color:#0f4c81;color:#0f4c81}.pf.on{color:#fff;border-color:transparent}.pf.on.yj{background:#315c9b}.pf.on.지유{background:#e98755}.pf.on.보미{background:#9a66ad}.pf.on.혜온{background:#46a081}.pf.on.가족{background:#c99a35}.pf.on.여행{background:#d64f5b}.pf.on:not(.yj):not(.지유):not(.보미):not(.혜온):not(.가족):not(.여행){background:#14263f}'''
 CSS+='''.view-value{cursor:pointer;display:block}.view-value:hover{color:#0f4c81}.inline-edit{display:none;flex-direction:column;gap:6px;margin-top:2px}.inline-edit input{padding:7px 9px;border:1px solid #d5dde7;border-radius:8px;font:inherit;font-size:13px}'''
 CSS+='''.future-card{display:block;color:inherit;text-decoration:none}.status-form{margin-top:8px}.status-select{width:100%;border:1px solid #d7dfe8;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:#eef2f6;color:#5c6b80}.status-select.planned{background:#e8f6ee;color:#1f7a4d;border-color:#bfe4cd}.status-select.review{background:#fff3e0;color:#b5680a;border-color:#f3d9ab}.status-select.longterm{background:#f1ecfb;color:#6a4fb0;border-color:#dccdf5}.status-select.done{background:#eef2f6;color:#5c6b80;border-color:#dfe6ee}.status-badge{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:#eef2f6;color:#5c6b80}.status-badge.planned{background:#e8f6ee;color:#1f7a4d}.status-badge.review{background:#fff3e0;color:#b5680a}.status-badge.longterm{background:#f1ecfb;color:#6a4fb0}.status-badge.done{background:#eef2f6;color:#5c6b80}'''
@@ -873,22 +873,17 @@ def _day_checkboxes():
     return boxes
 
 def wb_edit_modal(base='/riley'):
-    return f'''<div class="modal" id="wbe"><div class="card"><div class="head"><h2>문제집 수정</h2><button class="btn s" onclick="x('wbe')">닫기</button></div><form class="form" id="wbef" method="post" data-base="{H(base)}"><label class="full">문제집/과제<input name="title" id="wbe-title" required></label><label class="full">요일 (여러 개 선택 가능)<div class="day-checks" id="wbe-days">{_day_checkboxes()}</div></label><label>메모<input name="notes" id="wbe-notes"></label><label>색상<input type="color" name="color" id="wbe-color" value="#0f4c81"></label><label class="full"><input type="checkbox" name="done" id="wbe-done" style="width:auto;display:inline-block;margin-right:6px">완료 처리 (처음 완료 시 크레딧 1개 적립)</label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteWb()">삭제</button></div></form></div></div>'''
+    return f'''<div class="modal" id="wbe"><div class="card"><div class="head"><h2>문제집 수정</h2><button class="btn s" onclick="x('wbe')">닫기</button></div><form class="form" id="wbef" method="post" data-base="{H(base)}"><label class="full">문제집/과제<input name="title" id="wbe-title" required></label><label class="full">요일 (여러 개 선택 가능)<div class="day-checks" id="wbe-days">{_day_checkboxes()}</div></label><label>메모<input name="notes" id="wbe-notes"></label><label>색상<input type="color" name="color" id="wbe-color" value="#0f4c81"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteWb()">삭제</button></div></form></div></div>'''
 
 def _wb_attrs(r, group_days, base):
     days=','.join(d for d in DAYS if d in group_days.get(r['group_id'], set()))
-    return f'data-gid="{H(r["group_id"])}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-days="{H(days)}" data-color="{H(r["color"] or "")}" data-base="{H(base)}" data-done="{1 if r["done"] else 0}"'
+    return f'data-id="{r["id"]}" data-gid="{H(r["group_id"])}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-days="{H(days)}" data-color="{H(r["color"] or "")}" data-base="{H(base)}"'
 
 def _wb_item(r, group_days, base):
     cls=' task-done' if r['done'] else ''
     meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
     style=f'border-left:4px solid {H(r["color"])}' if r['color'] else ''
-    return (f'<div class="lesson-row">'
-            f'<form method="post" action="{base}/workbook/group/{H(r["group_id"])}/toggle" style="flex:1;min-width:0">'
-            f'<button type="submit" class="lesson-toggle" style="{style}"><b class="{cls}">{H(r["title"])}</b>{meta}</button>'
-            f'</form>'
-            f'<button type="button" class="btn s lesson-edit" {_wb_attrs(r,group_days,base)} onclick="editWb(this)">수정</button>'
-            f'</div>')
+    return f'<button type="button" class="lesson-toggle" style="{style}" {_wb_attrs(r,group_days,base)} onclick="wbItemClick(this)"><b class="{cls}">{H(r["title"])}</b>{meta}</button>'
 
 def _workbook_section(child='지유', base='/riley'):
     rows=_workbook_rows(child)
@@ -902,7 +897,10 @@ def _workbook_section(child='지유', base='/riley'):
     today_day=DAYS[datetime.now(KST).date().weekday()]
     body=(f'<section class="feature-card" style="margin-top:14px">'
           f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">{H(child)} 문제집 체크리스트 · 미완료 {open_n}건</h2>'
-          '<button type="button" class="btn s" onclick="let f=document.getElementById(\'wb-add\');f.style.display=f.style.display===\'none\'?\'grid\':\'none\'">+ 추가</button></div>'
+          '<div style="display:flex;gap:6px">'
+          '<button type="button" class="btn s" onclick="let f=document.getElementById(\'wb-add\');f.style.display=f.style.display===\'none\'?\'grid\':\'none\'">+ 추가</button>'
+          '<button type="button" class="btn s" onclick="wbToggleEditMode(this)">수정</button>'
+          '</div></div>'
           f'<form method="post" action="{base}/workbook/add" class="task-form" id="wb-add" style="display:none">'
           f'<input type="hidden" name="child" value="{H(child)}">'
           '<label class="task-title">문제집/과제<input name="title" required placeholder="예: 디딤돌 수학 3단원"></label>'
@@ -947,20 +945,19 @@ def riley_workbook_add():
         c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
-@app.route('/riley/workbook/group/<gid>/toggle',methods=['POST'])
-@app.route('/hyeon/workbook/group/<gid>/toggle',methods=['POST'])
-def riley_workbook_group_toggle(gid):
+@app.route('/riley/workbook/<int:wid>/toggle',methods=['POST'])
+@app.route('/hyeon/workbook/<int:wid>/toggle',methods=['POST'])
+def riley_workbook_toggle(wid):
     c=db()
-    rows=c.execute('select title,child,credited,done from riley_workbooks where group_id=? limit 1',(gid,)).fetchall()
-    if rows:
-        r=rows[0]
-        child=r['child'] or '지유'
-        credited=r['credited']
-        new_done=0 if r['done'] else 1
+    row=c.execute('select id,title,child,credited,done from riley_workbooks where id=?',(wid,)).fetchone()
+    if row:
+        child=row['child'] or '지유'
+        credited=row['credited']
+        new_done=0 if row['done'] else 1
         if new_done and not credited:
-            _award_credit(child,_credit_rate('workbook'),f'문제집 완료: {r["title"]}')
+            _award_credit(child,_credit_rate('workbook'),f'문제집 완료: {row["title"]}')
             credited=1
-        c.execute('update riley_workbooks set done=?,credited=? where group_id=?',(new_done,credited,gid))
+        c.execute('update riley_workbooks set done=?,credited=? where id=?',(new_done,credited,wid))
         c.commit()
     c.close()
     return redirect(request.referrer or '/riley')
@@ -971,21 +968,19 @@ def riley_workbook_group_edit(gid):
     title=(request.form.get('title') or '').strip()
     if title:
         c=db()
-        existing=c.execute('select child,credited from riley_workbooks where group_id=? limit 1',(gid,)).fetchone()
-        child=existing['child'] if existing else '지유'
-        credited=existing['credited'] if existing else 0
+        existing_rows=c.execute('select day_of_week,done,credited,child from riley_workbooks where group_id=?',(gid,)).fetchall()
+        child=existing_rows[0]['child'] if existing_rows else '지유'
+        prev_state={r['day_of_week']:(r['done'],r['credited']) for r in existing_rows}
         notes=(request.form.get('notes') or '').strip()
         color=(request.form.get('color') or '').strip()
-        done=1 if request.form.get('done') else 0
         days=[d for d in request.form.getlist('days') if d in DAYS]
-        if done and not credited:
-            _award_credit(child,_credit_rate('workbook'),f'문제집 완료: {title}')
-            credited=1
         c.execute('delete from riley_workbooks where group_id=?',(gid,))
         if days:
             for d in days:
+                done,credited=prev_state.get(d,(0,0))
                 c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child,credited) values(?,?,?,?,?,?,?,?,?)',(title,notes,d,done,datetime.now().isoformat(timespec='seconds'),gid,color,child,credited))
         else:
+            done,credited=prev_state.get('',(0,0))
             c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child,credited) values(?,?,?,?,?,?,?,?,?)',(title,notes,'',done,datetime.now().isoformat(timespec='seconds'),gid,color,child,credited))
         c.commit(); c.close()
     return redirect(request.referrer or '/riley')
@@ -3017,10 +3012,9 @@ CSS += '''
 .feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.feature-card{background:#fff;border:1px solid #e4e9f0;border-radius:15px;padding:14px}.feature-card h2,.feature-card h3{margin:0 0 10px}.feature-list{display:grid;gap:7px}.feature-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #edf1f5}.feature-row:last-child{border-bottom:0}.feature-meta{font-size:11px;color:#748196;margin-top:3px}.feature-badge{font-size:11px;font-weight:800;border-radius:999px;padding:4px 7px;background:#eef3f8;color:#5e7186;white-space:nowrap}.feature-alert{background:#fff5e8;border:1px solid #f1d3a7;color:#8a5a14;border-radius:11px;padding:9px 10px;margin:7px 0;font-size:12px}.task-done{text-decoration:line-through;color:#9aa5b2}.task-actions{display:flex;gap:5px;align-items:center}.task-form{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:7px;align-items:end}.task-form input,.task-form select{min-width:0}.plan-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.plan-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.plan-stat{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:11px}.plan-stat b{font-size:20px;display:block}.plan-section{background:#fff;border:1px solid #e4e9f0;border-radius:15px;padding:14px;margin:10px 0}.plan-section h2{margin:0 0 10px}.plan-form{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;align-items:end}.plan-form .wide{grid-column:span 2}.plan-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 0;border-bottom:1px solid #edf1f5}.plan-row:last-child{border-bottom:0}.trip-plan-link{margin-left:6px}
 @media(max-width:800px){.feature-grid{grid-template-columns:1fr}.task-form{grid-template-columns:1fr 1fr}.task-form .task-title{grid-column:1/-1}.plan-summary{grid-template-columns:1fr 1fr}.plan-form{grid-template-columns:1fr 1fr}.plan-form .wide{grid-column:1/-1}}
 @media(max-width:480px){.task-form,.plan-form{grid-template-columns:1fr}.task-form .task-title,.plan-form .wide{grid-column:1}.plan-summary{grid-template-columns:1fr 1fr}}
-.lesson-row{display:flex;gap:6px;align-items:stretch;margin-bottom:7px}
-.lesson-toggle{flex:1;min-width:0;text-align:left;background:#eaf3fb;border:0;border-radius:9px;padding:8px;font:inherit;font-size:12px;cursor:pointer;color:inherit}
+.lesson-toggle{display:block;width:100%;text-align:left;background:#eaf3fb;border:0;border-radius:9px;padding:8px;font:inherit;font-size:12px;cursor:pointer;color:inherit;margin-bottom:7px}
 .lesson-toggle b{display:block;margin-bottom:3px}
-.lesson-edit{flex:0 0 auto;align-self:stretch;font-size:11px;padding:0 10px}
+.btn.on{background:#0f4c81;color:#fff;border-color:#0f4c81}
 '''
 
 
