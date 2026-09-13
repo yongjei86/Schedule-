@@ -35,46 +35,6 @@ for day in ('화','목'):
  if not exists:
   c.execute("INSERT INTO academy(day_of_week,start_time,end_time,academy,subject,location,notes,active) VALUES(?,?,?,?,?,?,?,1)",(day,'21:00','','화상영어','영어','',''))
 
-# Riley reading DB: keep the app schema compatible and seed only confirmed reads.
-c.execute('''CREATE TABLE IF NOT EXISTS riley_reading(
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- title TEXT NOT NULL,
- language TEXT,
- rating INTEGER DEFAULT 0,
- summary TEXT,
- created_at TEXT NOT NULL,
- genre TEXT,
- level_score TEXT
-)''')
-rcols=columns('riley_reading')
-if 'genre' not in rcols:
- c.execute('ALTER TABLE riley_reading ADD COLUMN genre TEXT')
-if 'level_score' not in rcols:
- c.execute('ALTER TABLE riley_reading ADD COLUMN level_score TEXT')
-
-READING_SEED=[
- ('The Miraculous Journey of Edward Tulane','영어','창작','SR 4.4 · Lexile 700L'),
- ("Charlotte's Web",'영어','창작','SR 4.4 · Lexile 680L'),
- ('Shiloh','영어','창작','SR 4.4 · Lexile 890L'),
- ('Holes','영어','창작','SR 4.6 · Lexile 660L'),
- ('The Breadwinner','영어','역사','SR 4.5 · Lexile 710L'),
- ('Turtle in Paradise','영어','역사','SR 3.7 · Lexile 610L'),
- ('The Worst Witch','영어','창작','SR 5.4 · Lexile 890L'),
- ('The Phoenix of Destiny','영어','창작','SR 4.8 · Lexile 690L'),
- ('The Magic Finger','영어','창작','SR 3.1 · Lexile 560L'),
- ('The Giraffe and the Pelly and Me','영어','창작','SR 4.7 · Lexile 840L'),
- ('The Twits','영어','창작','SR 4.4 · Lexile 750L'),
- ("My Father's Dragon",'영어','창작','SR 5.6 · Lexile 970L'),
- ('The Bad Beginning','영어','창작','SR 6.4 · Lexile 1010L'),
- ('Diary of a Wimpy Kid','영어','창작','SR 5.2 · Lexile 950L'),
- ('고양이 해결사 깜냥','한글','창작',''),
- ('오무라이스 잼잼','한글','만화','')
-]
-now='2026-09-13T15:30:00'
-for title,language,genre,level_score in READING_SEED:
- exists=c.execute('SELECT 1 FROM riley_reading WHERE title=? LIMIT 1',(title,)).fetchone()
- if not exists:
-  c.execute('INSERT INTO riley_reading(title,language,genre,level_score,rating,summary,created_at) VALUES(?,?,?,?,0,?,?)',(title,language,genre,level_score,'',now))
-
 c.commit(); c.close()
+import seed_riley_reading
 print('SQLite schema ready:',DB)
