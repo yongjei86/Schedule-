@@ -41,6 +41,9 @@ def _init_academy_color_schema():
     cols={r['name'] for r in c.execute('PRAGMA table_info(academy)')}
     if 'color' not in cols:
         c.execute('ALTER TABLE academy ADD COLUMN color TEXT')
+    if 'child' not in cols:
+        c.execute('ALTER TABLE academy ADD COLUMN child TEXT')
+    c.execute("update academy set child='지유' where child is null or child=''")
     c.commit(); c.close()
 _init_academy_color_schema()
 
@@ -50,7 +53,7 @@ JS+='''function showEventDetail(el){let d=el.dataset;document.getElementById("ed
 CSS+='''.fab-group{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:20}.fab{width:46px;height:46px;border-radius:50%;background:#0f4c81;color:#fff;border:0;font-size:20px;line-height:1;cursor:pointer;box-shadow:0 4px 14px #0f4c8155;display:flex;align-items:center;justify-content:center;transition:transform .12s ease,box-shadow .12s ease}.fab:hover{box-shadow:0 6px 18px #0f4c8166;transform:translateY(-1px)}.fab:active{transform:scale(.94)}@media(max-width:560px){.fab-group{right:14px;bottom:14px;gap:8px}.fab{width:42px;height:42px;font-size:18px}}'''
 CSS+='''.fm-event,.event-chip{cursor:pointer}.fm-event:hover,.event-chip:hover{filter:brightness(0.96)}'''
 CSS+='''.day-checks{display:flex;gap:8px;flex-wrap:wrap}.day-check{display:flex;align-items:center;gap:4px;width:auto;font-size:12px;color:#14263f}.day-check input{width:auto}'''
-JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\\"days\\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;document.getElementById("wbef").action="/riley/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";document.getElementById("wbe-color").value=d.color||"#0f4c81";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\\"days\\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let gid=document.getElementById("wbef").dataset.gid;if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}'''
+JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\\"days\\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;let base=d.base||document.getElementById("wbef").dataset.base||"/riley";document.getElementById("wbef").action=base+"/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbef").dataset.base=base;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";document.getElementById("wbe-color").value=d.color||"#0f4c81";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\\"days\\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let f0=document.getElementById("wbef");let gid=f0.dataset.gid;let base=f0.dataset.base||"/riley";if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}'''
 CSS+='''.person-filter{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}.pf{border:1px solid #d7dfe8;background:#fff;color:#5c6b80;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;text-decoration:none;transition:all .12s ease}.pf:hover{border-color:#0f4c81;color:#0f4c81}.pf.on{color:#fff;border-color:transparent}.pf.on.yj{background:#315c9b}.pf.on.지유{background:#e98755}.pf.on.보미{background:#9a66ad}.pf.on.혜온{background:#46a081}.pf.on.가족{background:#c99a35}.pf.on.여행{background:#d64f5b}.pf.on:not(.yj):not(.지유):not(.보미):not(.혜온):not(.가족):not(.여행){background:#14263f}'''
 CSS+='''.view-value{cursor:pointer;display:block}.view-value:hover{color:#0f4c81}.inline-edit{display:none;flex-direction:column;gap:6px;margin-top:2px}.inline-edit input{padding:7px 9px;border:1px solid #d5dde7;border-radius:8px;font:inherit;font-size:13px}'''
 CSS+='''.future-card{display:block;color:inherit;text-decoration:none}.status-form{margin-top:8px}.status-select{width:100%;border:1px solid #d7dfe8;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:#eef2f6;color:#5c6b80}.status-select.planned{background:#e8f6ee;color:#1f7a4d;border-color:#bfe4cd}.status-select.review{background:#fff3e0;color:#b5680a;border-color:#f3d9ab}.status-select.longterm{background:#f1ecfb;color:#6a4fb0;border-color:#dccdf5}.status-select.done{background:#eef2f6;color:#5c6b80;border-color:#dfe6ee}.status-badge{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:#eef2f6;color:#5c6b80}.status-badge.planned{background:#e8f6ee;color:#1f7a4d}.status-badge.review{background:#fff3e0;color:#b5680a}.status-badge.longterm{background:#f1ecfb;color:#6a4fb0}.status-badge.done{background:#eef2f6;color:#5c6b80}'''
@@ -193,10 +196,14 @@ def eve(i):must();c=db();v=[request.form.get(k,'') for k in ef];c.execute('updat
 @app.route('/event/<int:i>/delete',methods=['POST'])
 def evd(i):must();c=db();c.execute('delete from calendar_events where id=?',(i,));c.commit();c.close();return redirect(request.referrer or '/calendar')
 af=['day_of_week','start_time','end_time','academy','subject','location','notes','color']
+def _academy_form_values():
+    v=[request.form.get(k,'') for k in af]
+    child=(request.form.get('child') or '지유').strip()
+    return v+[child]
 @app.route('/academy/add',methods=['POST'])
-def aa():must();c=db();v=[request.form.get(k,'') for k in af];c.execute('insert into academy('+','.join(af)+',active) values('+','.join('?'*len(v))+',1)',v);c.commit();c.close();return redirect(request.referrer or '/riley')
+def aa():must();c=db();v=_academy_form_values();c.execute('insert into academy('+','.join(af)+',child,active) values('+','.join('?'*len(v))+',1)',v);c.commit();c.close();return redirect(request.referrer or '/riley')
 @app.route('/academy/<int:i>/edit',methods=['POST'])
-def ae(i):must();c=db();v=[request.form.get(k,'') for k in af];c.execute('update academy set '+','.join(k+'=?' for k in af)+' where id=?',v+[i]);c.commit();c.close();return redirect(request.referrer or '/riley')
+def ae(i):must();c=db();v=_academy_form_values();c.execute('update academy set '+','.join(k+'=?' for k in af+['child'])+' where id=?',v+[i]);c.commit();c.close();return redirect(request.referrer or '/riley')
 @app.route('/academy/<int:i>/delete',methods=['POST'])
 def ad(i):must();c=db();c.execute('delete from academy where id=?',(i,));c.commit();c.close();return redirect(request.referrer or '/riley')
 @app.route('/health')
@@ -777,9 +784,9 @@ def family_calendar():
     return page('가족 달력', summary+toolbar+legend+cal+all_list)
 
 
-def academy_modal():
+def academy_modal(child='지유'):
     opts=''.join(f'<option>{d}</option>' for d in DAYS)+ '<option>미정</option>'
-    return f'''<div class="modal" id="am"><div class="card"><div class="head"><h2>지유 일정 추가/수정</h2><button class="btn s" onclick="x('am')">닫기</button></div><form class="form" id="af" method="post"><label>요일<select name="day_of_week">{opts}</select></label><label>시작 시간<input type="time" name="start_time"></label><label>종료 시간<input type="time" name="end_time"></label><label>학원/일정명<input name="academy" required></label><label>과목<input name="subject"></label><label>장소<input name="location"></label><label>색상<input type="color" name="color" value="#e98755"></label><label class="full">메모<textarea name="notes"></textarea></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" id="am-delete" style="display:none" onclick="deleteAcademy()">삭제</button></div></form></div></div>'''
+    return f'''<div class="modal" id="am"><div class="card"><div class="head"><h2>{H(child)} 일정 추가/수정</h2><button class="btn s" onclick="x('am')">닫기</button></div><form class="form" id="af" method="post"><input type="hidden" name="child" value="{H(child)}"><label>요일<select name="day_of_week">{opts}</select></label><label>시작 시간<input type="time" name="start_time"></label><label>종료 시간<input type="time" name="end_time"></label><label>학원/일정명<input name="academy" required></label><label>과목<input name="subject"></label><label>장소<input name="location"></label><label>색상<input type="color" name="color" value="#e98755"></label><label class="full">메모<textarea name="notes"></textarea></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" id="am-delete" style="display:none" onclick="deleteAcademy()">삭제</button></div></form></div></div>'''
 
 def _init_riley_workbook_schema():
     c=db()
@@ -798,27 +805,30 @@ def _init_riley_workbook_schema():
         c.execute('ALTER TABLE riley_workbooks ADD COLUMN group_id TEXT')
     if 'color' not in cols:
         c.execute('ALTER TABLE riley_workbooks ADD COLUMN color TEXT')
+    if 'child' not in cols:
+        c.execute('ALTER TABLE riley_workbooks ADD COLUMN child TEXT')
     c.execute("update riley_workbooks set group_id='g'||id where group_id is null or group_id=''")
+    c.execute("update riley_workbooks set child='지유' where child is null or child=''")
     c.commit(); c.close()
 _init_riley_workbook_schema()
 
-def _workbook_rows():
-    c=db(); rows=[dict(x) for x in c.execute('select * from riley_workbooks order by done asc, id desc').fetchall()]; c.close(); return rows
+def _workbook_rows(child):
+    c=db(); rows=[dict(x) for x in c.execute('select * from riley_workbooks where child=? order by done asc, id desc',(child,)).fetchall()]; c.close(); return rows
 
 def _day_checkboxes():
     boxes='<label class="day-check"><input type="checkbox" onchange="toggleAllDays(this)"> 매일</label>'
     boxes+=''.join(f'<label class="day-check"><input type="checkbox" name="days" value="{d}"> {d}</label>' for d in DAYS)
     return boxes
 
-def wb_edit_modal():
-    return f'''<div class="modal" id="wbe"><div class="card"><div class="head"><h2>문제집 수정</h2><button class="btn s" onclick="x('wbe')">닫기</button></div><form class="form" id="wbef" method="post"><label class="full">문제집/과제<input name="title" id="wbe-title" required></label><label class="full">요일 (여러 개 선택 가능)<div class="day-checks" id="wbe-days">{_day_checkboxes()}</div></label><label>메모<input name="notes" id="wbe-notes"></label><label>색상<input type="color" name="color" id="wbe-color" value="#0f4c81"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteWb()">삭제</button></div></form></div></div>'''
+def wb_edit_modal(base='/riley'):
+    return f'''<div class="modal" id="wbe"><div class="card"><div class="head"><h2>문제집 수정</h2><button class="btn s" onclick="x('wbe')">닫기</button></div><form class="form" id="wbef" method="post" data-base="{H(base)}"><label class="full">문제집/과제<input name="title" id="wbe-title" required></label><label class="full">요일 (여러 개 선택 가능)<div class="day-checks" id="wbe-days">{_day_checkboxes()}</div></label><label>메모<input name="notes" id="wbe-notes"></label><label>색상<input type="color" name="color" id="wbe-color" value="#0f4c81"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteWb()">삭제</button></div></form></div></div>'''
 
-def _wb_attrs(r, group_days):
+def _wb_attrs(r, group_days, base):
     days=','.join(d for d in DAYS if d in group_days.get(r['group_id'], set()))
-    return f'data-gid="{H(r["group_id"])}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-days="{H(days)}" data-color="{H(r["color"] or "")}"'
+    return f'data-gid="{H(r["group_id"])}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-days="{H(days)}" data-color="{H(r["color"] or "")}" data-base="{H(base)}"'
 
-def _workbook_section():
-    rows=_workbook_rows()
+def _workbook_section(child='지유', base='/riley'):
+    rows=_workbook_rows(child)
     open_n=sum(1 for r in rows if not r['done'])
     by={d:[] for d in DAYS}; unknown=[]
     group_days={}
@@ -827,9 +837,10 @@ def _workbook_section():
         (by[d] if d in by else unknown).append(r)
         group_days.setdefault(r['group_id'], set()).add(d)
     body=(f'<section class="feature-card" style="margin-top:14px">'
-          f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">지유 문제집 체크리스트 · 미완료 {open_n}건</h2>'
+          f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">{H(child)} 문제집 체크리스트 · 미완료 {open_n}건</h2>'
           '<button type="button" class="btn s" onclick="let f=document.getElementById(\'wb-add\');f.style.display=f.style.display===\'none\'?\'grid\':\'none\'">+ 추가</button></div>'
-          '<form method="post" action="/riley/workbook/add" class="task-form" id="wb-add" style="display:none">'
+          f'<form method="post" action="{base}/workbook/add" class="task-form" id="wb-add" style="display:none">'
+          f'<input type="hidden" name="child" value="{H(child)}">'
           '<label class="task-title">문제집/과제<input name="title" required placeholder="예: 디딤돌 수학 3단원"></label>'
           f'<label class="full">요일 (여러 개 선택 가능)<div class="day-checks">{_day_checkboxes()}</div></label>'
           '<label>메모<input name="notes" placeholder="분량 등"></label>'
@@ -843,7 +854,7 @@ def _workbook_section():
             cls=' task-done' if r['done'] else ''
             meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
             style=f'cursor:pointer;border-left:4px solid {H(r["color"])}' if r['color'] else 'cursor:pointer'
-            body+=f'<div class="lesson" style="{style}" {_wb_attrs(r,group_days)} onclick="editWb(this)"><b class="{cls}">{H(r["title"])}</b>{meta}</div>'
+            body+=f'<div class="lesson" style="{style}" {_wb_attrs(r,group_days,base)} onclick="editWb(this)"><b class="{cls}">{H(r["title"])}</b>{meta}</div>'
         body+='</div>'
     body+='</div>'
     if unknown:
@@ -851,15 +862,19 @@ def _workbook_section():
         for r in unknown:
             cls=' task-done' if r['done'] else ''
             meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
-            body+=f'<div class="needs-item" style="cursor:pointer" {_wb_attrs(r,group_days)} onclick="editWb(this)"><div><b class="{cls}">{H(r["title"])}</b>{meta}</div></div>'
+            body+=f'<div class="needs-item" style="cursor:pointer" {_wb_attrs(r,group_days,base)} onclick="editWb(this)"><div><b class="{cls}">{H(r["title"])}</b>{meta}</div></div>'
         body+='</div>'
     body+='</section>'
     return body
 
+KID_SLUGS={'riley':'지유','hyeon':'혜온'}
+
 @app.route('/riley/workbook/add',methods=['POST'])
+@app.route('/hyeon/workbook/add',methods=['POST'])
 def riley_workbook_add():
     title=(request.form.get('title') or '').strip()
     if title:
+        child=(request.form.get('child') or '지유').strip()
         notes=(request.form.get('notes') or '').strip()
         color=(request.form.get('color') or '').strip()
         days=[d for d in request.form.getlist('days') if d in DAYS]
@@ -867,36 +882,40 @@ def riley_workbook_add():
         c=db()
         if days:
             for d in days:
-                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color) values(?,?,?,0,?,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid,color))
+                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child) values(?,?,?,0,?,?,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid,color,child))
         else:
-            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color) values(?,?,?,0,?,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid,color))
+            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child) values(?,?,?,0,?,?,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid,color,child))
         c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/workbook/group/<gid>/edit',methods=['POST'])
+@app.route('/hyeon/workbook/group/<gid>/edit',methods=['POST'])
 def riley_workbook_group_edit(gid):
     title=(request.form.get('title') or '').strip()
     if title:
+        c=db()
+        existing=c.execute('select child from riley_workbooks where group_id=? limit 1',(gid,)).fetchone()
+        child=existing['child'] if existing else '지유'
         notes=(request.form.get('notes') or '').strip()
         color=(request.form.get('color') or '').strip()
         days=[d for d in request.form.getlist('days') if d in DAYS]
-        c=db()
         c.execute('delete from riley_workbooks where group_id=?',(gid,))
         if days:
             for d in days:
-                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color) values(?,?,?,0,?,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid,color))
+                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child) values(?,?,?,0,?,?,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid,color,child))
         else:
-            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color) values(?,?,?,0,?,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid,color))
+            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child) values(?,?,?,0,?,?,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid,color,child))
         c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/workbook/group/<gid>/delete',methods=['POST'])
+@app.route('/hyeon/workbook/group/<gid>/delete',methods=['POST'])
 def riley_workbook_group_delete(gid):
     c=db(); c.execute('delete from riley_workbooks where group_id=?',(gid,)); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 CSS+='''.reading-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.reading-card{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px}.reading-stars{color:#e9b949;font-size:14px;margin-bottom:4px;letter-spacing:1px}'''
-JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");f.action="/riley/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-genre").value=d.genre||"기타";document.getElementById("rde-sr").value=d.sr_score||"";document.getElementById("rde-lexile").value=d.lexile_score||"";document.getElementById("rde-date").value=d.read_date||"";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";o("rde")}function deleteReading(){let id=document.getElementById("rdef").dataset.id;if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
+JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");let base=f.dataset.base||"/riley";f.action=base+"/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-genre").value=d.genre||"기타";document.getElementById("rde-sr").value=d.sr_score||"";document.getElementById("rde-lexile").value=d.lexile_score||"";document.getElementById("rde-date").value=d.read_date||"";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";o("rde")}function deleteReading(){let f0=document.getElementById("rdef");let id=f0.dataset.id;let base=f0.dataset.base||"/riley";if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
 JS+='''document.addEventListener("DOMContentLoaded",function(){var editBtn=document.querySelector(".trip-actions button[onclick^=\\"et(this)\\"]");var h1=document.querySelector(".hero h1");if(editBtn&&h1){h1.style.cursor="pointer";h1.title="클릭하여 여행 이름 수정";h1.onclick=function(){et(editBtn)}}})'''
 
 def _init_reading_schema():
@@ -920,6 +939,9 @@ def _init_reading_schema():
         c.execute('ALTER TABLE riley_reading ADD COLUMN lexile_score TEXT')
     if 'read_date' not in cols:
         c.execute('ALTER TABLE riley_reading ADD COLUMN read_date TEXT')
+    if 'child' not in cols:
+        c.execute('ALTER TABLE riley_reading ADD COLUMN child TEXT')
+    c.execute("update riley_reading set child='지유' where child is null or child=''")
     for r in c.execute("select id,summary,read_date from riley_reading where summary like '%읽은 날짜:%'").fetchall():
         m=re.search(r'읽은 날짜:\s*(\d{4}-\d{2}-\d{2})',r['summary'] or '')
         if not m: continue
@@ -931,28 +953,29 @@ _init_reading_schema()
 READING_LANGS=('한글','영어')
 READING_GENRES=('동화','그림책','과학','역사','전래동화','만화','위인전','창작','기타')
 
-def _reading_rows():
-    c=db(); rows=[dict(x) for x in c.execute('select * from riley_reading order by id desc').fetchall()]; c.close(); return rows
+def _reading_rows(child):
+    c=db(); rows=[dict(x) for x in c.execute('select * from riley_reading where child=? order by id desc',(child,)).fetchall()]; c.close(); return rows
 
 def _stars(n):
     n=max(0,min(5,int(n or 0)))
     return '★'*n + '☆'*(5-n)
 
-def reading_edit_modal():
+def reading_edit_modal(base='/riley'):
     lang_opts=''.join(f'<option value="{l}">{l}</option>' for l in READING_LANGS)
     genre_opts=''.join(f'<option value="{g}">{g}</option>' for g in READING_GENRES)
     star_opts=''.join(f'<option value="{i}">{"★"*i}</option>' for i in range(5,0,-1))
-    return f'''<div class="modal" id="rde"><div class="card"><div class="head"><h2>독서 기록 수정</h2><button class="btn s" onclick="x('rde')">닫기</button></div><form class="form" id="rdef" method="post"><label class="full">책 제목<input name="title" id="rde-title" required></label><label>언어<select name="language" id="rde-lang">{lang_opts}</select></label><label>장르<select name="genre" id="rde-genre">{genre_opts}</select></label><label>별점<select name="rating" id="rde-rating">{star_opts}</select></label><label>SR 지수<input name="sr_score" id="rde-sr" placeholder="예: 3.5"></label><label>렉사일 지수<input name="lexile_score" id="rde-lexile" placeholder="예: 650L"></label><label>읽은 날짜<input type="date" name="read_date" id="rde-date"></label><label class="full">한줄 요약/소감<input name="summary" id="rde-summary"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteReading()">삭제</button></div></form></div></div>'''
+    return f'''<div class="modal" id="rde"><div class="card"><div class="head"><h2>독서 기록 수정</h2><button class="btn s" onclick="x('rde')">닫기</button></div><form class="form" id="rdef" method="post" data-base="{H(base)}"><label class="full">책 제목<input name="title" id="rde-title" required></label><label>언어<select name="language" id="rde-lang">{lang_opts}</select></label><label>장르<select name="genre" id="rde-genre">{genre_opts}</select></label><label>별점<select name="rating" id="rde-rating">{star_opts}</select></label><label>SR 지수<input name="sr_score" id="rde-sr" placeholder="예: 3.5"></label><label>렉사일 지수<input name="lexile_score" id="rde-lexile" placeholder="예: 650L"></label><label>읽은 날짜<input type="date" name="read_date" id="rde-date"></label><label class="full">한줄 요약/소감<input name="summary" id="rde-summary"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteReading()">삭제</button></div></form></div></div>'''
 
-def _reading_section():
-    rows=_reading_rows()
+def _reading_section(child='지유', base='/riley'):
+    rows=_reading_rows(child)
     lang_opts=''.join(f'<option value="{l}">{l}</option>' for l in READING_LANGS)
     genre_opts=''.join(f'<option value="{g}">{g}</option>' for g in READING_GENRES)
     star_opts=''.join(f'<option value="{i}">{"★"*i}</option>' for i in range(5,0,-1))
     body=(f'<section class="feature-card" style="margin-top:14px">'
-          f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">지유 Riley 독서 DB · {len(rows)}권</h2>'
+          f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">{H(child)} 독서 DB · {len(rows)}권</h2>'
           '<button type="button" class="btn s" onclick="let f=document.getElementById(\'rd-add\');f.style.display=f.style.display===\'none\'?\'grid\':\'none\'">+ 추가</button></div>'
-          '<form method="post" action="/riley/reading/add" class="task-form" id="rd-add" style="display:none">'
+          f'<form method="post" action="{base}/reading/add" class="task-form" id="rd-add" style="display:none">'
+          f'<input type="hidden" name="child" value="{H(child)}">'
           '<label class="task-title">책 제목<input name="title" required placeholder="예: 흥부와 놀부"></label>'
           f'<label>언어<select name="language">{lang_opts}</select></label>'
           f'<label>장르<select name="genre">{genre_opts}</select></label>'
@@ -978,9 +1001,11 @@ def _reading_section():
     return body
 
 @app.route('/riley/reading/add',methods=['POST'])
+@app.route('/hyeon/reading/add',methods=['POST'])
 def riley_reading_add():
     title=(request.form.get('title') or '').strip()
     if title:
+        child=(request.form.get('child') or '지유').strip()
         language=(request.form.get('language') or '').strip()
         genre=(request.form.get('genre') or '').strip()
         sr_score=(request.form.get('sr_score') or '').strip()
@@ -990,10 +1015,11 @@ def riley_reading_add():
         except ValueError: rating=0
         rating=max(0,min(5,rating))
         summary=(request.form.get('summary') or '').strip()
-        c=db(); c.execute('insert into riley_reading(title,language,genre,sr_score,lexile_score,read_date,rating,summary,created_at) values(?,?,?,?,?,?,?,?,?)',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,datetime.now().isoformat(timespec='seconds'))); c.commit(); c.close()
+        c=db(); c.execute('insert into riley_reading(title,language,genre,sr_score,lexile_score,read_date,rating,summary,created_at,child) values(?,?,?,?,?,?,?,?,?,?)',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,datetime.now().isoformat(timespec='seconds'),child)); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/reading/<int:i>/edit',methods=['POST'])
+@app.route('/hyeon/reading/<int:i>/edit',methods=['POST'])
 def riley_reading_edit(i):
     title=(request.form.get('title') or '').strip()
     if title:
@@ -1010,18 +1036,20 @@ def riley_reading_edit(i):
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/reading/<int:i>/delete',methods=['POST'])
+@app.route('/hyeon/reading/<int:i>/delete',methods=['POST'])
 def riley_reading_delete(i):
     c=db(); c.execute('delete from riley_reading where id=?',(i,)); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
-def riley_week():
+def _kid_portal(slug,child):
+    base=f'/{slug}'
     q=qdate(request.args.get('date','')) or date.today(); today=date.today()
     mon=q-timedelta(days=q.weekday()); sun=mon+timedelta(days=6)
-    ge=_timed_google(mon,sun,'지유')
+    ge=_timed_google(mon,sun,child)
     by={mon+timedelta(days=i):[] for i in range(7)}
     for x in ge:
         x=dict(x); x['source']='google'; by[x['date']].append(x)
-    c=db(); local=c.execute('select * from academy where active=1 order by start_time,id').fetchall(); c.close()
+    c=db(); local=c.execute('select * from academy where active=1 and child=? order by start_time,id',(child,)).fetchall(); c.close()
     unknown=[]
     for r in local:
         dayname=(r['day_of_week'] or '').strip()
@@ -1038,7 +1066,7 @@ def riley_week():
             by[d].append({'date':d,'start':st,'end':r['end_time'] or '','title':r['academy'] or '일정','location':r['location'] or '', 'subject':r['subject'] or '', 'notes':r['notes'] or '', 'source':'local','local_id':r['id'], 'day_of_week':dayname, 'color':r['color'] or ''})
     for d in by: by[d].sort(key=lambda x:(x.get('start') or '99:99',x.get('title','')))
     prev=(mon-timedelta(days=7)).isoformat(); nxt=(mon+timedelta(days=7)).isoformat()
-    head=f'<div class="riley-toolbar"><div><a class="btn s" href="/riley?date={prev}">← 이전 주</a> <a class="btn s" href="/riley?date={today.isoformat()}">이번 주</a> <a class="btn s" href="/riley?date={nxt}">다음 주 →</a></div><b>{mon.strftime("%Y.%m.%d")} ~ {sun.strftime("%m.%d")}</b></div>'
+    head=f'<div class="riley-toolbar"><div><a class="btn s" href="{base}?date={prev}">← 이전 주</a> <a class="btn s" href="{base}?date={today.isoformat()}">이번 주</a> <a class="btn s" href="{base}?date={nxt}">다음 주 →</a></div><b>{mon.strftime("%Y.%m.%d")} ~ {sun.strftime("%m.%d")}</b></div>'
     body=head+'<div class="riley-week">'
     for i in range(7):
         d=mon+timedelta(days=i); body+=f'<div class="rday {"today" if d==today else ""}"><div class="rdate">{d.strftime("%m/%d")}</div><h3>{DAYS[i]}</h3>'
@@ -1067,13 +1095,20 @@ def riley_week():
             style=f' style="cursor:pointer;border-left-color:{H(color)}"' if color else ' style="cursor:pointer"'
             body+=f'<div class="needs-item"{style} {dat} onclick="ea(this)"><div><b>{H(r["academy"])}</b><div class="muted">요일 또는 시간이 미정이라 주간표 밖에 표시</div></div></div>'
         body+='</div>'
-    body+='<p class="muted" style="margin-top:10px">주황색은 지유 Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'
-    body+=_workbook_section()+_reading_section()+academy_modal()+wb_edit_modal()+reading_edit_modal()
-    return page('지유 포탈',body)
+    body+=f'<p class="muted" style="margin-top:10px">주황색은 {H(child)} Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'
+    body+=_workbook_section(child,base)+_reading_section(child,base)+academy_modal(child)+wb_edit_modal(base)+reading_edit_modal(base)
+    return page(f'{child} 포탈',body)
+
+def riley_week():
+    return _kid_portal('riley','지유')
+
+def hyeon_week():
+    return _kid_portal('hyeon','혜온')
 
 for rule in list(app.url_map.iter_rules()):
     if rule.rule=='/calendar': app.view_functions[rule.endpoint]=family_calendar
     elif rule.rule=='/riley': app.view_functions[rule.endpoint]=riley_week
+app.add_url_rule('/hyeon','hyeon_week',hyeon_week)
 
 # ===================== from main_app.py =====================
 KST = ZoneInfo('Asia/Seoul')
@@ -2436,6 +2471,7 @@ def next_nav():
             '<a href="/calendar">가족 달력</a>'
             '<a href="/tasks">할 일</a>'
             '<a href="/riley">지유 포탈</a>'
+            '<a href="/hyeon">혜온 포탈</a>'
             '<a href="/notifications">알림</a>'
             '</div></nav></header>')
 
