@@ -34,3 +34,5 @@ for title,language,genre,sr,lexile in books:
     else:
         c.execute('INSERT INTO riley_reading(title,language,genre,sr_score,lexile_score,rating,summary,created_at) VALUES(?,?,?,?,?,0,?,?)',(title,language,genre,sr,lexile,'',now))
 c.commit(); c.close()
+
+import seed_hyeon_reading
