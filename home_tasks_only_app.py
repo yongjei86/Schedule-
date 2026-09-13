@@ -1215,11 +1215,22 @@ def hangul_page():
 .hg-quiz-item.sel{{border-color:#0f4c81}}
 .hg-quiz-item.matched{{background:#eafaf0;border-color:#3fa965;opacity:.55}}
 .hg-quiz-item.wrong{{background:#fdeceb;border-color:#d9534f}}
-@media(max-width:430px){{.hg-btn{{width:48px;height:48px;font-size:22px}}.hg-card{{font-size:32px}}}}
+.hg-combine-row{{display:grid;gap:10px;margin-bottom:14px}}
+.hg-combine-row.pick{{grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}}
+.hg-pick{{aspect-ratio:1;border-radius:14px;border:2px solid #e4e9f0;background:#fff;font-size:26px;font-weight:900;color:#0f4c81;cursor:pointer}}
+.hg-pick.sel{{background:#0f4c81;color:#fff}}
+.hg-combine-result{{display:flex;align-items:center;justify-content:center;height:180px;background:#fff;border:2px dashed #d7dfe8;border-radius:20px;font-size:96px;font-weight:900;color:#0f4c81;margin:14px 0}}
+.hg-trace-toolbar{{display:flex;gap:8px;justify-content:center;margin-bottom:12px}}
+.hg-trace-wrap{{position:relative;width:100%;max-width:320px;height:320px;margin:0 auto;background:#fff;border:2px solid #e4e9f0;border-radius:20px;overflow:hidden}}
+.hg-trace-guide{{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:220px;font-weight:900;color:#e4e9f0;user-select:none}}
+.hg-trace-canvas{{position:absolute;inset:0;touch-action:none}}
+@media(max-width:430px){{.hg-btn{{width:48px;height:48px;font-size:22px}}.hg-card{{font-size:32px}}.hg-combine-result{{height:130px;font-size:64px}}.hg-trace-guide{{font-size:150px}}}}
 </style>
 <div class="hg-topbar">
 <a class="hg-btn" href="/hyeon">🏠</a>
 <button type="button" class="hg-btn on" id="hg-tab-letters" onclick="hgTab('letters')">ㄱㄴ</button>
+<button type="button" class="hg-btn" id="hg-tab-combine" onclick="hgTab('combine')">가+</button>
+<button type="button" class="hg-btn" id="hg-tab-trace" onclick="hgTab('trace')">✍️</button>
 <button type="button" class="hg-btn" id="hg-tab-cards" onclick="hgTab('cards')">🃏</button>
 <button type="button" class="hg-btn" id="hg-tab-quiz" onclick="hgTab('quiz')">🔗</button>
 </div>
@@ -1228,19 +1239,36 @@ def hangul_page():
   <div class="hg-letter-section"><h3>자음</h3><div class="hg-letter-grid" id="hg-consonant-grid"></div></div>
   <div class="hg-letter-section"><h3>모음</h3><div class="hg-letter-grid" id="hg-vowel-grid"></div></div>
 </div>
+<div id="hg-combine" style="display:none">
+  <div class="hg-combine-result" id="hg-combine-result">?</div>
+  <div class="hg-letter-section"><h3>자음</h3><div class="hg-combine-row pick" id="hg-combine-cons"></div></div>
+  <div class="hg-letter-section"><h3>모음</h3><div class="hg-combine-row pick" id="hg-combine-vowel"></div></div>
+</div>
+<div id="hg-trace" style="display:none">
+  <div class="hg-trace-toolbar">
+    <button type="button" class="hg-btn" onclick="hgTracePrev()">◀</button>
+    <button type="button" class="hg-btn" onclick="hgSpeak(HG_LETTERS[hgTraceIdx].sound)">🔊</button>
+    <button type="button" class="hg-btn" onclick="hgTraceClear()">🔄</button>
+    <button type="button" class="hg-btn" onclick="hgTraceNext()">▶</button>
+  </div>
+  <div class="hg-trace-wrap">
+    <div class="hg-trace-guide" id="hg-trace-guide">ㄱ</div>
+    <canvas class="hg-trace-canvas" id="hg-trace-canvas"></canvas>
+  </div>
+</div>
 <div id="hg-cards" style="display:none"><div class="hg-card-grid" id="hg-card-grid"></div></div>
 <div id="hg-quiz" style="display:none"><div class="hg-quiz-grid" id="hg-quiz-grid"></div></div>
 <script>
 const HG_WORDS={words_json};
 const HG_LETTERS={letters_json};
+const HG_TABS=['letters','combine','trace','cards','quiz'];
 function hgTab(which){{
-  document.getElementById('hg-letters').style.display=which==='letters'?'block':'none';
-  document.getElementById('hg-cards').style.display=which==='cards'?'block':'none';
-  document.getElementById('hg-quiz').style.display=which==='quiz'?'block':'none';
-  document.getElementById('hg-tab-letters').classList.toggle('on',which==='letters');
-  document.getElementById('hg-tab-cards').classList.toggle('on',which==='cards');
-  document.getElementById('hg-tab-quiz').classList.toggle('on',which==='quiz');
+  HG_TABS.forEach(function(t){{
+    document.getElementById('hg-'+t).style.display=(t===which)?'block':'none';
+    document.getElementById('hg-tab-'+t).classList.toggle('on',t===which);
+  }});
   if(which==='quiz') hgBuildQuiz();
+  if(which==='trace') hgTraceShow();
 }}
 function hgSpeak(text){{
   try{{
@@ -1316,7 +1344,68 @@ function hgBuildQuiz(){{
     rightCol.appendChild(b);
   }});
 }}
+const HG_CONS_IDX={{'ㄱ':0,'ㄴ':2,'ㄷ':3,'ㄹ':5,'ㅁ':6,'ㅂ':7,'ㅅ':9,'ㅇ':11,'ㅈ':12,'ㅊ':14,'ㅋ':15,'ㅌ':16,'ㅍ':17,'ㅎ':18}};
+const HG_VOWEL_IDX={{'ㅏ':0,'ㅑ':2,'ㅓ':4,'ㅕ':6,'ㅗ':8,'ㅛ':12,'ㅜ':13,'ㅠ':17,'ㅡ':18,'ㅣ':20}};
+let hgCombine={{cons:null,vowel:null}};
+function hgBuildCombine(){{
+  const consGrid=document.getElementById('hg-combine-cons'); consGrid.innerHTML='';
+  const vowelGrid=document.getElementById('hg-combine-vowel'); vowelGrid.innerHTML='';
+  HG_LETTERS.filter(function(l){{return l.kind==='자음'}}).forEach(function(l){{
+    const b=document.createElement('button'); b.type='button'; b.className='hg-pick'; b.textContent=l.char;
+    b.onclick=function(){{
+      consGrid.querySelectorAll('.hg-pick').forEach(function(x){{x.classList.remove('sel')}});
+      b.classList.add('sel'); hgCombine.cons=l.char; hgTryCombine();
+    }};
+    consGrid.appendChild(b);
+  }});
+  HG_LETTERS.filter(function(l){{return l.kind==='모음'}}).forEach(function(l){{
+    const b=document.createElement('button'); b.type='button'; b.className='hg-pick'; b.textContent=l.char;
+    b.onclick=function(){{
+      vowelGrid.querySelectorAll('.hg-pick').forEach(function(x){{x.classList.remove('sel')}});
+      b.classList.add('sel'); hgCombine.vowel=l.char; hgTryCombine();
+    }};
+    vowelGrid.appendChild(b);
+  }});
+}}
+function hgTryCombine(){{
+  const c=hgCombine.cons, v=hgCombine.vowel;
+  const out=document.getElementById('hg-combine-result');
+  if(c&&v!==null&&v!==undefined&&HG_CONS_IDX[c]!==undefined&&HG_VOWEL_IDX[v]!==undefined){{
+    const code=0xAC00+HG_CONS_IDX[c]*588+HG_VOWEL_IDX[v]*28;
+    const syll=String.fromCharCode(code);
+    out.textContent=syll;
+    hgSpeak(syll);
+    hgLog('letter');
+  }} else {{
+    out.textContent=(c||'')+(v||'')||'?';
+  }}
+}}
+let hgTraceIdx=0, hgTraceDrawing=false, hgTraceCtx=null;
+function hgTraceShow(){{
+  const cvs=document.getElementById('hg-trace-canvas');
+  if(!hgTraceCtx){{
+    const wrap=cvs.parentElement;
+    cvs.width=wrap.clientWidth; cvs.height=wrap.clientHeight;
+    hgTraceCtx=cvs.getContext('2d');
+    hgTraceCtx.lineWidth=16; hgTraceCtx.lineCap='round'; hgTraceCtx.lineJoin='round'; hgTraceCtx.strokeStyle='#0f4c81';
+    function pos(e){{
+      const r=cvs.getBoundingClientRect();
+      const p=(e.touches&&e.touches[0])||e;
+      return [p.clientX-r.left,p.clientY-r.top];
+    }}
+    function start(e){{ e.preventDefault(); hgTraceDrawing=true; const[x,y]=pos(e); hgTraceCtx.beginPath(); hgTraceCtx.moveTo(x,y); }}
+    function move(e){{ if(!hgTraceDrawing)return; e.preventDefault(); const[x,y]=pos(e); hgTraceCtx.lineTo(x,y); hgTraceCtx.stroke(); }}
+    function end(e){{ if(hgTraceDrawing){{hgTraceDrawing=false; hgLog('letter');}} }}
+    cvs.addEventListener('mousedown',start); cvs.addEventListener('mousemove',move); window.addEventListener('mouseup',end);
+    cvs.addEventListener('touchstart',start,{{passive:false}}); cvs.addEventListener('touchmove',move,{{passive:false}}); cvs.addEventListener('touchend',end);
+  }}
+  document.getElementById('hg-trace-guide').textContent=HG_LETTERS[hgTraceIdx].char;
+}}
+function hgTraceClear(){{ if(hgTraceCtx) hgTraceCtx.clearRect(0,0,hgTraceCtx.canvas.width,hgTraceCtx.canvas.height); }}
+function hgTracePrev(){{ hgTraceIdx=(hgTraceIdx-1+HG_LETTERS.length)%HG_LETTERS.length; hgTraceClear(); hgTraceShow(); hgSpeak(HG_LETTERS[hgTraceIdx].sound); }}
+function hgTraceNext(){{ hgTraceIdx=(hgTraceIdx+1)%HG_LETTERS.length; hgTraceClear(); hgTraceShow(); hgSpeak(HG_LETTERS[hgTraceIdx].sound); }}
 hgBuildLetters();
+hgBuildCombine();
 hgBuildCards();
 </script>
 '''
