@@ -1110,7 +1110,8 @@ def _kid_portal(slug,child,academy_workbook=True):
                f'🪙 {H(child)} 크레딧 · 오늘 +{pt["today"]} · 이번 주 +{pt["week"]} · 이번 달 +{pt["month"]} · 총 {_credit_total(child)}개'
                f'<div style="font-weight:600;font-size:11px;color:#9aa5b1;margin-top:2px">눌러서 자세히 보기</div></a>')
     if academy_workbook:
-        q=qdate(request.args.get('date','')) or date.today(); today=date.today()
+        today=datetime.now(KST).date()
+        q=qdate(request.args.get('date','')) or today
         mon=q-timedelta(days=q.weekday()); sun=mon+timedelta(days=6)
         ge=_timed_google(mon,sun,child)
         by={mon+timedelta(days=i):[] for i in range(7)}
