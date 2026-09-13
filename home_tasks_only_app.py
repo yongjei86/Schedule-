@@ -897,6 +897,7 @@ def riley_workbook_group_delete(gid):
 
 CSS+='''.reading-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.reading-card{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px}.reading-stars{color:#e9b949;font-size:14px;margin-bottom:4px;letter-spacing:1px}'''
 JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");f.action="/riley/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";o("rde")}function deleteReading(){let id=document.getElementById("rdef").dataset.id;if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action="/riley/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
+JS+='''document.addEventListener("DOMContentLoaded",function(){var editBtn=document.querySelector(".trip-actions button[onclick^=\\"et(this)\\"]");var h1=document.querySelector(".hero h1");if(editBtn&&h1){h1.style.cursor="pointer";h1.title="클릭하여 여행 이름 수정";h1.onclick=function(){et(editBtn)}}})'''
 
 def _init_reading_schema():
     c=db()
@@ -1369,11 +1370,6 @@ def _trip_overview(r):
              f'<button class="btn" {trip_attrs(r)} onclick="et(this)">여행 정보 수정</button>'
              f'<button class="btn s" onclick="ni({r["id"]})">+ 세부 일정</button>'
              f'<form method="post" action="/trip/{r["id"]}/delete" onsubmit="return confirm(\'삭제할까요? 되돌릴 수 없습니다\')" style="display:inline-block;margin:0"><button class="btn d">삭제</button></form></div>')
-    title_card=(f'<div class="trip-edit-card"><div class="label">여행 이름</div>'
-                f'<b class="view-value" onclick="this.nextElementSibling.style.display=\'flex\';this.style.display=\'none\'">{H(r["title"])}</b>'
-                f'<form class="inline-edit" method="post" action="/trip/{r["id"]}/quick-edit">'
-                f'<input name="title" value="{H(r["title"])}" required>'
-                f'<button class="btn s" type="submit">저장</button></form></div>')
     date_card=(f'<div class="trip-edit-card"><div class="label">여행 일자</div>'
                f'<b class="view-value" onclick="this.nextElementSibling.style.display=\'flex\';this.style.display=\'none\'">{H(r["start_date"])} ~ {H(r["end_date"])}</b>'
                f'<form class="inline-edit" method="post" action="/trip/{r["id"]}/quick-edit">'
@@ -1398,7 +1394,7 @@ def _trip_overview(r):
                      f'<form method="post" action="/trip/{r["id"]}/quick-edit">'
                      f'<select name="transport" class="status-select" onchange="this.form.submit()">{_select_options(TRANSPORT_OPTIONS,r["transport"])}</select></form></div>')
     status_card=f'<div class="trip-edit-card"><div class="label">상태</div><form method="post" action="/trip/{r["id"]}/status"><select name="status" class="status-select {scls}" onchange="this.form.submit()">{stopts}</select></form></div>'
-    cards='<div class="trip-edit-grid">'+title_card+date_card+region_card+companions_card+lodging_card+transport_card+status_card+'</div>'
+    cards='<div class="trip-edit-grid">'+date_card+region_card+companions_card+lodging_card+transport_card+status_card+'</div>'
     return actions,cards
 
 def editable_trip_detail(trip_id):
@@ -2783,7 +2779,6 @@ def trip_day_detail(trip_id):
         return _trip_day_previous_view(trip_id)
 
     actions,cards=_trip_overview(trip)
-    actions=actions.replace('</div>', f'<a class="btn s" href="/trip/{trip_id}/plan">여행 준비</a></div>')
 
     body = actions + cards + '<h2 class="sectiontitle">날짜별 일정</h2><div class="muted">날짜 카드를 누르면 도시·호텔·주요 방문지를 바로 수정할 수 있습니다.</div><div class="trip-day-grid">'
     if not days:
