@@ -1180,13 +1180,15 @@ def hangul_page():
     mon=today-timedelta(days=today.weekday())
     c=db(); prog_rows=c.execute('select * from hangul_progress where activity_date>=? and activity_date<=?',(mon.isoformat(),(mon+timedelta(days=6)).isoformat())).fetchall(); c.close()
     prog={r['activity_date']:dict(r) for r in prog_rows}
+    HANGUL_STAR_GOAL=5
     stickers=''
     for i in range(7):
         d=mon+timedelta(days=i)
         p=prog.get(d.isoformat())
-        done=bool(p and (p['cards_flipped']>0 or p['quiz_correct']>0 or p['letters_done']>0))
-        cls='hg-sticker-day done' if done else 'hg-sticker-day'
-        icon='⭐' if done else '·'
+        total=(p['cards_flipped']+p['quiz_correct']+p['letters_done']) if p else 0
+        if total>=HANGUL_STAR_GOAL: cls,icon='hg-sticker-day done big','🏆'
+        elif total>0: cls,icon='hg-sticker-day done','⭐'
+        else: cls,icon='hg-sticker-day','·'
         today_cls=' today' if d==today else ''
         stickers+=f'<div class="{cls}{today_cls}"><div class="hg-sd-label">{DAYS[i]}</div><div class="hg-sd-icon">{icon}</div></div>'
     words_json=json.dumps(words,ensure_ascii=False)
@@ -1199,6 +1201,8 @@ def hangul_page():
 .hg-sticker-board{{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px}}
 .hg-sticker-day{{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:8px 4px;text-align:center}}
 .hg-sticker-day.today{{border-color:#0f4c81;border-width:2px}}
+.hg-sticker-day.big{{background:#fff8e6;border-color:#e9b949}}
+.hg-sticker-day.big .hg-sd-icon{{font-size:26px}}
 .hg-sd-label{{font-size:11px;color:#748196}}
 .hg-sd-icon{{font-size:22px;margin-top:4px}}
 .hg-card-grid,.hg-quiz-grid,.hg-letter-grid{{display:grid;gap:10px}}
