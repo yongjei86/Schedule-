@@ -3589,6 +3589,10 @@ def tasks_only_home():
         kind, label = _event_kind(e)
         end = str(e.get('end_date') or '')[:10]
         date_text = d.isoformat() if not end or end == d.isoformat() else f'{d.isoformat()} ~ {end}'
+        start_time=(e.get('start_time') or '').strip()
+        end_time=(e.get('end_time') or '').strip()
+        if start_time:
+            date_text += f' {start_time}'+(f'~{end_time}' if end_time and end_time!=start_time else '')
         dday = _dday_label(d, today)
         today_cls = ' today' if dday == 'D-DAY' else ''
         title = _clean_title(e.get('title'))
