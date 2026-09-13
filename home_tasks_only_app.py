@@ -1206,7 +1206,7 @@ def hangul_page():
 .hg-card{{aspect-ratio:1;border-radius:18px;border:2px solid #e4e9f0;background:#fff;font-size:40px;cursor:pointer;display:flex;align-items:center;justify-content:center}}
 .hg-card .back{{font-size:22px;font-weight:900;color:#0f4c81}}
 .hg-letter-section h3{{margin:16px 0 8px}}
-.hg-letter-grid{{grid-template-columns:repeat(auto-fill,minmax(72px,1fr))}}
+.hg-letter-grid{{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px}}
 .hg-letter{{aspect-ratio:1;border-radius:16px;border:2px solid #e4e9f0;background:#fff;font-size:34px;font-weight:900;color:#0f4c81;cursor:pointer;display:flex;align-items:center;justify-content:center}}
 .hg-letter:active{{background:#eaf3fb}}
 .hg-quiz-grid{{grid-template-columns:1fr 1fr}}
