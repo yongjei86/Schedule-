@@ -1191,6 +1191,13 @@ def hangul_page():
         else: cls,icon='hg-sticker-day','·'
         today_cls=' today' if d==today else ''
         stickers+=f'<div class="{cls}{today_cls}"><div class="hg-sd-label">{DAYS[i]}</div><div class="hg-sd-icon">{icon}</div></div>'
+    c=db(); all_prog=c.execute('select cards_flipped,quiz_correct,letters_done from hangul_progress').fetchall(); c.close()
+    total_stars=0; total_trophies=0
+    for p in all_prog:
+        t=p['cards_flipped']+p['quiz_correct']+p['letters_done']
+        if t>=HANGUL_STAR_GOAL: total_trophies+=1
+        elif t>0: total_stars+=1
+    summary=f'<div class="hg-total-summary">지금까지 모은 스티커: ⭐ {total_stars}일 · 🏆 {total_trophies}일</div>'
     words_json=json.dumps(words,ensure_ascii=False)
     letters_json=json.dumps(letters,ensure_ascii=False)
     body=f'''
@@ -1203,6 +1210,7 @@ def hangul_page():
 .hg-sticker-day.today{{border-color:#0f4c81;border-width:2px}}
 .hg-sticker-day.big{{background:#fff8e6;border-color:#e9b949}}
 .hg-sticker-day.big .hg-sd-icon{{font-size:26px}}
+.hg-total-summary{{text-align:center;font-size:13px;font-weight:800;color:#748196;background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:8px;margin-bottom:10px}}
 .hg-sd-label{{font-size:11px;color:#748196}}
 .hg-sd-icon{{font-size:22px;margin-top:4px}}
 .hg-card-grid,.hg-quiz-grid,.hg-letter-grid{{display:grid;gap:10px}}
@@ -1241,6 +1249,7 @@ def hangul_page():
 <button type="button" class="hg-btn" id="hg-tab-cards" onclick="hgTab('cards')">🃏</button>
 <button type="button" class="hg-btn" id="hg-tab-quiz" onclick="hgTab('quiz')">🔗</button>
 </div>
+{summary}
 <div class="hg-sticker-board">{stickers}</div>
 <div id="hg-letters">
   <div class="hg-letter-section"><h3>자음</h3><div class="hg-letter-grid" id="hg-consonant-grid"></div></div>
