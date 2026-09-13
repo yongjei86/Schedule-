@@ -3592,13 +3592,14 @@ def tasks_only_home():
         dday = _dday_label(d, today)
         today_cls = ' today' if dday == 'D-DAY' else ''
         title = _clean_title(e.get('title'))
-        body += (f'<div class="home-family-row">'
+        body += (f'<div class="home-family-row" style="cursor:pointer" {_event_detail_attrs(e,label)} onclick="showEventDetail(this)">'
                  f'<span class="event-dot {kind}" title="{H(label)}"></span>'
                  f'<div class="event-main"><div class="event-title">{H(title)}</div>'
                  f'<div class="event-meta">{H(label)} · {H(date_text)}</div></div>'
                  f'<span class="event-dday{today_cls}">{H(dday)}</span></div>')
     body += '</div></section>'
     body += _tasks_card()
+    body += event_detail_modal()
     return page('우리 가족 기록', body)
 
 
