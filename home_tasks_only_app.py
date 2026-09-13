@@ -1567,6 +1567,45 @@ COLORING_TEMPLATES=[
 <rect x="90" y="170" width="30" height="30"/>
 <rect x="180" y="170" width="30" height="30"/>
 ''','regions':[{'type':'rect','x':70,'y':150,'w':160,'h':110},{'type':'polygon','points':[[50,150],[150,70],[250,150]]},{'type':'rect','x':135,'y':200,'w':30,'h':60},{'type':'rect','x':90,'y':170,'w':30,'h':30},{'type':'rect','x':180,'y':170,'w':30,'h':30}]},
+    {'id':'butterfly','name':'나비','emoji':'🦋','svg':'''
+<ellipse cx="95" cy="120" rx="55" ry="65"/>
+<ellipse cx="205" cy="120" rx="55" ry="65"/>
+<ellipse cx="100" cy="205" rx="40" ry="48"/>
+<ellipse cx="200" cy="205" rx="40" ry="48"/>
+<line x1="145" y1="85" x2="120" y2="50"/>
+<line x1="155" y1="85" x2="180" y2="50"/>
+''','regions':[{'type':'ellipse','cx':95,'cy':120,'rx':55,'ry':65},{'type':'ellipse','cx':205,'cy':120,'rx':55,'ry':65},{'type':'ellipse','cx':100,'cy':205,'rx':40,'ry':48},{'type':'ellipse','cx':200,'cy':205,'rx':40,'ry':48},{'type':'rect','x':144,'y':80,'w':12,'h':150}]},
+    {'id':'turtle','name':'거북이','emoji':'🐢','svg':'''
+<circle cx="150" cy="170" r="80"/>
+<circle cx="150" cy="80" r="32"/>
+<ellipse cx="55" cy="130" rx="22" ry="30"/>
+<ellipse cx="245" cy="130" rx="22" ry="30"/>
+<ellipse cx="70" cy="220" rx="22" ry="28"/>
+<ellipse cx="230" cy="220" rx="22" ry="28"/>
+<circle cx="140" cy="75" r="6" fill="#2b2b2b"/>
+<circle cx="160" cy="75" r="6" fill="#2b2b2b"/>
+''','regions':[{'type':'circle','cx':150,'cy':170,'r':80},{'type':'circle','cx':150,'cy':80,'r':32},{'type':'ellipse','cx':55,'cy':130,'rx':22,'ry':30},{'type':'ellipse','cx':245,'cy':130,'rx':22,'ry':30},{'type':'ellipse','cx':70,'cy':220,'rx':22,'ry':28},{'type':'ellipse','cx':230,'cy':220,'rx':22,'ry':28}]},
+    {'id':'duck','name':'오리','emoji':'🦆','svg':'''
+<ellipse cx="150" cy="195" rx="85" ry="58"/>
+<circle cx="105" cy="110" r="42"/>
+<polygon points="65,110 20,100 65,125"/>
+<circle cx="120" cy="98" r="6" fill="#2b2b2b"/>
+''','regions':[{'type':'ellipse','cx':150,'cy':195,'rx':85,'ry':58},{'type':'circle','cx':105,'cy':110,'r':42},{'type':'polygon','points':[[65,110],[20,100],[65,125]]}]},
+    {'id':'cake','name':'케이크','emoji':'🎂','svg':'''
+<rect x="65" y="170" width="170" height="85"/>
+<rect x="65" y="145" width="170" height="30"/>
+<rect x="144" y="95" width="12" height="52"/>
+<ellipse cx="150" cy="85" rx="11" ry="16"/>
+''','regions':[{'type':'rect','x':65,'y':170,'w':170,'h':85},{'type':'rect','x':65,'y':145,'w':170,'h':30},{'type':'rect','x':144,'y':95,'w':12,'h':52},{'type':'ellipse','cx':150,'cy':85,'rx':11,'ry':16}]},
+    {'id':'umbrella','name':'우산','emoji':'☂️','svg':'''
+<polygon points="150,60 205,95 250,140 50,140 95,95"/>
+<line x1="150" y1="140" x2="150" y2="245"/>
+<path d="M150,245 Q135,255 140,235"/>
+''','regions':[{'type':'polygon','points':[[150,60],[205,95],[250,140],[50,140],[95,95]]},{'type':'rect','x':145,'y':140,'w':10,'h':100}]},
+    {'id':'tree','name':'나무','emoji':'🌳','svg':'''
+<rect x="138" y="180" width="24" height="90"/>
+<circle cx="150" cy="120" r="75"/>
+''','regions':[{'type':'rect','x':138,'y':180,'w':24,'h':90},{'type':'circle','cx':150,'cy':120,'r':75}]},
 ]
 
 @app.route('/hyeon/coloring')
@@ -1574,13 +1613,14 @@ def coloring_page():
     templates_json=json.dumps(COLORING_TEMPLATES,ensure_ascii=False)
     colors=['#e74c3c','#f39c12','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#e84393','#8d6e63','#2b2b2b']
     color_btns=''.join(f'<button type="button" class="cl-swatch" style="background:{c}" onclick="clSetColor(\'{c}\',this)"></button>' for c in colors)
-    picker=''.join(f'<button type="button" class="cl-pick" id="cl-pick-{t["id"]}" onclick="clSelect(\'{t["id"]}\')">{t["emoji"]}</button>' for t in COLORING_TEMPLATES)
+    picker=''.join(f'<button type="button" class="cl-pick" id="cl-pick-{t["id"]}" onclick="clSelect(\'{t["id"]}\')">{t["emoji"]}<span>{H(t["name"])}</span></button>' for t in COLORING_TEMPLATES)
     body=f'''
 <style>
 .hg-topbar{{display:flex;gap:8px;margin-bottom:14px}}
 .hg-btn{{width:56px;height:56px;border-radius:16px;border:1px solid #e4e9f0;background:#fff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center}}
-.cl-picker-row{{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px}}
-.cl-pick{{flex:0 0 auto;width:56px;height:56px;border-radius:16px;border:2px solid #e4e9f0;background:#fff;font-size:28px;cursor:pointer}}
+.cl-picker-row{{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;margin-bottom:12px}}
+.cl-pick{{aspect-ratio:1;border-radius:18px;border:2px solid #e4e9f0;background:#fff;font-size:34px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}}
+.cl-pick span{{font-size:11px;font-weight:800;color:#748196}}
 .cl-pick.on{{border-color:#0f4c81;background:#eaf3fb}}
 .cl-canvas-wrap{{position:relative;width:100%;max-width:340px;aspect-ratio:1/1;margin:0 auto 14px;background:#fff;border:2px solid #e4e9f0;border-radius:20px;overflow:hidden}}
 .cl-canvas{{position:absolute;inset:0;touch-action:none}}
