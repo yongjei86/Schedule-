@@ -1397,9 +1397,25 @@ def _trip_overview(r):
     cards='<div class="trip-edit-grid">'+date_card+region_card+companions_card+lodging_card+transport_card+status_card+'</div>'
     return actions,cards
 
+def _ensure_trip_days(trip_id,start_date,end_date,status):
+    if status=='완료': return
+    sd=qdate(start_date); ed=qdate(end_date)
+    if not sd or not ed or ed<sd: return
+    c=db()
+    exists=c.execute('select 1 from itinerary where trip_id=? limit 1',(trip_id,)).fetchone()
+    if exists: c.close(); return
+    d=sd; i=1
+    while d<=ed:
+        c.execute('insert into itinerary(trip_id,item_date,day_label,time_text,title,place,detail,sort_order) values(?,?,?,?,?,?,?,?)',
+                  (trip_id,d.isoformat(),f'{i}일차','','일정 미정','','',i*10))
+        d+=timedelta(days=1); i+=1
+    c.commit(); c.close()
+
 def editable_trip_detail(trip_id):
-    c=db(); r=c.execute('select * from trips where id=?',(trip_id,)).fetchone(); its=c.execute('select * from itinerary where trip_id=? order by sort_order,item_date,id',(trip_id,)).fetchall(); c.close()
+    c=db(); r=c.execute('select * from trips where id=?',(trip_id,)).fetchone(); c.close()
     if not r: return abort(404)
+    _ensure_trip_days(trip_id,r['start_date'],r['end_date'],r['status'])
+    c=db(); its=c.execute('select * from itinerary where trip_id=? order by sort_order,item_date,id',(trip_id,)).fetchall(); c.close()
     dq=date_quality(trip_id); opts=''.join(f'<button class="date-q {"on" if dq==x else ""}" name="date_status" value="{x}">{x}</button>' for x in ('확정','대략','미정'))
     panel=f'<div class="date-quality"><div><b>여행 날짜 정확도</b><div class="muted">확정 · 대략 · 미정으로 구분</div></div><form method="post" action="/trip/{trip_id}/date-status" class="date-q-form">{opts}</form></div>'
     actions,cards=_trip_overview(r)
