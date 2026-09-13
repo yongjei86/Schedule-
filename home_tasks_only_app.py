@@ -1520,7 +1520,15 @@ function hgTryCombine(){{
     out.textContent=(c||'')+(v||'')||'?';
   }}
 }}
-let hgTraceIdx=0, hgTraceDrawing=false, hgTraceCtx=null;
+const HG_TRACE_CHECKPOINTS={{
+  'ㄱ':[[0.28,0.22],[0.72,0.22],[0.72,0.78]],
+  'ㄴ':[[0.3,0.2],[0.3,0.78],[0.75,0.78]],
+  'ㄷ':[[0.75,0.24],[0.3,0.24],[0.3,0.78],[0.75,0.78]],
+  'ㄹ':[[0.28,0.18],[0.72,0.18],[0.28,0.42],[0.72,0.42],[0.28,0.66],[0.72,0.82]],
+  'ㅁ':[[0.25,0.25],[0.75,0.25],[0.75,0.75],[0.25,0.75],[0.25,0.28]]
+}};
+const HG_TRACE_START_R=0.22, HG_TRACE_CP_R=0.26;
+let hgTraceIdx=0, hgTraceDrawing=false, hgTraceCtx=null, hgTraceCpIdx=0, hgTraceSucceeded=false;
 function hgTraceShow(){{
   const cvs=document.getElementById('hg-trace-canvas');
   if(!hgTraceCtx){{
@@ -1531,18 +1539,49 @@ function hgTraceShow(){{
     function pos(e){{
       const r=cvs.getBoundingClientRect();
       const p=(e.touches&&e.touches[0])||e;
-      return [p.clientX-r.left,p.clientY-r.top];
+      return [(p.clientX-r.left)/cvs.width,(p.clientY-r.top)/cvs.height];
     }}
+    function dist(a,b){{ return Math.hypot(a[0]-b[0],a[1]-b[1]); }}
+    function checkpoints(){{ return HG_TRACE_CHECKPOINTS[HG_LETTERS[hgTraceIdx].char]; }}
     let hgTraceMoveCount=0;
-    function start(e){{ e.preventDefault(); hgTraceDrawing=true; hgTraceMoveCount=0; const[x,y]=pos(e); hgTraceCtx.beginPath(); hgTraceCtx.moveTo(x,y); }}
-    function move(e){{ if(!hgTraceDrawing)return; e.preventDefault(); const[x,y]=pos(e); hgTraceCtx.lineTo(x,y); hgTraceCtx.stroke(); hgTraceMoveCount++; }}
-    function end(e){{ if(hgTraceDrawing){{hgTraceDrawing=false; hgLog('letter'); if(hgTraceMoveCount>=4) hgChime();}} }}
+    function start(e){{
+      e.preventDefault();
+      const p=pos(e);
+      const cps=checkpoints();
+      if(cps){{
+        if(dist(p,cps[0])>HG_TRACE_START_R) return;
+        hgTraceCpIdx=1; hgTraceSucceeded=false;
+      }}
+      hgTraceDrawing=true; hgTraceMoveCount=0;
+      hgTraceCtx.beginPath(); hgTraceCtx.moveTo(p[0]*cvs.width,p[1]*cvs.height);
+    }}
+    function move(e){{
+      if(!hgTraceDrawing)return;
+      e.preventDefault();
+      const p=pos(e);
+      hgTraceCtx.lineTo(p[0]*cvs.width,p[1]*cvs.height); hgTraceCtx.stroke(); hgTraceMoveCount++;
+      const cps=checkpoints();
+      if(cps&&!hgTraceSucceeded&&hgTraceCpIdx<cps.length&&dist(p,cps[hgTraceCpIdx])<=HG_TRACE_CP_R){{
+        hgTraceCpIdx++;
+        if(hgTraceCpIdx>=cps.length){{
+          hgTraceSucceeded=true; hgTraceDrawing=false;
+          hgLog('letter'); hgChime(); hgSpeak(HG_LETTERS[hgTraceIdx].char+'!');
+        }}
+      }}
+    }}
+    function end(e){{
+      if(hgTraceDrawing){{
+        hgTraceDrawing=false;
+        if(!checkpoints()){{ hgLog('letter'); if(hgTraceMoveCount>=4) hgChime(); }}
+      }}
+    }}
     cvs.addEventListener('mousedown',start); cvs.addEventListener('mousemove',move); window.addEventListener('mouseup',end);
     cvs.addEventListener('touchstart',start,{{passive:false}}); cvs.addEventListener('touchmove',move,{{passive:false}}); cvs.addEventListener('touchend',end);
   }}
+  hgTraceCpIdx=0; hgTraceSucceeded=false;
   document.getElementById('hg-trace-guide').textContent=HG_LETTERS[hgTraceIdx].char;
 }}
-function hgTraceClear(){{ if(hgTraceCtx) hgTraceCtx.clearRect(0,0,hgTraceCtx.canvas.width,hgTraceCtx.canvas.height); }}
+function hgTraceClear(){{ if(hgTraceCtx) hgTraceCtx.clearRect(0,0,hgTraceCtx.canvas.width,hgTraceCtx.canvas.height); hgTraceCpIdx=0; hgTraceSucceeded=false; }}
 function hgTracePrev(){{ hgTraceIdx=(hgTraceIdx-1+HG_LETTERS.length)%HG_LETTERS.length; hgTraceClear(); hgTraceShow(); hgSpeak(HG_LETTERS[hgTraceIdx].sound); }}
 function hgTraceNext(){{ hgTraceIdx=(hgTraceIdx+1)%HG_LETTERS.length; hgTraceClear(); hgTraceShow(); hgSpeak(HG_LETTERS[hgTraceIdx].sound); }}
 hgBuildLetters();
