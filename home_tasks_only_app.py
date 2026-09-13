@@ -1420,11 +1420,11 @@ def _trip_card(r, today, kind):
     td=_safe_date(r['start_date'])
     region=' · '.join(x for x in [r['country'],r['region']] if x)
     flags=_flags_for(r['country'],r['trip_type'])
-    return (f'<div class="next-trip-card"><div class="kind">{kind}</div>'
-            f'<div class="name">{flags} <a class="home-link" href="/trip/{r["id"]}">{H(r["title"])}</a></div>'
+    return (f'<a class="next-trip-card future-card" href="/trip/{r["id"]}"><div class="kind">{kind}</div>'
+            f'<div class="name">{flags} {H(r["title"])}</div>'
             f'<span class="dday">{_dday_label(td,today)}</span>'
             f'<div class="muted" style="margin-top:6px">{H(r["start_date"])} ~ {H(r["end_date"])}</div>'
-            f'<div class="muted">{H(region) or "-"}</div></div>')
+            f'<div class="muted">{H(region) or "-"}</div></a>')
 
 
 def family_home():
