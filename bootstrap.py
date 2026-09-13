@@ -36,4 +36,5 @@ for day in ('화','목'):
   c.execute("INSERT INTO academy(day_of_week,start_time,end_time,academy,subject,location,notes,active) VALUES(?,?,?,?,?,?,?,1)",(day,'21:00','','화상영어','영어','',''))
 
 c.commit(); c.close()
+import seed_riley_reading
 print('SQLite schema ready:',DB)
