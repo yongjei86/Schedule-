@@ -8,6 +8,19 @@ from flask import jsonify, request
 from home_tasks_only_app import app, db
 
 
+SEED_BOOKS = [
+    {'child':'혜온','title':'Rapunzel Can','language':'영어','genre':'영어 원서','read_date':'2026-09-13','rating':0,'summary':'Disney Reading Adventures Level 1'},
+    {'child':'혜온','title':'Family','language':'영어','genre':'영어 원서','read_date':'2026-09-13','rating':0,'summary':'Disney Reading Adventures Level 1'},
+    {'child':'혜온','title':"Belle's Wedding Day",'language':'영어','genre':'영어 원서','read_date':'2026-09-13','rating':0,'summary':'Disney Reading Adventures Level 1'},
+    {'child':'혜온','title':'What Is a Friend?','language':'영어','genre':'영어 원서','read_date':'2026-09-13','rating':0,'summary':'Disney Reading Adventures Level 1'},
+    {'child':'혜온','title':"Belle's Tea Party",'language':'영어','genre':'영어 원서','read_date':'2026-09-13','rating':0,'summary':'Disney Reading Adventures Level 1'},
+    {'child':'혜온','title':'Safe!','language':'영어','genre':'영어 원서','read_date':'2026-09-13','rating':0,'summary':'Disney Reading Adventures Level 1'},
+    {'child':'혜온','title':'In the Castle','language':'영어','genre':'영어 원서','read_date':'2026-09-13','rating':0,'summary':'Disney Reading Adventures Level 1'},
+    {'child':'혜온','title':"Cinderella's Wedding",'language':'영어','genre':'영어 원서','read_date':'2026-09-13','rating':0,'summary':'Disney Reading Adventures Level 1'},
+    {'child':'혜온','title':'The Snowy Day','language':'영어','genre':'영어 원서','read_date':'2026-09-13','rating':0,'summary':'Disney Reading Adventures Level 1'},
+]
+
+
 def _normalize_book(raw):
     title = str(raw.get('title') or '').strip()
     if not title:
@@ -26,43 +39,37 @@ def _normalize_book(raw):
     except (TypeError, ValueError):
         rating = 0
     rating = max(0, min(5, rating))
-    return {
-        'title': title,
-        'child': child,
-        'language': language,
-        'genre': genre,
-        'sr_score': sr_score,
-        'lexile_score': lexile_score,
-        'read_date': read_date,
-        'rating': rating,
-        'summary': summary,
-    }
+    return {'title':title,'child':child,'language':language,'genre':genre,'sr_score':sr_score,'lexile_score':lexile_score,'read_date':read_date,'rating':rating,'summary':summary}
 
 
 def _insert_book(book):
     c = db()
     try:
-        exists = c.execute(
-            'select id from riley_reading where child=? and title=? and read_date=? limit 1',
-            (book['child'], book['title'], book['read_date']),
-        ).fetchone()
+        exists = c.execute('select id from riley_reading where child=? and title=? and read_date=? limit 1',(book['child'],book['title'],book['read_date'])).fetchone()
         if exists:
             return int(exists['id']), False
-        cur = c.execute(
-            'insert into riley_reading(title,language,genre,sr_score,lexile_score,read_date,rating,summary,created_at,child) values(?,?,?,?,?,?,?,?,?,?)',
-            (
-                book['title'], book['language'], book['genre'], book['sr_score'],
-                book['lexile_score'], book['read_date'], book['rating'], book['summary'],
-                datetime.now().isoformat(timespec='seconds'), book['child'],
-            ),
-        )
+        cur = c.execute('insert into riley_reading(title,language,genre,sr_score,lexile_score,read_date,rating,summary,created_at,child) values(?,?,?,?,?,?,?,?,?,?)',(book['title'],book['language'],book['genre'],book['sr_score'],book['lexile_score'],book['read_date'],book['rating'],book['summary'],datetime.now().isoformat(timespec='seconds'),book['child']))
         c.commit()
         return int(cur.lastrowid), True
     finally:
         c.close()
 
 
+def _import_rows(rows):
+    added = 0
+    skipped = 0
+    for raw in rows:
+        try:
+            _, created = _insert_book(_normalize_book(raw))
+            added += int(created)
+            skipped += int(not created)
+        except Exception as e:
+            print(f'Reading import skipped: {e}', flush=True)
+    print(f'Reading import complete: added={added}, skipped={skipped}', flush=True)
+
+
 def _import_queue():
+    _import_rows(SEED_BOOKS)
     path = os.path.join(os.path.dirname(__file__), 'reading_imports.json')
     if not os.path.exists(path):
         return
@@ -71,17 +78,7 @@ def _import_queue():
             rows = json.load(f)
         if isinstance(rows, dict):
             rows = rows.get('books', [])
-        added = 0
-        skipped = 0
-        for raw in rows:
-            try:
-                book = _normalize_book(raw)
-                _, created = _insert_book(book)
-                added += int(created)
-                skipped += int(not created)
-            except Exception as e:
-                print(f'Reading import skipped: {e}', flush=True)
-        print(f'Reading import complete: added={added}, skipped={skipped}', flush=True)
+        _import_rows(rows)
     except Exception as e:
         print(f'Reading import queue error: {e}', flush=True)
 
@@ -91,24 +88,22 @@ def api_reading_add():
     expected = os.getenv('READING_API_KEY', '')
     supplied = request.headers.get('X-API-Key', '')
     if not expected or not secrets.compare_digest(supplied, expected):
-        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
-
+        return jsonify({'ok':False,'error':'unauthorized'}), 401
     payload = request.get_json(silent=True) or {}
     rows = payload.get('books') if isinstance(payload, dict) and 'books' in payload else [payload]
     if not isinstance(rows, list) or not rows:
-        return jsonify({'ok': False, 'error': 'books must be a non-empty list'}), 400
-
+        return jsonify({'ok':False,'error':'books must be a non-empty list'}), 400
     results = []
     try:
         for raw in rows:
             book = _normalize_book(raw)
             book_id, created = _insert_book(book)
-            results.append({'id': book_id, 'title': book['title'], 'child': book['child'], 'created': created})
+            results.append({'id':book_id,'title':book['title'],'child':book['child'],'created':created})
     except ValueError as e:
-        return jsonify({'ok': False, 'error': str(e)}), 400
-    except Exception as e:
-        return jsonify({'ok': False, 'error': 'database error'}), 500
-    return jsonify({'ok': True, 'results': results})
+        return jsonify({'ok':False,'error':str(e)}), 400
+    except Exception:
+        return jsonify({'ok':False,'error':'database error'}), 500
+    return jsonify({'ok':True,'results':results})
 
 
 _import_queue()
