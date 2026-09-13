@@ -879,6 +879,17 @@ def _wb_attrs(r, group_days, base):
     days=','.join(d for d in DAYS if d in group_days.get(r['group_id'], set()))
     return f'data-gid="{H(r["group_id"])}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-days="{H(days)}" data-color="{H(r["color"] or "")}" data-base="{H(base)}" data-done="{1 if r["done"] else 0}"'
 
+def _wb_item(r, group_days, base):
+    cls=' task-done' if r['done'] else ''
+    meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
+    style=f'border-left:4px solid {H(r["color"])}' if r['color'] else ''
+    return (f'<div class="lesson-row">'
+            f'<form method="post" action="{base}/workbook/group/{H(r["group_id"])}/toggle" style="flex:1;min-width:0">'
+            f'<button type="submit" class="lesson-toggle" style="{style}"><b class="{cls}">{H(r["title"])}</b>{meta}</button>'
+            f'</form>'
+            f'<button type="button" class="btn s lesson-edit" {_wb_attrs(r,group_days,base)} onclick="editWb(this)">수정</button>'
+            f'</div>')
+
 def _workbook_section(child='지유', base='/riley'):
     rows=_workbook_rows(child)
     open_n=sum(1 for r in rows if not r['done'])
@@ -888,6 +899,7 @@ def _workbook_section(child='지유', base='/riley'):
         d=(r['day_of_week'] or '').strip()
         (by[d] if d in by else unknown).append(r)
         group_days.setdefault(r['group_id'], set()).add(d)
+    today_day=DAYS[datetime.now(KST).date().weekday()]
     body=(f'<section class="feature-card" style="margin-top:14px">'
           f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">{H(child)} 문제집 체크리스트 · 미완료 {open_n}건</h2>'
           '<button type="button" class="btn s" onclick="let f=document.getElementById(\'wb-add\');f.style.display=f.style.display===\'none\'?\'grid\':\'none\'">+ 추가</button></div>'
@@ -900,21 +912,16 @@ def _workbook_section(child='지유', base='/riley'):
           '<button class="btn">추가</button></form>'
           '<div class="riley-week" style="margin-top:10px">')
     for i,dn in enumerate(DAYS):
-        body+=f'<div class="rday"><h3>{dn}요일</h3>'
+        body+=f'<div class="rday {"today" if dn==today_day else ""}"><h3>{dn}요일</h3>'
         if not by[dn]: body+='<div class="muted">없음</div>'
         for r in by[dn]:
-            cls=' task-done' if r['done'] else ''
-            meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
-            style=f'cursor:pointer;border-left:4px solid {H(r["color"])}' if r['color'] else 'cursor:pointer'
-            body+=f'<div class="lesson" style="{style}" {_wb_attrs(r,group_days,base)} onclick="editWb(this)"><b class="{cls}">{H(r["title"])}</b>{meta}</div>'
+            body+=_wb_item(r,group_days,base)
         body+='</div>'
     body+='</div>'
     if unknown:
         body+='<div class="needs-check"><h3>요일 미정</h3>'
         for r in unknown:
-            cls=' task-done' if r['done'] else ''
-            meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
-            body+=f'<div class="needs-item" style="cursor:pointer" {_wb_attrs(r,group_days,base)} onclick="editWb(this)"><div><b class="{cls}">{H(r["title"])}</b>{meta}</div></div>'
+            body+=_wb_item(r,group_days,base)
         body+='</div>'
     body+='</section>'
     return body
@@ -938,6 +945,24 @@ def riley_workbook_add():
         else:
             c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child) values(?,?,?,0,?,?,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid,color,child))
         c.commit(); c.close()
+    return redirect(request.referrer or '/riley')
+
+@app.route('/riley/workbook/group/<gid>/toggle',methods=['POST'])
+@app.route('/hyeon/workbook/group/<gid>/toggle',methods=['POST'])
+def riley_workbook_group_toggle(gid):
+    c=db()
+    rows=c.execute('select title,child,credited,done from riley_workbooks where group_id=? limit 1',(gid,)).fetchall()
+    if rows:
+        r=rows[0]
+        child=r['child'] or '지유'
+        credited=r['credited']
+        new_done=0 if r['done'] else 1
+        if new_done and not credited:
+            _award_credit(child,_credit_rate('workbook'),f'문제집 완료: {r["title"]}')
+            credited=1
+        c.execute('update riley_workbooks set done=?,credited=? where group_id=?',(new_done,credited,gid))
+        c.commit()
+    c.close()
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/workbook/group/<gid>/edit',methods=['POST'])
@@ -2992,6 +3017,10 @@ CSS += '''
 .feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.feature-card{background:#fff;border:1px solid #e4e9f0;border-radius:15px;padding:14px}.feature-card h2,.feature-card h3{margin:0 0 10px}.feature-list{display:grid;gap:7px}.feature-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #edf1f5}.feature-row:last-child{border-bottom:0}.feature-meta{font-size:11px;color:#748196;margin-top:3px}.feature-badge{font-size:11px;font-weight:800;border-radius:999px;padding:4px 7px;background:#eef3f8;color:#5e7186;white-space:nowrap}.feature-alert{background:#fff5e8;border:1px solid #f1d3a7;color:#8a5a14;border-radius:11px;padding:9px 10px;margin:7px 0;font-size:12px}.task-done{text-decoration:line-through;color:#9aa5b2}.task-actions{display:flex;gap:5px;align-items:center}.task-form{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:7px;align-items:end}.task-form input,.task-form select{min-width:0}.plan-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.plan-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.plan-stat{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:11px}.plan-stat b{font-size:20px;display:block}.plan-section{background:#fff;border:1px solid #e4e9f0;border-radius:15px;padding:14px;margin:10px 0}.plan-section h2{margin:0 0 10px}.plan-form{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;align-items:end}.plan-form .wide{grid-column:span 2}.plan-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 0;border-bottom:1px solid #edf1f5}.plan-row:last-child{border-bottom:0}.trip-plan-link{margin-left:6px}
 @media(max-width:800px){.feature-grid{grid-template-columns:1fr}.task-form{grid-template-columns:1fr 1fr}.task-form .task-title{grid-column:1/-1}.plan-summary{grid-template-columns:1fr 1fr}.plan-form{grid-template-columns:1fr 1fr}.plan-form .wide{grid-column:1/-1}}
 @media(max-width:480px){.task-form,.plan-form{grid-template-columns:1fr}.task-form .task-title,.plan-form .wide{grid-column:1}.plan-summary{grid-template-columns:1fr 1fr}}
+.lesson-row{display:flex;gap:6px;align-items:stretch;margin-bottom:7px}
+.lesson-toggle{flex:1;min-width:0;text-align:left;background:#eaf3fb;border:0;border-radius:9px;padding:8px;font:inherit;font-size:12px;cursor:pointer;color:inherit}
+.lesson-toggle b{display:block;margin-bottom:3px}
+.lesson-edit{flex:0 0 auto;align-self:stretch;font-size:11px;padding:0 10px}
 '''
 
 
