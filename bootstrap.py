@@ -27,15 +27,13 @@ else:
 c.execute('''CREATE TABLE IF NOT EXISTS itinerary(id INTEGER PRIMARY KEY,trip_id INTEGER REFERENCES trips(id) ON DELETE CASCADE,item_date TEXT,day_label TEXT,time_text TEXT,title TEXT,place TEXT,detail TEXT,sort_order INTEGER DEFAULT 0)''')
 c.execute('''CREATE TABLE IF NOT EXISTS calendar_events(id INTEGER PRIMARY KEY,start_date TEXT,end_date TEXT,title TEXT,category TEXT,person TEXT,notes TEXT)''')
 c.execute('''CREATE TABLE IF NOT EXISTS academy(id INTEGER PRIMARY KEY,day_of_week TEXT,start_time TEXT,end_time TEXT,academy TEXT,subject TEXT,location TEXT,notes TEXT,active INTEGER DEFAULT 1)''')
-
-# Riley's fixed video-English schedule is persisted locally as a fallback.
-# The weekly view already deduplicates it when the same Google recurring event exists.
 for day in ('화','목'):
  exists=c.execute("SELECT 1 FROM academy WHERE active=1 AND day_of_week=? AND start_time='21:00' AND REPLACE(COALESCE(academy,''),' ','') LIKE '%화상영어%' LIMIT 1",(day,)).fetchone()
  if not exists:
   c.execute("INSERT INTO academy(day_of_week,start_time,end_time,academy,subject,location,notes,active) VALUES(?,?,?,?,?,?,?,1)",(day,'21:00','','화상영어','영어','',''))
-
 c.commit(); c.close()
 import seed_riley_reading
 import add_riley_jeoncheondang18
+import add_hyeon_reading_20260914
+import add_hyeon_waenyamyeon_20260914
 print('SQLite schema ready:',DB)
