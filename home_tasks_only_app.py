@@ -992,7 +992,7 @@ def riley_workbook_group_delete(gid):
     return redirect(request.referrer or '/riley')
 
 CSS+='''.reading-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.reading-card{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px}.reading-stars{color:#e9b949;font-size:14px;margin-bottom:4px;letter-spacing:1px}'''
-JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");let base=f.dataset.base||"/riley";f.action=base+"/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-genre").value=d.genre||"기타";document.getElementById("rde-sr").value=d.sr_score||"";document.getElementById("rde-lexile").value=d.lexile_score||"";document.getElementById("rde-date").value=d.read_date||"";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";o("rde")}function deleteReading(){let f0=document.getElementById("rdef");let id=f0.dataset.id;let base=f0.dataset.base||"/riley";if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
+JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");let base=f.dataset.base||"/riley";f.action=base+"/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-genre").value=d.genre||"기타";document.getElementById("rde-sr").value=d.sr_score||"";document.getElementById("rde-lexile").value=d.lexile_score||"";document.getElementById("rde-date").value=d.read_date||"";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";let rw=document.getElementById("rde-readwith");if(rw)rw.value=d.read_with||"혼자";o("rde")}function deleteReading(){let f0=document.getElementById("rdef");let id=f0.dataset.id;let base=f0.dataset.base||"/riley";if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
 JS+='''document.addEventListener("DOMContentLoaded",function(){var editBtn=document.querySelector(".trip-actions button[onclick^=\\"et(this)\\"]");var h1=document.querySelector(".hero h1");if(editBtn&&h1){h1.style.cursor="pointer";h1.title="클릭하여 여행 이름 수정";h1.onclick=function(){et(editBtn)}}})'''
 
 def _init_reading_schema():
@@ -1018,6 +1018,8 @@ def _init_reading_schema():
         c.execute('ALTER TABLE riley_reading ADD COLUMN read_date TEXT')
     if 'child' not in cols:
         c.execute('ALTER TABLE riley_reading ADD COLUMN child TEXT')
+    if 'read_with' not in cols:
+        c.execute('ALTER TABLE riley_reading ADD COLUMN read_with TEXT')
     c.execute("update riley_reading set child='지유' where child is null or child=''")
     for r in c.execute("select id,summary,read_date from riley_reading where summary like '%읽은 날짜:%'").fetchall():
         m=re.search(r'읽은 날짜:\s*(\d{4}-\d{2}-\d{2})',r['summary'] or '')
@@ -1029,6 +1031,7 @@ _init_reading_schema()
 
 READING_LANGS=('한글','영어')
 READING_GENRES=('동화','그림책','과학','역사','전래동화','만화','위인전','창작','기타')
+READ_WITH_OPTIONS=('혼자','아빠','엄마','언니')
 
 def _reading_rows(child):
     c=db(); rows=[dict(x) for x in c.execute('select * from riley_reading where child=? order by id desc',(child,)).fetchall()]; c.close(); return rows
@@ -1041,13 +1044,22 @@ def reading_edit_modal(base='/riley'):
     lang_opts=''.join(f'<option value="{l}">{l}</option>' for l in READING_LANGS)
     genre_opts=''.join(f'<option value="{g}">{g}</option>' for g in READING_GENRES)
     star_opts=''.join(f'<option value="{i}">{"★"*i}</option>' for i in range(5,0,-1))
-    return f'''<div class="modal" id="rde"><div class="card"><div class="head"><h2>독서 기록 수정</h2><button class="btn s" onclick="x('rde')">닫기</button></div><form class="form" id="rdef" method="post" data-base="{H(base)}"><label class="full">책 제목<input name="title" id="rde-title" required></label><label>언어<select name="language" id="rde-lang">{lang_opts}</select></label><label>장르<select name="genre" id="rde-genre">{genre_opts}</select></label><label>별점<select name="rating" id="rde-rating">{star_opts}</select></label><label>SR 지수<input name="sr_score" id="rde-sr" placeholder="예: 3.5"></label><label>렉사일 지수<input name="lexile_score" id="rde-lexile" placeholder="예: 650L"></label><label>읽은 날짜<input type="date" name="read_date" id="rde-date"></label><label class="full">한줄 요약/소감<input name="summary" id="rde-summary"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteReading()">삭제</button></div></form></div></div>'''
+    read_with_field=''
+    if base=='/hyeon':
+        read_with_opts=''.join(f'<option value="{w}">{w}</option>' for w in READ_WITH_OPTIONS)
+        read_with_field=f'<label>누구랑 읽었어요?<select name="read_with" id="rde-readwith">{read_with_opts}</select></label>'
+    return f'''<div class="modal" id="rde"><div class="card"><div class="head"><h2>독서 기록 수정</h2><button class="btn s" onclick="x('rde')">닫기</button></div><form class="form" id="rdef" method="post" data-base="{H(base)}"><label class="full">책 제목<input name="title" id="rde-title" required></label><label>언어<select name="language" id="rde-lang">{lang_opts}</select></label><label>장르<select name="genre" id="rde-genre">{genre_opts}</select></label><label>별점<select name="rating" id="rde-rating">{star_opts}</select></label>{read_with_field}<label>SR 지수<input name="sr_score" id="rde-sr" placeholder="예: 3.5"></label><label>렉사일 지수<input name="lexile_score" id="rde-lexile" placeholder="예: 650L"></label><label>읽은 날짜<input type="date" name="read_date" id="rde-date"></label><label class="full">한줄 요약/소감<input name="summary" id="rde-summary"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteReading()">삭제</button></div></form></div></div>'''
 
 def _reading_section(child='지유', base='/riley'):
     rows=_reading_rows(child)
     lang_opts=''.join(f'<option value="{l}">{l}</option>' for l in READING_LANGS)
     genre_opts=''.join(f'<option value="{g}">{g}</option>' for g in READING_GENRES)
     star_opts=''.join(f'<option value="{i}">{"★"*i}</option>' for i in range(5,0,-1))
+    show_read_with=(base=='/hyeon')
+    read_with_field=''
+    if show_read_with:
+        read_with_opts=''.join(f'<option value="{w}">{w}</option>' for w in READ_WITH_OPTIONS)
+        read_with_field=f'<label>누구랑 읽었어요?<select name="read_with">{read_with_opts}</select></label>'
     body=(f'<section class="feature-card" style="margin-top:14px">'
           f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">{H(child)} 독서 DB · {len(rows)}권</h2>'
           '<button type="button" class="btn s" onclick="let f=document.getElementById(\'rd-add\');f.style.display=f.style.display===\'none\'?\'grid\':\'none\'">+ 추가</button></div>'
@@ -1057,6 +1069,7 @@ def _reading_section(child='지유', base='/riley'):
           f'<label>언어<select name="language">{lang_opts}</select></label>'
           f'<label>장르<select name="genre">{genre_opts}</select></label>'
           f'<label>별점<select name="rating">{star_opts}</select></label>'
+          f'{read_with_field}'
           '<label>SR 지수<input name="sr_score" placeholder="예: 3.5"></label>'
           '<label>렉사일 지수<input name="lexile_score" placeholder="예: 650L"></label>'
           '<label>읽은 날짜<input type="date" name="read_date"></label>'
@@ -1069,8 +1082,9 @@ def _reading_section(child='지유', base='/riley'):
         stars=_stars(r['rating'])
         summary=f'<div class="feature-meta">{H(r["summary"])}</div>' if r['summary'] else ''
         level=' · '.join(v for v in [f'SR {r["sr_score"]}' if r['sr_score'] else '', f'Lexile {r["lexile_score"]}' if r['lexile_score'] else ''] if v)
-        meta=' · '.join(v for v in [r['language'],r['genre'],level,r['read_date']] if v) or '-'
-        dat=f'data-id="{r["id"]}" data-title="{H(r["title"])}" data-language="{H(r["language"] or "")}" data-genre="{H(r["genre"] or "")}" data-sr_score="{H(r["sr_score"] or "")}" data-lexile_score="{H(r["lexile_score"] or "")}" data-read_date="{H(r["read_date"] or "")}" data-rating="{r["rating"] or 0}" data-summary="{H(r["summary"] or "")}"'
+        read_with_text=f'👥 {r["read_with"]}' if show_read_with and r['read_with'] else ''
+        meta=' · '.join(v for v in [r['language'],r['genre'],level,r['read_date'],read_with_text] if v) or '-'
+        dat=f'data-id="{r["id"]}" data-title="{H(r["title"])}" data-language="{H(r["language"] or "")}" data-genre="{H(r["genre"] or "")}" data-sr_score="{H(r["sr_score"] or "")}" data-lexile_score="{H(r["lexile_score"] or "")}" data-read_date="{H(r["read_date"] or "")}" data-rating="{r["rating"] or 0}" data-summary="{H(r["summary"] or "")}" data-read_with="{H(r["read_with"] or "")}"'
         body+=(f'<div class="reading-card" style="cursor:pointer" {dat} onclick="editReading(this)">'
                f'<div class="reading-stars">{stars}</div><b>{H(r["title"])}</b>'
                f'<div class="muted">{H(meta)}</div>{summary}</div>')
@@ -1088,11 +1102,13 @@ def riley_reading_add():
         sr_score=(request.form.get('sr_score') or '').strip()
         lexile_score=(request.form.get('lexile_score') or '').strip()
         read_date=(request.form.get('read_date') or '').strip()
+        read_with=(request.form.get('read_with') or '').strip()
+        if read_with not in READ_WITH_OPTIONS: read_with=''
         try: rating=int(request.form.get('rating') or 0)
         except ValueError: rating=0
         rating=max(0,min(5,rating))
         summary=(request.form.get('summary') or '').strip()
-        c=db(); c.execute('insert into riley_reading(title,language,genre,sr_score,lexile_score,read_date,rating,summary,created_at,child) values(?,?,?,?,?,?,?,?,?,?)',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,datetime.now().isoformat(timespec='seconds'),child)); c.commit(); c.close()
+        c=db(); c.execute('insert into riley_reading(title,language,genre,sr_score,lexile_score,read_date,rating,summary,created_at,child,read_with) values(?,?,?,?,?,?,?,?,?,?,?)',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,datetime.now().isoformat(timespec='seconds'),child,read_with)); c.commit(); c.close()
         if child=='지유':
             _award_credit(child,_credit_rate('reading'),f'독서 기록 추가: {title}')
     return redirect(request.referrer or '/riley')
@@ -1107,11 +1123,13 @@ def riley_reading_edit(i):
         sr_score=(request.form.get('sr_score') or '').strip()
         lexile_score=(request.form.get('lexile_score') or '').strip()
         read_date=(request.form.get('read_date') or '').strip()
+        read_with=(request.form.get('read_with') or '').strip()
+        if read_with not in READ_WITH_OPTIONS: read_with=''
         try: rating=int(request.form.get('rating') or 0)
         except ValueError: rating=0
         rating=max(0,min(5,rating))
         summary=(request.form.get('summary') or '').strip()
-        c=db(); c.execute('update riley_reading set title=?,language=?,genre=?,sr_score=?,lexile_score=?,read_date=?,rating=?,summary=? where id=?',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,i)); c.commit(); c.close()
+        c=db(); c.execute('update riley_reading set title=?,language=?,genre=?,sr_score=?,lexile_score=?,read_date=?,rating=?,summary=?,read_with=? where id=?',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,read_with,i)); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/reading/<int:i>/delete',methods=['POST'])
