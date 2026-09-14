@@ -1884,11 +1884,30 @@ def coloring_page():
 const CL_TEMPLATES={templates_json};
 let clColor='#e74c3c';
 let clCurrent=CL_TEMPLATES[0];
-let clCtx=null, clDrawing=false;
+let clCtx=null, clDrawing=false, clCompleted=false;
 function clSetColor(c,btn){{
   clColor=c;
   document.querySelectorAll('.cl-swatch').forEach(function(x){{x.classList.remove('on')}});
   btn.classList.add('on');
+}}
+let clAudioCtx=null;
+function clChime(){{
+  try{{
+    if(!clAudioCtx) clAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(clAudioCtx.state==='suspended') clAudioCtx.resume();
+    const notes=[659.25,523.25,783.99];
+    notes.forEach(function(freq,i){{
+      const t=clAudioCtx.currentTime+i*0.12;
+      const osc=clAudioCtx.createOscillator();
+      const gain=clAudioCtx.createGain();
+      osc.type='sine'; osc.frequency.value=freq;
+      gain.gain.setValueAtTime(0.0001,t);
+      gain.gain.linearRampToValueAtTime(0.28,t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001,t+0.35);
+      osc.connect(gain); gain.connect(clAudioCtx.destination);
+      osc.start(t); osc.stop(t+0.37);
+    }});
+  }}catch(e){{}}
 }}
 const CL_VB=300;
 let clScale=1, clClipReady=false;
@@ -1914,21 +1933,48 @@ function clBuildClipPath(regions){{
   return path;
 }}
 function clApplyClip(){{
-  if(clClipReady) clCtx.restore();
   clCtx.save();
   clClipReady=true;
   const path=clBuildClipPath(clCurrent.regions);
   clCtx.clip(path);
 }}
+function clResetCanvas(){{
+  if(!clCtx) return;
+  if(clClipReady){{ clCtx.restore(); clClipReady=false; }}
+  clCtx.clearRect(0,0,clCtx.canvas.width,clCtx.canvas.height);
+  clApplyClip();
+  clCompleted=false;
+}}
 function clSelect(id){{
+  if(document.activeElement&&document.activeElement.blur) document.activeElement.blur();
   clCurrent=CL_TEMPLATES.find(function(t){{return t.id===id}})||CL_TEMPLATES[0];
   document.querySelectorAll('.cl-pick').forEach(function(x){{x.classList.remove('on')}});
   document.getElementById('cl-pick-'+clCurrent.id).classList.add('on');
   document.getElementById('cl-outline').innerHTML=clCurrent.svg;
-  clApplyClip();
-  clClear();
+  clResetCanvas();
 }}
-function clClear(){{ if(clCtx) clCtx.clearRect(0,0,clCtx.canvas.width,clCtx.canvas.height); }}
+function clClear(){{ clResetCanvas(); }}
+function clCheckComplete(){{
+  if(!clCtx||clCompleted) return;
+  const path=clBuildClipPath(clCurrent.regions);
+  const w=clCtx.canvas.width, h=clCtx.canvas.height;
+  const img=clCtx.getImageData(0,0,w,h).data;
+  const step=Math.max(4,Math.round(clScale*8));
+  let total=0, filled=0;
+  for(let y=0;y<h;y+=step){{
+    for(let x=0;x<w;x+=step){{
+      if(clCtx.isPointInPath(path,x,y)){{
+        total++;
+        const idx=(y*w+x)*4;
+        if(img[idx+3]>40) filled++;
+      }}
+    }}
+  }}
+  if(total>0 && filled/total>=0.85){{
+    clCompleted=true;
+    clChime();
+  }}
+}}
 function clInit(){{
   const cvs=document.getElementById('cl-canvas');
   const wrap=cvs.parentElement;
@@ -1943,7 +1989,7 @@ function clInit(){{
   }}
   function start(e){{ e.preventDefault(); clDrawing=true; clCtx.strokeStyle=clColor; const[x,y]=pos(e); clCtx.beginPath(); clCtx.moveTo(x,y); clCtx.lineTo(x+0.1,y+0.1); clCtx.stroke(); }}
   function move(e){{ if(!clDrawing)return; e.preventDefault(); clCtx.strokeStyle=clColor; const[x,y]=pos(e); clCtx.lineTo(x,y); clCtx.stroke(); }}
-  function end(e){{ clDrawing=false; }}
+  function end(e){{ if(!clDrawing)return; clDrawing=false; clCheckComplete(); }}
   cvs.addEventListener('mousedown',start); cvs.addEventListener('mousemove',move); window.addEventListener('mouseup',end);
   cvs.addEventListener('touchstart',start,{{passive:false}}); cvs.addEventListener('touchmove',move,{{passive:false}}); cvs.addEventListener('touchend',end);
 }}
