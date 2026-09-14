@@ -1020,6 +1020,11 @@ def _init_reading_schema():
         c.execute('ALTER TABLE riley_reading ADD COLUMN child TEXT')
     if 'read_with' not in cols:
         c.execute('ALTER TABLE riley_reading ADD COLUMN read_with TEXT')
+        cols.add('read_with')
+    if 'companion' in cols:
+        # Another one-off script writes a same-purpose 'companion' column; fold it
+        # into read_with so both paths show up in one place.
+        c.execute("update riley_reading set read_with=companion where (read_with is null or read_with='') and companion is not null and companion!=''")
     c.execute("update riley_reading set child='지유' where child is null or child=''")
     for r in c.execute("select id,summary,read_date from riley_reading where summary like '%읽은 날짜:%'").fetchall():
         m=re.search(r'읽은 날짜:\s*(\d{4}-\d{2}-\d{2})',r['summary'] or '')
