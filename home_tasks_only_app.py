@@ -1970,7 +1970,7 @@ function clCheckComplete(){{
       }}
     }}
   }}
-  if(total>0 && filled/total>=0.85){{
+  if(total>0 && filled/total>=0.99){{
     clCompleted=true;
     clChime();
   }}
