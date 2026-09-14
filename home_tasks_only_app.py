@@ -991,7 +991,7 @@ def riley_workbook_group_delete(gid):
     c=db(); c.execute('delete from riley_workbooks where group_id=?',(gid,)); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
-CSS+='''.reading-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.reading-card{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px}.reading-stars{color:#e9b949;font-size:14px;margin-bottom:4px;letter-spacing:1px}'''
+CSS+='''.reading-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.reading-card{position:relative;background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px}.reading-stars{color:#e9b949;font-size:14px;margin-bottom:4px;letter-spacing:1px}.reading-count{position:absolute;top:6px;right:6px;background:#0f4c81;color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:2px 7px;line-height:1.3}'''
 JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");let base=f.dataset.base||"/riley";f.action=base+"/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-genre").value=d.genre||"기타";document.getElementById("rde-sr").value=d.sr_score||"";document.getElementById("rde-lexile").value=d.lexile_score||"";document.getElementById("rde-date").value=d.read_date||"";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";let rw=document.getElementById("rde-readwith");if(rw)rw.value=d.read_with||"혼자";o("rde")}function deleteReading(){let f0=document.getElementById("rdef");let id=f0.dataset.id;let base=f0.dataset.base||"/riley";if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
 JS+='''document.addEventListener("DOMContentLoaded",function(){var editBtn=document.querySelector(".trip-actions button[onclick^=\\"et(this)\\"]");var h1=document.querySelector(".hero h1");if(editBtn&&h1){h1.style.cursor="pointer";h1.title="클릭하여 여행 이름 수정";h1.onclick=function(){et(editBtn)}}})'''
 
@@ -1083,6 +1083,7 @@ def _reading_section(child='지유', base='/riley'):
           '<div class="reading-grid" style="margin-top:10px">')
     if not rows:
         body+='<div class="muted">등록된 책이 없습니다.</div>'
+    title_counts=Counter((r['title'] or '').strip() for r in rows)
     for r in rows:
         stars=_stars(r['rating'])
         summary=f'<div class="feature-meta">{H(r["summary"])}</div>' if r['summary'] else ''
@@ -1090,8 +1091,10 @@ def _reading_section(child='지유', base='/riley'):
         read_with_text=f'👥 {r["read_with"]}' if show_read_with and r['read_with'] else ''
         meta=' · '.join(v for v in [r['language'],r['genre'],level,r['read_date'],read_with_text] if v) or '-'
         dat=f'data-id="{r["id"]}" data-title="{H(r["title"])}" data-language="{H(r["language"] or "")}" data-genre="{H(r["genre"] or "")}" data-sr_score="{H(r["sr_score"] or "")}" data-lexile_score="{H(r["lexile_score"] or "")}" data-read_date="{H(r["read_date"] or "")}" data-rating="{r["rating"] or 0}" data-summary="{H(r["summary"] or "")}" data-read_with="{H(r["read_with"] or "")}"'
+        count=title_counts.get((r['title'] or '').strip(),1)
+        count_badge=f'<span class="reading-count">×{count}</span>' if count>1 else ''
         body+=(f'<div class="reading-card" style="cursor:pointer" {dat} onclick="editReading(this)">'
-               f'<div class="reading-stars">{stars}</div><b>{H(r["title"])}</b>'
+               f'{count_badge}<div class="reading-stars">{stars}</div><b>{H(r["title"])}</b>'
                f'<div class="muted">{H(meta)}</div>{summary}</div>')
     body+='</div></section>'
     return body
