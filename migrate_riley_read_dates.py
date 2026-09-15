@@ -12,8 +12,9 @@ books=[
     ('이상한 과자 가게 전천당 19','한글','창작','2026-09-13','',''),
     ('룰스: 단 한 사람만을 위한 규칙','한글','성장','2026-09-15','',''),
     ('황금성','한글','성장','2026-09-15','',''),
-    # Usborne Young Reading Series Two, Susanna Davidson adaptation, ISBN 9780746067802.
     ('A Little Princess','영어','고전','2026-09-09','3.7','640L'),
+    # Usborne Young Reading Series Two, Rob Lloyd Jones retelling, ISBN 9780746085622.
+    ('Robin Hood','영어','고전','2026-09-15','3.7','640L'),
 ]
 
 rcols={r['name'] for r in c.execute('PRAGMA table_info(riley_reading)').fetchall()}
