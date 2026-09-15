@@ -53,7 +53,7 @@ JS+='''function showEventDetail(el){let d=el.dataset;document.getElementById("ed
 CSS+='''.fab-group{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:20}.fab{width:46px;height:46px;border-radius:50%;background:#0f4c81;color:#fff;border:0;font-size:20px;line-height:1;cursor:pointer;box-shadow:0 4px 14px #0f4c8155;display:flex;align-items:center;justify-content:center;transition:transform .12s ease,box-shadow .12s ease}.fab:hover{box-shadow:0 6px 18px #0f4c8166;transform:translateY(-1px)}.fab:active{transform:scale(.94)}@media(max-width:560px){.fab-group{right:14px;bottom:14px;gap:8px}.fab{width:42px;height:42px;font-size:18px}}'''
 CSS+='''.fm-event,.event-chip{cursor:pointer}.fm-event:hover,.event-chip:hover{filter:brightness(0.96)}'''
 CSS+='''.day-checks{display:flex;gap:8px;flex-wrap:wrap}.day-check{display:flex;align-items:center;gap:4px;width:auto;font-size:12px;color:#14263f}.day-check input{width:auto}'''
-JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\\"days\\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;let base=d.base||document.getElementById("wbef").dataset.base||"/riley";document.getElementById("wbef").action=base+"/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbef").dataset.base=base;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";document.getElementById("wbe-color").value=d.color||"#0f4c81";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\\"days\\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let f0=document.getElementById("wbef");let gid=f0.dataset.gid;let base=f0.dataset.base||"/riley";if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}let wbEditMode=false;function wbToggleEditMode(btn){wbEditMode=!wbEditMode;btn.classList.toggle("on",wbEditMode)}function wbItemClick(el){if(wbEditMode){editWb(el);return}let f=document.createElement("form");f.method="post";f.action=(el.dataset.base||"/riley")+"/workbook/"+el.dataset.id+"/toggle";document.body.appendChild(f);f.submit()}'''
+JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\\"days\\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;let base=d.base||document.getElementById("wbef").dataset.base||"/riley";document.getElementById("wbef").action=base+"/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbef").dataset.base=base;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";document.getElementById("wbe-color").value=d.color||"#0f4c81";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\\"days\\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let f0=document.getElementById("wbef");let gid=f0.dataset.gid;let base=f0.dataset.base||"/riley";if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}let wbEditMode=false;function wbToggleEditMode(btn){wbEditMode=!wbEditMode;btn.classList.toggle("on",wbEditMode)}function wbItemClick(el){if(wbEditMode){editWb(el);return}let f=document.createElement("form");f.method="post";let url=(el.dataset.base||"/riley")+"/workbook/"+el.dataset.id+"/toggle";if(el.dataset.date)url+="/"+el.dataset.date;f.action=url;document.body.appendChild(f);f.submit()}'''
 CSS+='''.person-filter{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}.pf{border:1px solid #d7dfe8;background:#fff;color:#5c6b80;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;text-decoration:none;transition:all .12s ease}.pf:hover{border-color:#0f4c81;color:#0f4c81}.pf.on{color:#fff;border-color:transparent}.pf.on.yj{background:#315c9b}.pf.on.지유{background:#e98755}.pf.on.보미{background:#9a66ad}.pf.on.혜온{background:#46a081}.pf.on.가족{background:#c99a35}.pf.on.여행{background:#d64f5b}.pf.on:not(.yj):not(.지유):not(.보미):not(.혜온):not(.가족):not(.여행){background:#14263f}'''
 CSS+='''.view-value{cursor:pointer;display:block}.view-value:hover{color:#0f4c81}.inline-edit{display:none;flex-direction:column;gap:6px;margin-top:2px}.inline-edit input{padding:7px 9px;border:1px solid #d5dde7;border-radius:8px;font:inherit;font-size:13px}'''
 CSS+='''.future-card{display:block;color:inherit;text-decoration:none}.status-form{margin-top:8px}.status-select{width:100%;border:1px solid #d7dfe8;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:#eef2f6;color:#5c6b80}.status-select.planned{background:#e8f6ee;color:#1f7a4d;border-color:#bfe4cd}.status-select.review{background:#fff3e0;color:#b5680a;border-color:#f3d9ab}.status-select.longterm{background:#f1ecfb;color:#6a4fb0;border-color:#dccdf5}.status-select.done{background:#eef2f6;color:#5c6b80;border-color:#dfe6ee}.status-badge{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:#eef2f6;color:#5c6b80}.status-badge.planned{background:#e8f6ee;color:#1f7a4d}.status-badge.review{background:#fff3e0;color:#b5680a}.status-badge.longterm{background:#f1ecfb;color:#6a4fb0}.status-badge.done{background:#eef2f6;color:#5c6b80}'''
@@ -818,8 +818,40 @@ def _init_riley_workbook_schema():
       reason TEXT,
       created_at TEXT NOT NULL
     )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS workbook_completions(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE(item_id,date)
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS workbook_credited(
+      item_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      PRIMARY KEY(item_id,date)
+    )''')
+    # One-time migration: the old model had a single perpetual done/credited flag per
+    # recurring row instead of per-date history. Carry any already-done dated row over
+    # as "done today" so nothing looks reset, and mark it already-credited so it isn't
+    # paid out a second time under the new per-date model.
+    if 'wb_history_migrated' not in {r['name'] for r in c.execute("PRAGMA table_info(riley_workbooks)")}:
+        c.execute('ALTER TABLE riley_workbooks ADD COLUMN wb_history_migrated INTEGER DEFAULT 0')
+        today_iso=datetime.now(KST).date().isoformat()
+        for r in c.execute("select id,credited from riley_workbooks where done=1 and day_of_week!='' and wb_history_migrated=0").fetchall():
+            c.execute('insert or ignore into workbook_completions(item_id,date,created_at) values(?,?,?)',(r['id'],today_iso,datetime.now(KST).isoformat(timespec='seconds')))
+            if r['credited']:
+                c.execute('insert or ignore into workbook_credited(item_id,date) values(?,?)',(r['id'],today_iso))
+        c.execute('update riley_workbooks set wb_history_migrated=1')
     c.commit(); c.close()
 _init_riley_workbook_schema()
+
+def _wb_completions_for_week(item_ids, mon, sun):
+    if not item_ids: return set()
+    c=db()
+    placeholders=','.join('?'*len(item_ids))
+    rows=c.execute(f'select item_id,date from workbook_completions where item_id in ({placeholders}) and date>=? and date<=?',(*item_ids,mon.isoformat(),sun.isoformat())).fetchall()
+    c.close()
+    return {(r['item_id'],r['date']) for r in rows}
 
 def _award_credit(child,delta,reason):
     c=db()
@@ -879,24 +911,39 @@ def _wb_attrs(r, group_days, base):
     days=','.join(d for d in DAYS if d in group_days.get(r['group_id'], set()))
     return f'data-id="{r["id"]}" data-gid="{H(r["group_id"])}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-days="{H(days)}" data-color="{H(r["color"] or "")}" data-base="{H(base)}"'
 
-def _wb_item(r, group_days, base):
-    cls=' task-done' if r['done'] else ''
+def _wb_item(r, occurrence_date, is_done, group_days, base):
+    cls=' task-done' if is_done else ''
     meta=f'<div class="feature-meta">{H(r["notes"])}</div>' if r['notes'] else ''
     style=f'border-left:4px solid {H(r["color"])}' if r['color'] else ''
-    return f'<button type="button" class="lesson-toggle" style="{style}" {_wb_attrs(r,group_days,base)} onclick="wbItemClick(this)"><b class="{cls}">{H(r["title"])}</b>{meta}</button>'
+    attrs=_wb_attrs(r,group_days,base)
+    if occurrence_date is not None:
+        attrs+=f' data-date="{occurrence_date.isoformat()}"'
+    return f'<button type="button" class="lesson-toggle" style="{style}" {attrs} onclick="wbItemClick(this)"><b class="{cls}">{H(r["title"])}</b>{meta}</button>'
 
-def _workbook_section(child='지유', base='/riley'):
+def _workbook_section(child='지유', base='/riley', mon=None):
+    today=datetime.now(KST).date()
+    if mon is None:
+        mon=today-timedelta(days=today.weekday())
+    sun=mon+timedelta(days=6)
+    prev=(mon-timedelta(days=7)).isoformat(); nxt=(mon+timedelta(days=7)).isoformat()
     rows=_workbook_rows(child)
-    open_n=sum(1 for r in rows if not r['done'])
-    by={d:[] for d in DAYS}; unknown=[]
+    dated=[r for r in rows if (r['day_of_week'] or '').strip() in DAYS]
+    undated=[r for r in rows if (r['day_of_week'] or '').strip() not in DAYS]
+    completions=_wb_completions_for_week([r['id'] for r in dated], mon, sun)
+    by_day={d:[] for d in DAYS}
     group_days={}
     for r in rows:
         d=(r['day_of_week'] or '').strip()
-        (by[d] if d in by else unknown).append(r)
+        if d in by_day: by_day[d].append(r)
         group_days.setdefault(r['group_id'], set()).add(d)
-    today_day=DAYS[datetime.now(KST).date().weekday()]
+    open_n=sum(1 for r in dated if (r['id'],(mon+timedelta(days=DAYS.index(r['day_of_week']))).isoformat()) not in completions)
+    open_n+=sum(1 for r in undated if not r['done'])
+    head=(f'<div class="riley-toolbar"><div><a class="btn s" href="{base}?date={prev}">← 이전 주</a> '
+          f'<a class="btn s" href="{base}?date={today.isoformat()}">이번 주</a> '
+          f'<a class="btn s" href="{base}?date={nxt}">다음 주 →</a></div>'
+          f'<b>{mon.strftime("%Y.%m.%d")} ~ {sun.strftime("%m.%d")}</b></div>')
     body=(f'<section class="feature-card" style="margin-top:14px">'
-          f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">{H(child)} 문제집 체크리스트 · 미완료 {open_n}건</h2>'
+          f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">{H(child)} 문제집 체크리스트 · 이번 주 미완료 {open_n}건</h2>'
           '<div style="display:flex;gap:6px">'
           '<button type="button" class="btn s" onclick="let f=document.getElementById(\'wb-add\');f.style.display=f.style.display===\'none\'?\'grid\':\'none\'">+ 추가</button>'
           '<button type="button" class="btn s" onclick="wbToggleEditMode(this)">수정</button>'
@@ -908,18 +955,21 @@ def _workbook_section(child='지유', base='/riley'):
           '<label>메모<input name="notes" placeholder="분량 등"></label>'
           '<label>색상<input type="color" name="color" value="#0f4c81"></label>'
           '<button class="btn">추가</button></form>'
+          +head+
           '<div class="riley-week" style="margin-top:10px">')
     for i,dn in enumerate(DAYS):
-        body+=f'<div class="rday {"today" if dn==today_day else ""}"><h3>{dn}요일</h3>'
-        if not by[dn]: body+='<div class="muted">없음</div>'
-        for r in by[dn]:
-            body+=_wb_item(r,group_days,base)
+        d=mon+timedelta(days=i)
+        body+=f'<div class="rday {"today" if d==today else ""}"><div class="rdate">{d.strftime("%m/%d")}</div><h3>{dn}요일</h3>'
+        if not by_day[dn]: body+='<div class="muted">없음</div>'
+        for r in by_day[dn]:
+            is_done=(r['id'],d.isoformat()) in completions
+            body+=_wb_item(r,d,is_done,group_days,base)
         body+='</div>'
     body+='</div>'
-    if unknown:
+    if undated:
         body+='<div class="needs-check"><h3>요일 미정</h3>'
-        for r in unknown:
-            body+=_wb_item(r,group_days,base)
+        for r in undated:
+            body+=_wb_item(r,None,bool(r['done']),group_days,base)
         body+='</div>'
     body+='</section>'
     return body
@@ -948,6 +998,8 @@ def riley_workbook_add():
 @app.route('/riley/workbook/<int:wid>/toggle',methods=['POST'])
 @app.route('/hyeon/workbook/<int:wid>/toggle',methods=['POST'])
 def riley_workbook_toggle(wid):
+    # 요일 미정(one-off, undated) items only — dated recurring items use the
+    # /toggle/<date> route below so each week's occurrence is tracked separately.
     c=db()
     row=c.execute('select id,title,child,credited,done from riley_workbooks where id=?',(wid,)).fetchone()
     if row:
@@ -962,26 +1014,54 @@ def riley_workbook_toggle(wid):
     c.close()
     return redirect(request.referrer or '/riley')
 
+@app.route('/riley/workbook/<int:wid>/toggle/<date>',methods=['POST'])
+@app.route('/hyeon/workbook/<int:wid>/toggle/<date>',methods=['POST'])
+def riley_workbook_toggle_dated(wid,date):
+    if not qdate(date):
+        return redirect(request.referrer or '/riley')
+    c=db()
+    row=c.execute('select id,title,child from riley_workbooks where id=?',(wid,)).fetchone()
+    if row:
+        existing=c.execute('select id from workbook_completions where item_id=? and date=?',(wid,date)).fetchone()
+        if existing:
+            c.execute('delete from workbook_completions where id=?',(existing['id'],))
+            c.commit()
+        else:
+            c.execute('insert into workbook_completions(item_id,date,created_at) values(?,?,?)',(wid,date,datetime.now(KST).isoformat(timespec='seconds')))
+            c.commit()
+            already_credited=c.execute('select 1 from workbook_credited where item_id=? and date=?',(wid,date)).fetchone()
+            if not already_credited:
+                child=row['child'] or '지유'
+                _award_credit(child,_credit_rate('workbook'),f'문제집 완료: {row["title"]} ({date})')
+                c.execute('insert or ignore into workbook_credited(item_id,date) values(?,?)',(wid,date))
+                c.commit()
+    c.close()
+    return redirect(request.referrer or '/riley')
+
 @app.route('/riley/workbook/group/<gid>/edit',methods=['POST'])
 @app.route('/hyeon/workbook/group/<gid>/edit',methods=['POST'])
 def riley_workbook_group_edit(gid):
     title=(request.form.get('title') or '').strip()
     if title:
         c=db()
-        existing_rows=c.execute('select day_of_week,done,credited,child from riley_workbooks where group_id=?',(gid,)).fetchall()
+        existing_rows=c.execute('select id,day_of_week,child from riley_workbooks where group_id=?',(gid,)).fetchall()
         child=existing_rows[0]['child'] if existing_rows else '지유'
-        prev_state={r['day_of_week']:(r['done'],r['credited']) for r in existing_rows}
+        # Update existing rows in place (rather than delete+reinsert) so each row's id
+        # stays stable — workbook_completions/workbook_credited reference these ids to
+        # keep per-date history intact across edits.
+        existing_by_day={(r['day_of_week'] or ''):r['id'] for r in existing_rows}
         notes=(request.form.get('notes') or '').strip()
         color=(request.form.get('color') or '').strip()
         days=[d for d in request.form.getlist('days') if d in DAYS]
-        c.execute('delete from riley_workbooks where group_id=?',(gid,))
-        if days:
-            for d in days:
-                done,credited=prev_state.get(d,(0,0))
-                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child,credited) values(?,?,?,?,?,?,?,?,?)',(title,notes,d,done,datetime.now().isoformat(timespec='seconds'),gid,color,child,credited))
-        else:
-            done,credited=prev_state.get('',(0,0))
-            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child,credited) values(?,?,?,?,?,?,?,?,?)',(title,notes,'',done,datetime.now().isoformat(timespec='seconds'),gid,color,child,credited))
+        target_days=days if days else ['']
+        for day,rid in existing_by_day.items():
+            if day not in target_days:
+                c.execute('delete from riley_workbooks where id=?',(rid,))
+        for d in target_days:
+            if d in existing_by_day:
+                c.execute('update riley_workbooks set title=?,notes=?,color=? where id=?',(title,notes,color,existing_by_day[d]))
+            else:
+                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child) values(?,?,?,0,?,?,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid,color,child))
         c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
@@ -1210,7 +1290,7 @@ def _kid_portal(slug,child,academy_workbook=True):
                 body+=f'<div class="needs-item"{style} {dat} onclick="ea(this)"><div><b>{H(r["academy"])}</b><div class="muted">요일 또는 시간이 미정이라 주간표 밖에 표시</div></div></div>'
             body+='</div>'
         body+=f'<p class="muted" style="margin-top:10px">주황색은 {H(child)} Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'
-        body+=_workbook_section(child,base)
+        body+=_workbook_section(child,base,mon)
     if slug=='hyeon':
         body+='<div style="margin-bottom:14px;display:flex;gap:8px"><a class="btn" href="/hyeon/hangul">🔤 한글 공부</a><a class="btn" href="/hyeon/coloring">🎨 색칠 공부</a></div>'
     body+=_reading_section(child,base)+reading_edit_modal(base)
