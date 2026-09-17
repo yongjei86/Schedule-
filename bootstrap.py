@@ -23,6 +23,7 @@ for day in ('화','목'):
 c.commit(); c.close()
 import seed_riley_reading
 import add_riley_jeoncheondang18
+import add_riley_reading_20260916
 import add_hyeon_reading_20260914
 import add_hyeon_waenyamyeon_20260914
 import add_hyeon_winter_is_here_20260914
