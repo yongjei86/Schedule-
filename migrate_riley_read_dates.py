@@ -13,8 +13,11 @@ books=[
     ('룰스: 단 한 사람만을 위한 규칙','한글','성장','2026-09-15','',''),
     ('황금성','한글','성장','2026-09-15','',''),
     ('A Little Princess','영어','고전','2026-09-09','3.7','640L'),
-    # Usborne Young Reading Series Two, Rob Lloyd Jones retelling, ISBN 9780746085622.
     ('Robin Hood','영어','고전','2026-09-15','3.7','640L'),
+    ('엄마가 사라진 어느 날','한글','성장','2026-09-16','',''),
+    ('이상한 과자 가게 전천당 18','한글','창작','2026-09-17','',''),
+    ('편의점을 털어라! 지리편','한글','지리','2026-09-17','',''),
+    ('산불에서 코알라를 구하라!','한글','과학','2026-09-17','',''),
 ]
 
 rcols={r['name'] for r in c.execute('PRAGMA table_info(riley_reading)').fetchall()}
@@ -23,14 +26,10 @@ for title,language,genre,read_date,sr_score,lexile_score in books:
     if not row:
         fields=['title','language','rating','summary','created_at']
         values=[title,language,0,'',read_date+'T21:00:00']
-        if 'genre' in rcols:
-            fields.append('genre'); values.append(genre)
-        if 'sr_score' in rcols:
-            fields.append('sr_score'); values.append(sr_score)
-        if 'lexile_score' in rcols:
-            fields.append('lexile_score'); values.append(lexile_score)
-        if 'read_date' in rcols:
-            fields.append('read_date'); values.append(read_date)
+        if 'genre' in rcols: fields.append('genre'); values.append(genre)
+        if 'sr_score' in rcols: fields.append('sr_score'); values.append(sr_score)
+        if 'lexile_score' in rcols: fields.append('lexile_score'); values.append(lexile_score)
+        if 'read_date' in rcols: fields.append('read_date'); values.append(read_date)
         q=','.join('?' for _ in fields)
         c.execute(f"INSERT INTO riley_reading({','.join(fields)}) VALUES({q})",values)
     else:
@@ -42,9 +41,10 @@ for title,language,genre,read_date,sr_score,lexile_score in books:
         if 'lexile_score' in rcols and lexile_score:
             updates.append("lexile_score=CASE WHEN COALESCE(lexile_score,'')='' THEN ? ELSE lexile_score END"); vals.append(lexile_score)
         if updates:
-            vals.append(row['id'])
-            c.execute('UPDATE riley_reading SET '+','.join(updates)+' WHERE id=?',vals)
+            vals.append(row['id']); c.execute('UPDATE riley_reading SET '+','.join(updates)+' WHERE id=?',vals)
 
+# The new photo shows both volumes 18 and 19 on 2026-09-17, but volume 19 already has
+# an earlier confirmed reading date. Preserve the original date rather than overwrite it.
 confirmed_dates={'The Worst Witch':'2026-06-22'}
 for title,read_date in confirmed_dates.items():
     c.execute("UPDATE riley_reading SET read_date=? WHERE title=? AND COALESCE(read_date,'')=''",(read_date,title))
