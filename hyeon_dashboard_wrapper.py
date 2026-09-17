@@ -55,3 +55,53 @@ def portal(child='지유',base='/riley'):
  if child=='혜온' and base=='/hyeon': return body(True)
  return _old(child,base)
 _main._reading_section=portal
+
+# Workbook cards: save completion in the background instead of submitting a form
+# that reloads the whole portal. The existing POST routes and credit logic stay intact.
+_main.JS += r'''
+wbItemClick=async function(el){
+ if(wbEditMode){editWb(el);return}
+ if(el.dataset.busy==='1')return;
+ var title=el.querySelector('b');
+ var wasDone=!!(title&&title.classList.contains('task-done'));
+ var url=(el.dataset.base||'/riley')+'/workbook/'+el.dataset.id+'/toggle';
+ if(el.dataset.date)url+='/'+el.dataset.date;
+ el.dataset.busy='1';
+ var oldOpacity=el.style.opacity;
+ el.style.opacity='.58';
+ el.style.pointerEvents='none';
+ try{
+  var res=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'fetch'}});
+  if(!res.ok)throw new Error('toggle failed: '+res.status);
+  if(title)title.classList.toggle('task-done',!wasDone);
+  var card=el.closest('.feature-card');
+  var heading=card&&card.querySelector('.toolbar h2');
+  if(heading){
+   var m=heading.textContent.match(/이번 주 미완료\s+(\d+)건/);
+   if(m){
+    var next=Math.max(0,parseInt(m[1],10)+(wasDone?1:-1));
+    heading.textContent=heading.textContent.replace(/이번 주 미완료\s+\d+건/,'이번 주 미완료 '+next+'건');
+   }
+  }
+  if(el.animate)el.animate([{transform:'scale(.98)'},{transform:'scale(1)'}],{duration:130});
+ }catch(err){
+  console.error(err);
+  alert('완료 처리에 실패했어요. 다시 눌러 주세요.');
+ }finally{
+  delete el.dataset.busy;
+  el.style.opacity=oldOpacity;
+  el.style.pointerEvents='';
+ }
+};
+'''
+
+@app.after_request
+def workbook_toggle_no_redirect_for_fetch(response):
+ p=_main.request.path
+ if (_main.request.method=='POST' and _main.request.headers.get('X-Requested-With')=='fetch'
+     and (p.startswith('/riley/workbook/') or p.startswith('/hyeon/workbook/'))
+     and '/toggle' in p and response.status_code in (301,302,303,307,308)):
+  response.status_code=204
+  response.set_data(b'')
+  response.headers.pop('Location',None)
+ return response
