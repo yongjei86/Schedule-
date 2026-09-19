@@ -1316,24 +1316,106 @@ def riley_credits_rate_update():
 @app.route('/riley/credits')
 def riley_credits_detail():
     child='지유'
-    pt=_credit_period_totals(child)
-    total=_credit_total(child)
     wb_rate=_credit_rate('workbook')
     rd_rate=_credit_rate('reading')
-    c=db(); rows=[dict(x) for x in c.execute('select * from riley_credits where child=? order by created_at desc limit 200',(child,)).fetchall()]; c.close()
+    c=db(); rows=[dict(x) for x in c.execute('select * from riley_credits where child=? order by created_at desc',(child,)).fetchall()]; c.close()
+
+    daily_map={}
+    weekly_map={}
+    monthly_map={}
     by_day={}
     for r in rows:
-        d=r['created_at'][:10]
-        by_day.setdefault(d,{'total':0,'items':[]})
-        by_day[d]['total']+=r['delta']
-        by_day[d]['items'].append(r)
-    body=(f'<div class="toolbar"><a class="btn s" href="/riley">← 지유 포탈</a></div>'
-          f'<section class="feature-card"><h2 style="margin:0 0 10px">🪙 {H(child)} 크레딧 현황</h2>'
-          f'<div class="stat-grid"><div class="stat-card"><span class="muted">오늘</span><div class="big">+{pt["today"]}</div></div>'
-          f'<div class="stat-card"><span class="muted">이번 주</span><div class="big">+{pt["week"]}</div></div>'
-          f'<div class="stat-card"><span class="muted">이번 달</span><div class="big">+{pt["month"]}</div></div>'
-          f'<div class="stat-card"><span class="muted">전체</span><div class="big">{total}개</div></div></div>'
-          f'</section>'
+        ds=(r.get('created_at') or '')[:10]
+        d=qdate(ds)
+        if not d:
+            continue
+        delta=int(r.get('delta') or 0)
+        daily_map[ds]=daily_map.get(ds,0)+delta
+        monday=d-timedelta(days=d.weekday())
+        wk=monday.isoformat()
+        weekly_map[wk]=weekly_map.get(wk,0)+delta
+        mk=d.strftime('%Y-%m')
+        monthly_map[mk]=monthly_map.get(mk,0)+delta
+        if len(by_day)<120 or ds in by_day:
+            by_day.setdefault(ds,{'total':0,'items':[]})
+            by_day[ds]['total']+=delta
+            by_day[ds]['items'].append(r)
+
+    today=datetime.now(KST).date()
+    daily=[]
+    for i in range(13,-1,-1):
+        d=today-timedelta(days=i)
+        daily.append((d.strftime('%m/%d'),daily_map.get(d.isoformat(),0)))
+
+    week0=today-timedelta(days=today.weekday())
+    weekly=[]
+    for i in range(11,-1,-1):
+        d=week0-timedelta(days=i*7)
+        weekly.append((d.strftime('%m/%d'),weekly_map.get(d.isoformat(),0)))
+
+    def shift_month(d,offset):
+        idx=d.year*12+(d.month-1)+offset
+        return date(idx//12,idx%12+1,1)
+
+    month0=today.replace(day=1)
+    monthly=[]
+    for i in range(11,-1,-1):
+        d=shift_month(month0,-i)
+        monthly.append((d.strftime('%y.%m'),monthly_map.get(d.strftime('%Y-%m'),0)))
+
+    def chart_panel(view,label,items,active=False):
+        mx=max([abs(v) for _,v in items] or [1]) or 1
+        bars=''
+        for x,v in items:
+            h=4 if v==0 else max(10,round(abs(v)/mx*165))
+            cls=' neg' if v<0 else ''
+            bars+=(f'<div class="credit-bar-col" title="{H(x)} · {v:+d}">'
+                   f'<div class="credit-bar-value">{v:+d}</div>'
+                   f'<div class="credit-bar-track"><div class="credit-bar-fill{cls}" style="height:{h}px"></div></div>'
+                   f'<div class="credit-bar-label">{H(x)}</div></div>')
+        return (f'<div class="credit-chart-panel{" on" if active else ""}" data-credit-view="{view}">'
+                f'<div class="credit-chart-note">{label}</div>'
+                f'<div class="credit-bars">{bars}</div></div>')
+
+    charts=(chart_panel('day','최근 14일',daily,True)
+            +chart_panel('week','최근 12주 · 월요일 시작',weekly)
+            +chart_panel('month','최근 12개월',monthly))
+
+    credit_css='''<style>
+    .credit-chart-card{background:#fff;border:1px solid #e4e9f0;border-radius:15px;padding:14px;box-shadow:0 1px 3px rgba(20,38,63,.06)}
+    .credit-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .credit-chart-head h2{margin:0}
+    .credit-tabs{display:flex;gap:6px;background:#eef3f8;padding:3px;border-radius:11px}
+    .credit-tab{border:0;background:transparent;color:#6b788a;padding:7px 12px;border-radius:8px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+    .credit-tab.on{background:#fff;color:#0f4c81;box-shadow:0 1px 4px rgba(20,38,63,.12)}
+    .credit-chart-panel{display:none}.credit-chart-panel.on{display:block}
+    .credit-chart-note{font-size:11px;color:#8390a1;margin:3px 0 8px}
+    .credit-bars{height:230px;display:flex;align-items:flex-end;gap:8px;overflow-x:auto;padding:10px 4px 6px;border-bottom:1px solid #edf1f5}
+    .credit-bar-col{height:100%;min-width:42px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+    .credit-bar-value{font-size:10px;font-weight:800;color:#5f6f83;margin-bottom:5px;white-space:nowrap}
+    .credit-bar-track{height:165px;width:24px;display:flex;align-items:flex-end;justify-content:center;background:#f1f4f8;border-radius:8px 8px 2px 2px;overflow:hidden}
+    .credit-bar-fill{width:100%;background:linear-gradient(180deg,#2f7fc1,#0f4c81);border-radius:8px 8px 2px 2px;transition:height .18s ease}
+    .credit-bar-fill.neg{background:linear-gradient(180deg,#d77a7a,#b64b50)}
+    .credit-bar-label{font-size:10px;color:#7c8999;margin-top:6px;white-space:nowrap}
+    @media(max-width:560px){.credit-chart-card{padding:12px}.credit-tabs{width:100%}.credit-tab{flex:1}.credit-bars{gap:6px}.credit-bar-col{min-width:38px}.credit-bar-track{width:20px}.credit-bar-value{font-size:9px}.credit-bar-label{font-size:9px}}
+    </style>'''
+
+    credit_js='''<script>
+    function creditView(btn,view){
+      var card=btn.closest('.credit-chart-card');
+      card.querySelectorAll('.credit-tab').forEach(function(x){x.classList.remove('on')});
+      btn.classList.add('on');
+      card.querySelectorAll('.credit-chart-panel').forEach(function(x){x.classList.toggle('on',x.dataset.creditView===view)});
+    }
+    </script>'''
+
+    body=(f'{credit_css}<div class="toolbar"><a class="btn s" href="/riley">← 지유 포탈</a></div>'
+          f'<section class="credit-chart-card"><div class="credit-chart-head"><h2>🪙 {H(child)} 크레딧 추이</h2>'
+          f'<div class="credit-tabs">'
+          f'<button type="button" class="credit-tab on" onclick="creditView(this,\\'day\\')">일간</button>'
+          f'<button type="button" class="credit-tab" onclick="creditView(this,\\'week\\')">주간</button>'
+          f'<button type="button" class="credit-tab" onclick="creditView(this,\\'month\\')">월간</button>'
+          f'</div></div>{charts}</section>{credit_js}'
           f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">⚙️ 크레딧 지급 설정</h2>'
           f'<form method="POST" action="/riley/credits/rate" style="display:flex;flex-direction:column;gap:12px">'
           f'<label style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
@@ -1352,9 +1434,9 @@ def riley_credits_detail():
     for d in sorted(by_day.keys(),reverse=True):
         info=by_day[d]
         body+=(f'<div style="padding:8px 0;border-bottom:1px solid #edf1f5">'
-               f'<div style="display:flex;justify-content:space-between"><b>{H(d)}</b><b>+{info["total"]}</b></div>')
+               f'<div style="display:flex;justify-content:space-between"><b>{H(d)}</b><b>{info["total"]:+d}</b></div>')
         for it in info['items']:
-            body+=f'<div class="feature-meta">{H(it["created_at"][11:16])} · {H(it["reason"] or "")} (+{it["delta"]})</div>'
+            body+=f'<div class="feature-meta">{H(it["created_at"][11:16])} · {H(it["reason"] or "")} ({int(it["delta"]):+d})</div>'
         body+='</div>'
     body+='</section>'
     return page(f'{child} 크레딧 현황',body)
