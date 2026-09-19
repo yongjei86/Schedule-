@@ -53,7 +53,7 @@ JS+='''function showEventDetail(el){let d=el.dataset;document.getElementById("ed
 CSS+='''.fab-group{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:20}.fab{width:46px;height:46px;border-radius:50%;background:#0f4c81;color:#fff;border:0;font-size:20px;line-height:1;cursor:pointer;box-shadow:0 4px 14px #0f4c8155;display:flex;align-items:center;justify-content:center;transition:transform .12s ease,box-shadow .12s ease}.fab:hover{box-shadow:0 6px 18px #0f4c8166;transform:translateY(-1px)}.fab:active{transform:scale(.94)}@media(max-width:560px){.fab-group{right:14px;bottom:14px;gap:8px}.fab{width:42px;height:42px;font-size:18px}}'''
 CSS+='''.fm-event,.event-chip{cursor:pointer}.fm-event:hover,.event-chip:hover{filter:brightness(0.96)}'''
 CSS+='''.day-checks{display:flex;gap:8px;flex-wrap:wrap}.day-check{display:flex;align-items:center;gap:4px;width:auto;font-size:12px;color:#14263f}.day-check input{width:auto}'''
-JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\"days\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;let base=d.base||document.getElementById("wbef").dataset.base||"/riley";document.getElementById("wbef").action=base+"/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbef").dataset.base=base;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";document.getElementById("wbe-color").value=d.color||"#0f4c81";document.getElementById("wbe-subject").value=d.subject||"기타";document.getElementById("wbe-status").value=d.status||"진행중";document.getElementById("wbe-started").value=d.started||"";document.getElementById("wbe-completed").value=d.completed||"";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\"days\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let f0=document.getElementById("wbef");let gid=f0.dataset.gid;let base=f0.dataset.base||"/riley";if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}let wbEditMode=false;function wbToggleEditMode(btn){wbEditMode=!wbEditMode;btn.classList.toggle("on",wbEditMode)}async function wbItemClick(el){if(wbEditMode){editWb(el);return}if(el.dataset.busy==="1")return;el.dataset.busy="1";let url=(el.dataset.base||"/riley")+"/workbook/"+el.dataset.id+"/toggle";if(el.dataset.date)url+="/"+el.dataset.date;try{let r=await fetch(url,{method:"POST",headers:{"X-Requested-With":"fetch"}});if(!r.ok)throw new Error("toggle failed");let b=el.querySelector("b");if(b)b.classList.toggle("task-done");let h=document.querySelector(".feature-card h2");if(h&&h.textContent.includes("이번 주 미완료")){let m=h.textContent.match(/이번 주 미완료 (\d+)건/);if(m){let n=parseInt(m[1],10)+(b&&b.classList.contains("task-done")?-1:1);h.textContent=h.textContent.replace(/이번 주 미완료 \d+건/,"이번 주 미완료 "+Math.max(0,n)+"건")}}}catch(e){location.reload()}finally{el.dataset.busy="0"}}'''
+JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\"days\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;let base=d.base||document.getElementById("wbef").dataset.base||"/riley";document.getElementById("wbef").action=base+"/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbef").dataset.base=base;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";document.getElementById("wbe-color").value=d.color||"#0f4c81";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\"days\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let f0=document.getElementById("wbef");let gid=f0.dataset.gid;let base=f0.dataset.base||"/riley";if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}let wbEditMode=false;function wbToggleEditMode(btn){wbEditMode=!wbEditMode;btn.classList.toggle("on",wbEditMode)}async function wbItemClick(el){if(wbEditMode){editWb(el);return}if(el.dataset.busy==="1")return;el.dataset.busy="1";let url=(el.dataset.base||"/riley")+"/workbook/"+el.dataset.id+"/toggle";if(el.dataset.date)url+="/"+el.dataset.date;try{let r=await fetch(url,{method:"POST",headers:{"X-Requested-With":"fetch"}});if(!r.ok)throw new Error("toggle failed");let b=el.querySelector("b");if(b)b.classList.toggle("task-done");let h=document.querySelector(".feature-card h2");if(h&&h.textContent.includes("이번 주 미완료")){let m=h.textContent.match(/이번 주 미완료 (\d+)건/);if(m){let n=parseInt(m[1],10)+(b&&b.classList.contains("task-done")?-1:1);h.textContent=h.textContent.replace(/이번 주 미완료 \d+건/,"이번 주 미완료 "+Math.max(0,n)+"건")}}}catch(e){location.reload()}finally{el.dataset.busy="0"}}'''
 CSS+='''.person-filter{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}.pf{border:1px solid #d7dfe8;background:#fff;color:#5c6b80;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;text-decoration:none;transition:all .12s ease}.pf:hover{border-color:#0f4c81;color:#0f4c81}.pf.on{color:#fff;border-color:transparent}.pf.on.yj{background:#315c9b}.pf.on.지유{background:#e98755}.pf.on.보미{background:#9a66ad}.pf.on.혜온{background:#46a081}.pf.on.가족{background:#c99a35}.pf.on.여행{background:#d64f5b}.pf.on:not(.yj):not(.지유):not(.보미):not(.혜온):not(.가족):not(.여행){background:#14263f}'''
 CSS+='''.view-value{cursor:pointer;display:block}.view-value:hover{color:#0f4c81}.inline-edit{display:none;flex-direction:column;gap:6px;margin-top:2px}.inline-edit input{padding:7px 9px;border:1px solid #d5dde7;border-radius:8px;font:inherit;font-size:13px}'''
 CSS+='''.future-card{display:block;color:inherit;text-decoration:none}.status-form{margin-top:8px}.status-select{width:100%;border:1px solid #d7dfe8;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:#eef2f6;color:#5c6b80}.status-select.planned{background:#e8f6ee;color:#1f7a4d;border-color:#bfe4cd}.status-select.review{background:#fff3e0;color:#b5680a;border-color:#f3d9ab}.status-select.longterm{background:#f1ecfb;color:#6a4fb0;border-color:#dccdf5}.status-select.done{background:#eef2f6;color:#5c6b80;border-color:#dfe6ee}.status-badge{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:#eef2f6;color:#5c6b80}.status-badge.planned{background:#e8f6ee;color:#1f7a4d}.status-badge.review{background:#fff3e0;color:#b5680a}.status-badge.longterm{background:#f1ecfb;color:#6a4fb0}.status-badge.done{background:#eef2f6;color:#5c6b80}'''
@@ -919,15 +919,10 @@ def _credit_period_totals(child):
     c.close()
     return result
 
-WORKBOOK_SUBJECTS=('수학','국어','영어','과학','사회','사고력','기타')
+WORKBOOK_SUBJECTS=('수학','국어','영어','사회','과학','한자','논술','사고력','기타')
 
-def _workbook_rows(child,include_completed=False):
-    c=db()
-    if include_completed:
-        rows=[dict(x) for x in c.execute("select * from riley_workbooks where child=? order by case when status='완료' then 1 else 0 end, id desc",(child,)).fetchall()]
-    else:
-        rows=[dict(x) for x in c.execute("select * from riley_workbooks where child=? and coalesce(status,'진행중')!='완료' order by done asc,id desc",(child,)).fetchall()]
-    c.close()
+def _workbook_rows(child):
+    c=db(); rows=[dict(x) for x in c.execute('select * from riley_workbooks where child=? order by done asc,id desc',(child,)).fetchall()]; c.close()
     return rows
 
 def _day_checkboxes():
@@ -936,15 +931,11 @@ def _day_checkboxes():
     return boxes
 
 def wb_edit_modal(base='/riley'):
-    subject_opts=''.join(f'<option value="{H(s)}">{H(s)}</option>' for s in WORKBOOK_SUBJECTS)
-    return f'''<div class="modal" id="wbe"><div class="card"><div class="head"><h2>문제집 수정</h2><button class="btn s" onclick="x('wbe')">닫기</button></div><form class="form" id="wbef" method="post" data-base="{H(base)}"><label class="full">문제집/과제<input name="title" id="wbe-title" required></label><label>과목<select name="subject" id="wbe-subject">{subject_opts}</select></label><label>상태<select name="status" id="wbe-status"><option value="진행중">진행 중</option><option value="완료">완료</option></select></label><label>시작일<input type="date" name="started_at" id="wbe-started"></label><label>완료일<input type="date" name="completed_at" id="wbe-completed"></label><label class="full">요일 (여러 개 선택 가능)<div class="day-checks" id="wbe-days">{_day_checkboxes()}</div></label><label>메모<input name="notes" id="wbe-notes"></label><label>색상<input type="color" name="color" id="wbe-color" value="#0f4c81"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteWb()">삭제</button></div></form></div></div>'''
+    return f'''<div class="modal" id="wbe"><div class="card"><div class="head"><h2>문제집 수정</h2><button class="btn s" onclick="x('wbe')">닫기</button></div><form class="form" id="wbef" method="post" data-base="{H(base)}"><label class="full">문제집/과제<input name="title" id="wbe-title" required></label><label class="full">요일 (여러 개 선택 가능)<div class="day-checks" id="wbe-days">{_day_checkboxes()}</div></label><label>메모<input name="notes" id="wbe-notes"></label><label>색상<input type="color" name="color" id="wbe-color" value="#0f4c81"></label><div class="full" style="display:flex;gap:8px"><button class="btn">저장</button><button type="button" class="btn d" onclick="deleteWb()">삭제</button></div></form></div></div>'''
 
 def _wb_attrs(r, group_days, base):
     days=','.join(d for d in DAYS if d in group_days.get(r['group_id'], set()))
-    return (f'data-id="{r["id"]}" data-gid="{H(r["group_id"])}" data-title="{H(r["title"])}" '
-            f'data-notes="{H(r["notes"] or "")}" data-days="{H(days)}" data-color="{H(r["color"] or "")}" '
-            f'data-subject="{H(r.get("subject") or "기타")}" data-status="{H(r.get("status") or "진행중")}" '
-            f'data-started="{H(r.get("started_at") or "")}" data-completed="{H(r.get("completed_at") or "")}" data-base="{H(base)}"')
+    return f'data-id="{r["id"]}" data-gid="{H(r["group_id"])}" data-title="{H(r["title"])}" data-notes="{H(r["notes"] or "")}" data-days="{H(days)}" data-color="{H(r["color"] or "")}" data-base="{H(base)}"'
 
 def _wb_item(r, occurrence_date, is_done, group_days, base):
     cls=' task-done' if is_done else ''
@@ -954,63 +945,6 @@ def _wb_item(r, occurrence_date, is_done, group_days, base):
     if occurrence_date is not None:
         attrs+=f' data-date="{occurrence_date.isoformat()}"'
     return f'<button type="button" class="lesson-toggle" style="{style}" {attrs} onclick="wbItemClick(this)"><b class="{cls}">{H(r["title"])}</b>{meta}</button>'
-
-def _workbook_db_section(child='지유',base='/riley'):
-    rows=_workbook_rows(child,True)
-    groups={}
-    for r in rows:
-        gid=r['group_id']
-        g=groups.setdefault(gid,{'row':r,'days':set()})
-        d=(r.get('day_of_week') or '').strip()
-        if d in DAYS:
-            g['days'].add(d)
-    subject_order=list(WORKBOOK_SUBJECTS)
-    by_subject={s:{'current':[],'done':[]} for s in subject_order}
-    for gid,g in groups.items():
-        r=g['row']
-        subject=(r.get('subject') or '기타').strip()
-        if subject not in by_subject:
-            by_subject.setdefault(subject,{'current':[],'done':[]})
-        target='done' if (r.get('status') or '진행중')=='완료' else 'current'
-        by_subject[subject][target].append((gid,g))
-    total_current=sum(len(v['current']) for v in by_subject.values())
-    total_done=sum(len(v['done']) for v in by_subject.values())
-    body=(f'<section class="feature-card workbook-db" style="margin-top:14px">'
-          f'<div class="toolbar" style="margin:0 0 10px"><div><h2 style="margin:0">📚 문제집 DB</h2>'
-          f'<div class="feature-meta">진행 중 {total_current}권 · 완료 {total_done}권 · 과목별 관리</div></div></div>'
-          f'<div class="workbook-db-grid">')
-    has_any=False
-    for subject in subject_order+[s for s in by_subject if s not in subject_order]:
-        bucket=by_subject.get(subject,{'current':[],'done':[]})
-        if not bucket['current'] and not bucket['done']:
-            continue
-        has_any=True
-        body+=f'<div class="workbook-subject-card"><h3>{H(subject)} <span>{len(bucket["current"])} / {len(bucket["done"])}</span></h3>'
-        body+='<div class="workbook-subhead">지금 풀고 있는 문제집</div>'
-        if not bucket['current']:
-            body+='<div class="muted">없음</div>'
-        for gid,g in sorted(bucket['current'],key=lambda x:(x[1]['row'].get('started_at') or '',x[1]['row']['title']),reverse=True):
-            r=g['row']; days=', '.join(d for d in DAYS if d in g['days']) or '요일 미정'
-            attrs=_wb_attrs(r,{gid:g['days']},base)
-            meta=' · '.join(x for x in [days,('시작 '+r['started_at']) if r.get('started_at') else '',r.get('notes') or ''] if x)
-            body+=(f'<div class="workbook-db-row"><div><b>{H(r["title"])}</b><div class="feature-meta">{H(meta)}</div></div>'
-                   f'<div class="workbook-db-actions"><button type="button" class="btn s" {attrs} onclick="editWb(this)">수정</button>'
-                   f'<form method="post" action="{base}/workbook/group/{H(gid)}/status"><input type="hidden" name="status" value="완료"><button class="btn">완료</button></form></div></div>')
-        body+='<details class="workbook-history"><summary>완료한 문제집 '+str(len(bucket['done']))+'권</summary>'
-        if not bucket['done']:
-            body+='<div class="muted" style="padding-top:8px">아직 없음</div>'
-        for gid,g in sorted(bucket['done'],key=lambda x:(x[1]['row'].get('completed_at') or '',x[1]['row']['title']),reverse=True):
-            r=g['row']; days=', '.join(d for d in DAYS if d in g['days']) or '요일 미정'
-            attrs=_wb_attrs(r,{gid:g['days']},base)
-            meta=' · '.join(x for x in [days,('완료 '+r['completed_at']) if r.get('completed_at') else '',r.get('notes') or ''] if x)
-            body+=(f'<div class="workbook-db-row done"><div><b>{H(r["title"])}</b><div class="feature-meta">{H(meta)}</div></div>'
-                   f'<div class="workbook-db-actions"><button type="button" class="btn s" {attrs} onclick="editWb(this)">수정</button>'
-                   f'<form method="post" action="{base}/workbook/group/{H(gid)}/status"><input type="hidden" name="status" value="진행중"><button class="btn s">다시 진행</button></form></div></div>')
-        body+='</details></div>'
-    if not has_any:
-        body+='<div class="muted">등록된 문제집이 없습니다.</div>'
-    body+='</div></section>'
-    return body
 
 def _workbook_section(child='지유', base='/riley', mon=None):
     today=datetime.now(KST).date()
@@ -1036,14 +970,14 @@ def _workbook_section(child='지유', base='/riley', mon=None):
           f'<b>{mon.strftime("%Y.%m.%d")} ~ {sun.strftime("%m.%d")}</b></div>')
     body=(f'<section class="feature-card" style="margin-top:14px">'
           f'<div class="toolbar" style="margin:0 0 4px"><h2 style="margin:0">{H(child)} 문제집 체크리스트 · 이번 주 미완료 {open_n}건</h2>'
-          '<div style="display:flex;gap:6px">'
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+          + (f'<a class="btn s" href="{base}/workbook-db">문제집 DB</a>' if base=='/riley' else '') +
           '<button type="button" class="btn s" onclick="let f=document.getElementById(\'wb-add\');f.style.display=f.style.display===\'none\'?\'grid\':\'none\'">+ 추가</button>'
           '<button type="button" class="btn s" onclick="wbToggleEditMode(this)">수정</button>'
           '</div></div>'
           f'<form method="post" action="{base}/workbook/add" class="task-form" id="wb-add" style="display:none">'
           f'<input type="hidden" name="child" value="{H(child)}">'
           '<label class="task-title">문제집/과제<input name="title" required placeholder="예: 디딤돌 수학 3단원"></label>'
-          f'<label>과목<select name="subject">{"".join(f"<option value={chr(34)}{H(s)}{chr(34)}>{H(s)}</option>" for s in WORKBOOK_SUBJECTS)}</select></label>'
           f'<label class="full">요일 (여러 개 선택 가능)<div class="day-checks">{_day_checkboxes()}</div></label>'
           '<label>메모<input name="notes" placeholder="분량 등"></label>'
           '<label>색상<input type="color" name="color" value="#0f4c81"></label>'
@@ -1065,7 +999,6 @@ def _workbook_section(child='지유', base='/riley', mon=None):
             body+=_wb_item(r,None,bool(r['done']),group_days,base)
         body+='</div>'
     body+='</section>'
-    body+=_workbook_db_section(child,base)
     return body
 
 KID_SLUGS={'riley':'지유','hyeon':'혜온'}
@@ -1078,17 +1011,14 @@ def riley_workbook_add():
         child=(request.form.get('child') or '지유').strip()
         notes=(request.form.get('notes') or '').strip()
         color=(request.form.get('color') or '').strip()
-        subject=(request.form.get('subject') or '기타').strip()
-        if subject not in WORKBOOK_SUBJECTS: subject='기타'
         days=[d for d in request.form.getlist('days') if d in DAYS]
         gid=secrets.token_hex(8)
-        now=datetime.now(KST)
-        created=now.isoformat(timespec='seconds')
-        started=now.date().isoformat()
         c=db()
-        targets=days if days else ['']
-        for d in targets:
-            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child,subject,status,started_at,completed_at) values(?,?,?,0,?,?,?,?,?,"진행중",?,"")',(title,notes,d,created,gid,color,child,subject,started))
+        if days:
+            for d in days:
+                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child) values(?,?,?,0,?,?,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid,color,child))
+        else:
+            c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child) values(?,?,?,0,?,?,?,?)',(title,notes,'',datetime.now().isoformat(timespec='seconds'),gid,color,child))
         c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
@@ -1146,16 +1076,6 @@ def riley_workbook_group_edit(gid):
         existing_by_day={(r['day_of_week'] or ''):r['id'] for r in existing_rows}
         notes=(request.form.get('notes') or '').strip()
         color=(request.form.get('color') or '').strip()
-        subject=(request.form.get('subject') or '기타').strip()
-        if subject not in WORKBOOK_SUBJECTS: subject='기타'
-        status=(request.form.get('status') or '진행중').strip()
-        if status not in ('진행중','완료'): status='진행중'
-        started_at=(request.form.get('started_at') or '').strip()
-        completed_at=(request.form.get('completed_at') or '').strip()
-        if status=='완료' and not completed_at:
-            completed_at=datetime.now(KST).date().isoformat()
-        if status!='완료':
-            completed_at=''
         days=[d for d in request.form.getlist('days') if d in DAYS]
         target_days=days if days else ['']
         for day,rid in existing_by_day.items():
@@ -1163,22 +1083,10 @@ def riley_workbook_group_edit(gid):
                 c.execute('delete from riley_workbooks where id=?',(rid,))
         for d in target_days:
             if d in existing_by_day:
-                c.execute('update riley_workbooks set title=?,notes=?,color=?,subject=?,status=?,started_at=?,completed_at=? where id=?',(title,notes,color,subject,status,started_at,completed_at,existing_by_day[d]))
+                c.execute('update riley_workbooks set title=?,notes=?,color=? where id=?',(title,notes,color,existing_by_day[d]))
             else:
-                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child,subject,status,started_at,completed_at) values(?,?,?,0,?,?,?,?,?,?,?,?)',(title,notes,d,datetime.now(KST).isoformat(timespec='seconds'),gid,color,child,subject,status,started_at,completed_at))
+                c.execute('insert into riley_workbooks(title,notes,day_of_week,done,created_at,group_id,color,child) values(?,?,?,0,?,?,?,?)',(title,notes,d,datetime.now().isoformat(timespec='seconds'),gid,color,child))
         c.commit(); c.close()
-    return redirect(request.referrer or '/riley')
-
-@app.route('/riley/workbook/group/<gid>/status',methods=['POST'])
-@app.route('/hyeon/workbook/group/<gid>/status',methods=['POST'])
-def riley_workbook_group_status(gid):
-    status=(request.form.get('status') or '').strip()
-    if status not in ('진행중','완료'):
-        return redirect(request.referrer or '/riley')
-    completed_at=datetime.now(KST).date().isoformat() if status=='완료' else ''
-    c=db()
-    c.execute('update riley_workbooks set status=?,completed_at=? where group_id=?',(status,completed_at,gid))
-    c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/workbook/group/<gid>/delete',methods=['POST'])
@@ -1186,6 +1094,158 @@ def riley_workbook_group_status(gid):
 def riley_workbook_group_delete(gid):
     c=db(); c.execute('delete from riley_workbooks where group_id=?',(gid,)); c.commit(); c.close()
     return redirect(request.referrer or '/riley')
+
+
+def _init_riley_workbook_catalog():
+    c=db()
+    c.execute('''CREATE TABLE IF NOT EXISTS riley_workbook_catalog(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      child TEXT NOT NULL DEFAULT '지유',
+      subject TEXT NOT NULL,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT '진행중',
+      started_at TEXT,
+      completed_at TEXT,
+      notes TEXT,
+      source TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )''')
+    c.execute('CREATE UNIQUE INDEX IF NOT EXISTS ux_riley_workbook_catalog_child_title ON riley_workbook_catalog(child,title)')
+    now=datetime.now(KST).isoformat(timespec='seconds')
+    seed=[
+      ('수학','쎈연산 8권 (초등 4-2)','진행중','','','집에서 진행 중','2026-09-12'),
+      ('수학','디딤돌 초등수학 응용 4-2','진행중','','','깊은수학에서 복습 중','2026-09-12'),
+      ('수학','개념+유형 라이트 개념책 초등수학 5-1','진행중','','','학원 수업에서 약수와 배수 진행','2026-09-08'),
+      ('수학','개념+유형 파워 개념책 초등수학 4-1','사용이력','','','5월 학습보고서 사용 이력','2026-05'),
+      ('수학','개념+유형 라이트 개념책 초등수학 4-2','사용이력','','','6~8월 학습보고서 사용 이력','2026-08'),
+      ('수학','최상위수학S 초등수학 3-1','사용이력','','','학습보고서 사용 이력','2026-08'),
+      ('수학','디딤돌 응용 초등수학 4-1','사용이력','','','학습보고서 사용 이력','2026-08'),
+      ('국어','빠작 초3','완료','','2026-09-12','완료 확인','2026-09-12'),
+      ('국어','빠작 비문학 독해 3단계','완료','','2026-09-12','완료 확인','2026-09-12'),
+      ('국어','초등문해력 한 문장 정리의 힘 기본편 2','사용이력','','','사용 교재로 확인','2026-09-12'),
+      ('국어','기초등 국어 맞춤법','사용이력','','','사용 교재로 확인','2026-09-12'),
+      ('국어','하루 10분 초등신문','사용이력','','','사용 교재로 확인','2026-09-12'),
+      ('국어','놀라운 어휘 학습도감 1','사용이력','','','사용 교재로 확인','2026-09-12'),
+      ('국어','초등 신문읽기 환경·국제','사용이력','','','사용 교재로 확인','2026-09-12'),
+      ('국어','요약독해의 힘 1','사용이력','','','길벗스쿨 · 사용 교재로 확인','2026-09-12'),
+      ('국어','독해력 비타민 3단계','사용이력','','','사용 교재로 확인','2026-09-12'),
+      ('사회','사회 용어 독해 100','사용이력','','','사용 교재로 확인','2026-09-12'),
+      ('한자','급수한자 7급','진행중','','','현재 진행 중','2026-09-12'),
+      ('논술','딥독융합논술 A단계','진행중','','','보물섬 수업 진행 중','2026-09-12'),
+      ('영어','Multiple Reading Skills D','진행중','','','현재 진행 중','2026-09-12'),
+      ('영어','American School Textbook Vocabulary Key Grade 2','진행중','','','현재 진행 중','2026-09-12'),
+      ('영어','Grammar Stage Plus 1','진행중','','','진행 교재로 확인','2026-06-29'),
+      ('영어','4000 Essential English Words 2','완료','','2026-09-12','완료 확인','2026-09-12'),
+      ('영어','Wordly Wise 4','사용이력','','','사용/보유 교재로 확인','2026-06-29'),
+      ('영어','Writing Framework for Paragraph 1','사용이력','','','사용/보유 교재로 확인','2026-06-29'),
+      ('영어','Write Right to Essay','사용이력','','','사용/보유 교재로 확인','2026-06-29'),
+      ('사고력','플레이팩토 1단계','진행중','','','교구 학습 병행','2026-08-30'),
+      ('사고력','밤비노루크 기초 단계','진행중','','','집에서 병행','2026-09-01')
+    ]
+    for subject,title,status,started,completed,notes,source in seed:
+        c.execute('''INSERT OR IGNORE INTO riley_workbook_catalog
+          (child,subject,title,status,started_at,completed_at,notes,source,created_at,updated_at)
+          VALUES('지유',?,?,?,?,?,?,?,?,?)''',
+          (subject,title,status,started,completed,notes,source,now,now))
+    c.commit(); c.close()
+_init_riley_workbook_catalog()
+
+def _catalog_subject_options(selected=''):
+    return ''.join(f'<option value="{H(s)}"{" selected" if s==selected else ""}>{H(s)}</option>' for s in WORKBOOK_SUBJECTS)
+
+def _catalog_status_options(selected='진행중'):
+    opts=(('진행중','진행 중'),('완료','완료'),('사용이력','과거 사용'))
+    return ''.join(f'<option value="{v}"{" selected" if v==selected else ""}>{label}</option>' for v,label in opts)
+
+@app.route('/riley/workbook-db')
+def riley_workbook_db():
+    c=db(); rows=[dict(x) for x in c.execute("select * from riley_workbook_catalog where child='지유' order by case status when '진행중' then 0 when '완료' then 1 else 2 end, subject,title").fetchall()]; c.close()
+    subjects=[s for s in WORKBOOK_SUBJECTS if any(r['subject']==s for r in rows)]
+    body=(f'<div class="toolbar"><a class="btn s" href="/riley">← 지유 포탈</a>'
+          f'<button class="btn" type="button" onclick="let x=document.getElementById(\\'catalog-add\\');x.style.display=x.style.display===\\'none\\'?\\'grid\\':\\'none\\'">+ 교재 추가</button></div>'
+          f'<section class="feature-card"><div class="toolbar"><div><h2 style="margin:0">📚 지유 문제집 DB</h2>'
+          f'<div class="feature-meta">체크리스트와 별개 · 진행 중 / 완료 / 과거 사용 이력</div></div></div>'
+          f'<form id="catalog-add" method="post" action="/riley/workbook-db/add" class="task-form" style="display:none;margin:10px 0 14px">'
+          f'<label class="task-title">교재명<input name="title" required></label>'
+          f'<label>과목<select name="subject">{_catalog_subject_options()}</select></label>'
+          f'<label>상태<select name="status">{_catalog_status_options()}</select></label>'
+          f'<label>시작일<input type="date" name="started_at"></label><label>완료일<input type="date" name="completed_at"></label>'
+          f'<label class="full">메모<input name="notes"></label><button class="btn">추가</button></form>'
+          f'<div class="catalog-tabs"><button class="catalog-tab on" type="button" data-status="진행중" onclick="catalogFilter(this)">진행 중</button>'
+          f'<button class="catalog-tab" type="button" data-status="past" onclick="catalogFilter(this)">완료·과거</button>'
+          f'<button class="catalog-tab" type="button" data-status="all" onclick="catalogFilter(this)">전체</button></div>'
+          f'<div class="catalog-grid">')
+    if not rows:
+        body+='<div class="muted">등록된 교재가 없습니다.</div>'
+    for subject in subjects:
+        group=[r for r in rows if r['subject']==subject]
+        body+=f'<div class="catalog-subject"><h3>{H(subject)} <span>{len(group)}권</span></h3>'
+        for r in group:
+            badge='진행 중' if r['status']=='진행중' else ('완료' if r['status']=='완료' else '과거 사용')
+            meta=' · '.join(x for x in [
+                ('시작 '+r['started_at']) if r.get('started_at') else '',
+                ('완료 '+r['completed_at']) if r.get('completed_at') else '',
+                r.get('notes') or ''
+            ] if x)
+            body+=(f'<div class="catalog-row" data-status="{H(r["status"])}"><div class="catalog-main"><div><b>{H(r["title"])}</b> '
+                   f'<span class="catalog-badge {H(r["status"])}">{H(badge)}</span></div>'
+                   f'<div class="feature-meta">{H(meta)}</div></div>'
+                   f'<details class="catalog-edit"><summary>수정</summary><form method="post" action="/riley/workbook-db/{r["id"]}/edit" class="catalog-edit-form">'
+                   f'<input name="title" value="{H(r["title"])}" required><select name="subject">{_catalog_subject_options(r["subject"])}</select>'
+                   f'<select name="status">{_catalog_status_options(r["status"])}</select>'
+                   f'<input type="date" name="started_at" value="{H(r.get("started_at") or "")}"><input type="date" name="completed_at" value="{H(r.get("completed_at") or "")}">'
+                   f'<input name="notes" value="{H(r.get("notes") or "")}"><button class="btn s">저장</button></form>'
+                   f'<form method="post" action="/riley/workbook-db/{r["id"]}/delete" onsubmit="return confirm(\\'삭제할까요?\\')"><button class="btn d s">삭제</button></form></details></div>')
+        body+='</div>'
+    body+='</div></section>'
+    body+='''<style>
+    .catalog-tabs{display:flex;gap:6px;margin:10px 0 14px;flex-wrap:wrap}.catalog-tab{border:1px solid #d7dfe8;background:#fff;color:#68778a;border-radius:999px;padding:7px 12px;font-weight:800;cursor:pointer}.catalog-tab.on{background:#0f4c81;color:#fff;border-color:#0f4c81}
+    .catalog-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.catalog-subject{border:1px solid #e4e9f0;border-radius:13px;padding:11px;background:#fbfcfe}.catalog-subject h3{margin:0 0 8px;display:flex;justify-content:space-between}.catalog-subject h3 span{font-size:11px;color:#8793a3}.catalog-row{padding:9px 0;border-bottom:1px solid #edf1f5}.catalog-row:last-child{border-bottom:0}.catalog-badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:800}.catalog-badge.진행중{background:#e8f6ee;color:#1f7a4d}.catalog-badge.완료{background:#eef2f6;color:#5c6b80}.catalog-badge.사용이력{background:#fff3e0;color:#a56412}.catalog-edit summary{font-size:11px;color:#7a8796;cursor:pointer;margin-top:5px}.catalog-edit-form{display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;margin-top:7px}.catalog-edit-form input,.catalog-edit-form select{padding:7px;border:1px solid #d7dfe8;border-radius:8px;font:inherit;font-size:12px}
+    @media(max-width:760px){.catalog-grid{grid-template-columns:1fr}.catalog-edit-form{grid-template-columns:1fr 1fr}}
+    </style><script>
+    function catalogFilter(btn){document.querySelectorAll(".catalog-tab").forEach(x=>x.classList.remove("on"));btn.classList.add("on");let s=btn.dataset.status;document.querySelectorAll(".catalog-row").forEach(function(r){let v=r.dataset.status;let show=s==="all"||(s==="past"&&v!=="진행중")||v===s;r.style.display=show?"":"none"});document.querySelectorAll(".catalog-subject").forEach(function(g){let any=[...g.querySelectorAll(".catalog-row")].some(x=>x.style.display!=="none");g.style.display=any?"":"none"})}
+    document.addEventListener("DOMContentLoaded",function(){let b=document.querySelector(".catalog-tab.on");if(b)catalogFilter(b)})
+    </script>'''
+    return page('지유 문제집 DB',body)
+
+@app.route('/riley/workbook-db/add',methods=['POST'])
+def riley_workbook_db_add():
+    title=(request.form.get('title') or '').strip()
+    subject=(request.form.get('subject') or '기타').strip()
+    status=(request.form.get('status') or '진행중').strip()
+    if title:
+        if subject not in WORKBOOK_SUBJECTS: subject='기타'
+        if status not in ('진행중','완료','사용이력'): status='진행중'
+        started=(request.form.get('started_at') or '').strip()
+        completed=(request.form.get('completed_at') or '').strip()
+        notes=(request.form.get('notes') or '').strip()
+        now=datetime.now(KST).isoformat(timespec='seconds')
+        c=db(); c.execute('''insert or ignore into riley_workbook_catalog(child,subject,title,status,started_at,completed_at,notes,source,created_at,updated_at)
+          values('지유',?,?,?,?,?,?,?, ?,?)''',(subject,title,status,started,completed,notes,'직접 입력',now,now)); c.commit(); c.close()
+    return redirect('/riley/workbook-db')
+
+@app.route('/riley/workbook-db/<int:rid>/edit',methods=['POST'])
+def riley_workbook_db_edit(rid):
+    title=(request.form.get('title') or '').strip()
+    subject=(request.form.get('subject') or '기타').strip()
+    status=(request.form.get('status') or '진행중').strip()
+    if title:
+        if subject not in WORKBOOK_SUBJECTS: subject='기타'
+        if status not in ('진행중','완료','사용이력'): status='진행중'
+        started=(request.form.get('started_at') or '').strip()
+        completed=(request.form.get('completed_at') or '').strip()
+        notes=(request.form.get('notes') or '').strip()
+        if status=='완료' and not completed: completed=datetime.now(KST).date().isoformat()
+        if status!='완료': completed='' if not completed else completed
+        c=db(); c.execute('update riley_workbook_catalog set title=?,subject=?,status=?,started_at=?,completed_at=?,notes=?,updated_at=? where id=? and child=?',
+          (title,subject,status,started,completed,notes,datetime.now(KST).isoformat(timespec='seconds'),rid,'지유')); c.commit(); c.close()
+    return redirect('/riley/workbook-db')
+
+@app.route('/riley/workbook-db/<int:rid>/delete',methods=['POST'])
+def riley_workbook_db_delete(rid):
+    c=db(); c.execute("delete from riley_workbook_catalog where id=? and child='지유'",(rid,)); c.commit(); c.close()
+    return redirect('/riley/workbook-db')
 
 CSS+='''.reading-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.reading-card{position:relative;background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px}.reading-stars{color:#e9b949;font-size:14px;margin-bottom:4px;letter-spacing:1px}.reading-count{position:absolute;top:6px;right:6px;background:#0f4c81;color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:2px 7px;line-height:1.3}'''
 JS+='''function editReading(el){let d=el.dataset;let f=document.getElementById("rdef");let base=f.dataset.base||"/riley";f.action=base+"/reading/"+d.id+"/edit";f.dataset.id=d.id;document.getElementById("rde-title").value=d.title||"";document.getElementById("rde-lang").value=d.language||"한글";document.getElementById("rde-genre").value=d.genre||"기타";document.getElementById("rde-sr").value=d.sr_score||"";document.getElementById("rde-lexile").value=d.lexile_score||"";document.getElementById("rde-date").value=d.read_date||"";document.getElementById("rde-rating").value=d.rating||"5";document.getElementById("rde-summary").value=d.summary||"";let rw=document.getElementById("rde-readwith");if(rw)rw.value=d.read_with||"혼자";o("rde")}function deleteReading(){let f0=document.getElementById("rdef");let id=f0.dataset.id;let base=f0.dataset.base||"/riley";if(!id||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/reading/"+id+"/delete";document.body.appendChild(f);f.submit()}'''
@@ -3395,7 +3455,6 @@ CSS += '''
 .lesson-toggle{display:block;width:100%;text-align:left;background:#eaf3fb;border:0;border-radius:9px;padding:8px;font:inherit;font-size:12px;cursor:pointer;color:inherit;margin-bottom:7px}
 .lesson-toggle b{display:block;margin-bottom:3px}
 .btn.on{background:#0f4c81;color:#fff;border-color:#0f4c81}
-.workbook-db-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.workbook-subject-card{border:1px solid #e4e9f0;border-radius:12px;padding:11px;background:#fbfcfe}.workbook-subject-card h3{margin:0 0 8px;display:flex;justify-content:space-between}.workbook-subject-card h3 span{font-size:11px;color:#8793a3;font-weight:700}.workbook-subhead{font-size:11px;font-weight:800;color:#68778a;margin:8px 0 4px}.workbook-db-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #edf1f5}.workbook-db-row.done b{text-decoration:line-through;color:#8995a5}.workbook-db-actions{display:flex;gap:5px;align-items:center}.workbook-db-actions form{margin:0}.workbook-history{margin-top:8px}.workbook-history summary{cursor:pointer;font-size:12px;font-weight:800;color:#68778a;padding:6px 0}@media(max-width:760px){.workbook-db-grid{grid-template-columns:1fr}.workbook-db-row{grid-template-columns:1fr}.workbook-db-actions{justify-content:flex-start}}
 '''
 
 
