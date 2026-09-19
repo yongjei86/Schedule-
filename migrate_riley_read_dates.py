@@ -18,6 +18,9 @@ books=[
     ('이상한 과자 가게 전천당 18','한글','창작','2026-09-17','',''),
     ('편의점을 털어라! 지리편','한글','지리','2026-09-17','',''),
     ('산불에서 코알라를 구하라!','한글','과학','2026-09-17','',''),
+    ('The Canterville Ghost','영어','고전','2026-09-19','3.7','550L'),
+    ('Hamlet','영어','고전','2026-09-19','','480L'),
+    ('Treasure Island','영어','고전','2026-09-19','3.8','670L'),
 ]
 
 rcols={r['name'] for r in c.execute('PRAGMA table_info(riley_reading)').fetchall()}
@@ -43,8 +46,6 @@ for title,language,genre,read_date,sr_score,lexile_score in books:
         if updates:
             vals.append(row['id']); c.execute('UPDATE riley_reading SET '+','.join(updates)+' WHERE id=?',vals)
 
-# The new photo shows both volumes 18 and 19 on 2026-09-17, but volume 19 already has
-# an earlier confirmed reading date. Preserve the original date rather than overwrite it.
 confirmed_dates={'The Worst Witch':'2026-06-22'}
 for title,read_date in confirmed_dates.items():
     c.execute("UPDATE riley_reading SET read_date=? WHERE title=? AND COALESCE(read_date,'')=''",(read_date,title))
