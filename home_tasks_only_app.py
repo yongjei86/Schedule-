@@ -523,13 +523,19 @@ def travels_with_links(done):
 travels = travels_with_links
 
 
-def _timed_google(start,end,name='지유'):
+_TIMED_GOOGLE_CACHE={}
+_TIMED_GOOGLE_REFRESHING=set()
+_TIMED_GOOGLE_LOCK=threading.Lock()
+_TIMED_GOOGLE_TTL=900
+_TIMED_GOOGLE_STALE_TTL=3600
+
+def _fetch_timed_google(start,end,name='지유'):
     out=[]
     srcs=[s for s in _sources() if s.get('name')==name]
     ws=datetime.combine(start,dtime.min,tzinfo=KST); we=datetime.combine(end+timedelta(days=1),dtime.min,tzinfo=KST)
     for src in srcs:
         try:
-            r=requests.get(src['url'],timeout=10,headers={'User-Agent':'YJ-Family-Calendar/1.0'}); r.raise_for_status()
+            r=requests.get(src['url'],timeout=4,headers={'User-Agent':'YJ-Family-Calendar/1.0'}); r.raise_for_status()
             cal=Calendar.from_ical(r.content)
             for ev in recurring_ical_events.of(cal).between(ws,we):
                 if str(ev.get('STATUS','')).upper()=='CANCELLED': continue
@@ -544,6 +550,42 @@ def _timed_google(start,end,name='지유'):
         except Exception as e:
             print('Riley Google timetable sync failed:',e,flush=True)
     return out
+
+def _refresh_timed_google_cache(key,start,end,name):
+    try:
+        out=_fetch_timed_google(start,end,name)
+        with _TIMED_GOOGLE_LOCK:
+            _TIMED_GOOGLE_CACHE[key]={'ts':time.time(),'events':out}
+    finally:
+        with _TIMED_GOOGLE_LOCK:
+            _TIMED_GOOGLE_REFRESHING.discard(key)
+
+def _timed_google(start,end,name='지유'):
+    key=(name,start.isoformat(),end.isoformat())
+    now=time.time()
+    with _TIMED_GOOGLE_LOCK:
+        cached=_TIMED_GOOGLE_CACHE.get(key)
+        if cached and now-cached['ts']<_TIMED_GOOGLE_TTL:
+            return list(cached['events'])
+        if cached and now-cached['ts']<_TIMED_GOOGLE_STALE_TTL:
+            if key not in _TIMED_GOOGLE_REFRESHING:
+                _TIMED_GOOGLE_REFRESHING.add(key)
+                threading.Thread(target=_refresh_timed_google_cache,args=(key,start,end,name),daemon=True).start()
+            return list(cached['events'])
+    out=_fetch_timed_google(start,end,name)
+    with _TIMED_GOOGLE_LOCK:
+        _TIMED_GOOGLE_CACHE[key]={'ts':time.time(),'events':out}
+    return out
+
+def _prewarm_riley_timetable():
+    try:
+        today=datetime.now(KST).date()
+        mon=today-timedelta(days=today.weekday())
+        _timed_google(mon,mon+timedelta(days=6),'지유')
+    except Exception as e:
+        print('Riley timetable prewarm failed:',e,flush=True)
+
+threading.Thread(target=_prewarm_riley_timetable,daemon=True).start()
 
 
 def riley_week():
