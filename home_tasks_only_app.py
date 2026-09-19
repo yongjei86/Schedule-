@@ -1140,7 +1140,23 @@ def _backfill_credit_event_dates():
                 category='other'
         event_date=(r['event_date'] or '').strip()
         if not event_date and category=='workbook':
-            m=re.search(r'\((\d{4}-\d{2}-\d{2})\)\s*READING_GENRES=('동화','그림책','과학','역사','전래동화','만화','위인전','창작','기타')
+            m=re.search(r'\\((\\d{4}-\\d{2}-\\d{2})\\)',reason)
+            if m:
+                event_date=m.group(1)
+        if not event_date and category=='reading':
+            title=reason.split('독서 기록 추가:',1)[1].strip() if '독서 기록 추가:' in reason else ''
+            if title:
+                rr=c.execute("select read_date from riley_reading where child=? and title=? and read_date is not null and read_date!='' order by abs(julianday(created_at)-julianday(?)) asc,id desc limit 1",(r['child'],title,r['created_at'])).fetchone()
+                if rr and rr['read_date']:
+                    event_date=rr['read_date']
+        if not event_date:
+            event_date=(r['created_at'] or '')[:10]
+        c.execute('update riley_credits set event_date=?,category=? where id=?',(event_date,category,r['id']))
+    c.commit(); c.close()
+_backfill_credit_event_dates()
+
+READING_LANGS=('한글','영어')
+READING_GENRES=('동화','그림책','과학','역사','전래동화','만화','위인전','창작','기타')
 READ_WITH_OPTIONS=('혼자','아빠','엄마','언니')
 
 def _reading_rows(child):
