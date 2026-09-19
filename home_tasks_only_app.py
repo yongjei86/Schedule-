@@ -1163,7 +1163,7 @@ def riley_workbook_db():
     c=db(); rows=[dict(x) for x in c.execute("select * from riley_workbook_catalog where child='지유' order by case status when '진행중' then 0 when '완료' then 1 else 2 end, subject,title").fetchall()]; c.close()
     subjects=[s for s in WORKBOOK_SUBJECTS if any(r['subject']==s for r in rows)]
     body=(f'<div class="toolbar"><a class="btn s" href="/riley">← 지유 포탈</a>'
-          f'<button class="btn" type="button" onclick="let x=document.getElementById(\\'catalog-add\\');x.style.display=x.style.display===\\'none\\'?\\'grid\\':\\'none\\'">+ 교재 추가</button></div>'
+          f'<button class="btn" type="button" onclick="catalogAddToggle()">+ 교재 추가</button></div>'
           f'<section class="feature-card"><div class="toolbar"><div><h2 style="margin:0">📚 지유 문제집 DB</h2>'
           f'<div class="feature-meta">체크리스트와 별개 · 진행 중 / 완료 / 과거 사용 이력</div></div></div>'
           f'<form id="catalog-add" method="post" action="/riley/workbook-db/add" class="task-form" style="display:none;margin:10px 0 14px">'
@@ -1196,7 +1196,7 @@ def riley_workbook_db():
                    f'<select name="status">{_catalog_status_options(r["status"])}</select>'
                    f'<input type="date" name="started_at" value="{H(r.get("started_at") or "")}"><input type="date" name="completed_at" value="{H(r.get("completed_at") or "")}">'
                    f'<input name="notes" value="{H(r.get("notes") or "")}"><button class="btn s">저장</button></form>'
-                   f'<form method="post" action="/riley/workbook-db/{r["id"]}/delete" onsubmit="return confirm(\\'삭제할까요?\\')"><button class="btn d s">삭제</button></form></details></div>')
+                   f'<form method="post" action="/riley/workbook-db/{r["id"]}/delete" onsubmit="return catalogDeleteConfirm()"><button class="btn d s">삭제</button></form></details></div>')
         body+='</div>'
     body+='</div></section>'
     body+='''<style>
@@ -1204,6 +1204,8 @@ def riley_workbook_db():
     .catalog-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.catalog-subject{border:1px solid #e4e9f0;border-radius:13px;padding:11px;background:#fbfcfe}.catalog-subject h3{margin:0 0 8px;display:flex;justify-content:space-between}.catalog-subject h3 span{font-size:11px;color:#8793a3}.catalog-row{padding:9px 0;border-bottom:1px solid #edf1f5}.catalog-row:last-child{border-bottom:0}.catalog-badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:800}.catalog-badge.진행중{background:#e8f6ee;color:#1f7a4d}.catalog-badge.완료{background:#eef2f6;color:#5c6b80}.catalog-badge.사용이력{background:#fff3e0;color:#a56412}.catalog-edit summary{font-size:11px;color:#7a8796;cursor:pointer;margin-top:5px}.catalog-edit-form{display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;margin-top:7px}.catalog-edit-form input,.catalog-edit-form select{padding:7px;border:1px solid #d7dfe8;border-radius:8px;font:inherit;font-size:12px}
     @media(max-width:760px){.catalog-grid{grid-template-columns:1fr}.catalog-edit-form{grid-template-columns:1fr 1fr}}
     </style><script>
+    function catalogAddToggle(){let x=document.getElementById("catalog-add");if(x)x.style.display=x.style.display==="none"?"grid":"none"}
+    function catalogDeleteConfirm(){return confirm("삭제할까요?")}
     function catalogFilter(btn){document.querySelectorAll(".catalog-tab").forEach(x=>x.classList.remove("on"));btn.classList.add("on");let s=btn.dataset.status;document.querySelectorAll(".catalog-row").forEach(function(r){let v=r.dataset.status;let show=s==="all"||(s==="past"&&v!=="진행중")||v===s;r.style.display=show?"":"none"});document.querySelectorAll(".catalog-subject").forEach(function(g){let any=[...g.querySelectorAll(".catalog-row")].some(x=>x.style.display!=="none");g.style.display=any?"":"none"})}
     document.addEventListener("DOMContentLoaded",function(){let b=document.querySelector(".catalog-tab.on");if(b)catalogFilter(b)})
     </script>'''
