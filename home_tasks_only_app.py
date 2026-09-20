@@ -55,16 +55,14 @@ CSS+='''.fm-event,.event-chip{cursor:pointer}.fm-event:hover,.event-chip:hover{f
 CSS+='''.day-checks{display:flex;gap:8px;flex-wrap:wrap}.day-check{display:flex;align-items:center;gap:4px;width:auto;font-size:12px;color:#14263f}.day-check input{width:auto}'''
 JS+='''function toggleAllDays(cb){let box=cb.closest(".day-checks");box.querySelectorAll("input[name=\"days\"]").forEach(x=>x.checked=cb.checked)}function editWb(el){let d=el.dataset;let base=d.base||document.getElementById("wbef").dataset.base||"/riley";document.getElementById("wbef").action=base+"/workbook/group/"+d.gid+"/edit";document.getElementById("wbef").dataset.gid=d.gid;document.getElementById("wbef").dataset.base=base;document.getElementById("wbe-title").value=d.title||"";document.getElementById("wbe-notes").value=d.notes||"";document.getElementById("wbe-color").value=d.color||"#0f4c81";let days=(d.days||"").split(",").filter(Boolean);document.querySelectorAll("#wbe-days input[name=\"days\"]").forEach(cb=>cb.checked=days.includes(cb.value));o("wbe")}function deleteWb(){let f0=document.getElementById("wbef");let gid=f0.dataset.gid;let base=f0.dataset.base||"/riley";if(!gid||!confirm("삭제할까요?"))return;let f=document.createElement("form");f.method="post";f.action=base+"/workbook/group/"+gid+"/delete";document.body.appendChild(f);f.submit()}let wbEditMode=false;function wbToggleEditMode(btn){wbEditMode=!wbEditMode;btn.classList.toggle("on",wbEditMode)}async function wbItemClick(el){if(wbEditMode){editWb(el);return}if(el.dataset.busy==="1")return;el.dataset.busy="1";let url=(el.dataset.base||"/riley")+"/workbook/"+el.dataset.id+"/toggle";if(el.dataset.date)url+="/"+el.dataset.date;try{let r=await fetch(url,{method:"POST",headers:{"X-Requested-With":"fetch"}});if(!r.ok)throw new Error("toggle failed");let b=el.querySelector("b");if(b)b.classList.toggle("task-done");let h=document.querySelector(".feature-card h2");if(h&&h.textContent.includes("이번 주 미완료")){let m=h.textContent.match(/이번 주 미완료 (\d+)건/);if(m){let n=parseInt(m[1],10)+(b&&b.classList.contains("task-done")?-1:1);h.textContent=h.textContent.replace(/이번 주 미완료 \d+건/,"이번 주 미완료 "+Math.max(0,n)+"건")}}}catch(e){location.reload()}finally{el.dataset.busy="0"}}'''
 
-JS+=r'''document.addEventListener("submit",async function(e){
- var f=e.target;if(!f.classList||!f.classList.contains("wb-toggle-form"))return;
- var el=f.querySelector(".lesson-toggle");if(!el)return;
- if(typeof wbEditMode!=="undefined"&&wbEditMode){e.preventDefault();editWb(el);return}
- e.preventDefault();
+JS+=r'''wbToggleNoReload=async function(el){
+ if(typeof wbEditMode!=="undefined"&&wbEditMode){editWb(el);return}
  if(el.dataset.busy==="1")return;
  var title=el.querySelector("b"),wasDone=!!(title&&title.classList.contains("task-done"));
+ var url=el.dataset.action;if(!url)return;
  el.dataset.busy="1";var oldOpacity=el.style.opacity;el.style.opacity=".58";el.disabled=true;
  try{
-  var res=await fetch(f.action,{method:"POST",credentials:"same-origin",headers:{"X-Requested-With":"fetch"}});
+  var res=await fetch(url,{method:"POST",credentials:"same-origin",headers:{"X-Requested-With":"fetch"}});
   if(!res.ok)throw new Error("toggle failed "+res.status);
   var nowDone=!wasDone;
   if(title)title.classList.toggle("task-done",nowDone);
@@ -81,11 +79,11 @@ JS+=r'''document.addEventListener("submit",async function(e){
   if(el.animate)el.animate([{transform:"scale(.985)"},{transform:"scale(1)"}],{duration:140});
  }catch(err){
   console.error(err);
-  f.submit();
+  alert("완료 처리에 실패했어요. 페이지는 새로고침하지 않았습니다.");
  }finally{
   delete el.dataset.busy;el.style.opacity=oldOpacity;el.disabled=false;
  }
-});'''
+};''''
 CSS+='''.person-filter{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}.pf{border:1px solid #d7dfe8;background:#fff;color:#5c6b80;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;text-decoration:none;transition:all .12s ease}.pf:hover{border-color:#0f4c81;color:#0f4c81}.pf.on{color:#fff;border-color:transparent}.pf.on.yj{background:#315c9b}.pf.on.지유{background:#e98755}.pf.on.보미{background:#9a66ad}.pf.on.혜온{background:#46a081}.pf.on.가족{background:#c99a35}.pf.on.여행{background:#d64f5b}.pf.on:not(.yj):not(.지유):not(.보미):not(.혜온):not(.가족):not(.여행){background:#14263f}'''
 CSS+='''.view-value{cursor:pointer;display:block}.view-value:hover{color:#0f4c81}.inline-edit{display:none;flex-direction:column;gap:6px;margin-top:2px}.inline-edit input{padding:7px 9px;border:1px solid #d5dde7;border-radius:8px;font:inherit;font-size:13px}'''
 CSS+='''.future-card{display:block;color:inherit;text-decoration:none}.status-form{margin-top:8px}.status-select{width:100%;border:1px solid #d7dfe8;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:#eef2f6;color:#5c6b80}.status-select.planned{background:#e8f6ee;color:#1f7a4d;border-color:#bfe4cd}.status-select.review{background:#fff3e0;color:#b5680a;border-color:#f3d9ab}.status-select.longterm{background:#f1ecfb;color:#6a4fb0;border-color:#dccdf5}.status-select.done{background:#eef2f6;color:#5c6b80;border-color:#dfe6ee}.status-badge{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:#eef2f6;color:#5c6b80}.status-badge.planned{background:#e8f6ee;color:#1f7a4d}.status-badge.review{background:#fff3e0;color:#b5680a}.status-badge.longterm{background:#f1ecfb;color:#6a4fb0}.status-badge.done{background:#eef2f6;color:#5c6b80}'''
@@ -1022,9 +1020,9 @@ def _wb_item(r, occurrence_date, is_done, group_days, base):
         action+=f'/{occurrence_date.isoformat()}'
         attrs+=f' data-date="{occurrence_date.isoformat()}"'
     status=f'<span class="wb-checkmark">{"✓ 완료" if is_done else ""}</span>'
-    return (f'<form method="post" action="{action}" class="wb-toggle-form">'
-            f'<button type="submit" class="lesson-toggle{done_cls}" style="{style}" {attrs}>'
-            f'<b class="{cls}">{H(r["title"])}</b>{meta}{status}</button></form>')
+    return (f'<button type="button" class="lesson-toggle{done_cls}" style="{style}" {attrs} '
+            f'data-action="{H(action)}" onclick="wbToggleNoReload(this)">'
+            f'<b class="{cls}">{H(r["title"])}</b>{meta}{status}</button>')
 
 def _workbook_section(child='지유', base='/riley', mon=None):
     today=datetime.now(KST).date()
@@ -3534,7 +3532,7 @@ CSS += '''
 .feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.feature-card{background:#fff;border:1px solid #e4e9f0;border-radius:15px;padding:14px}.feature-card h2,.feature-card h3{margin:0 0 10px}.feature-list{display:grid;gap:7px}.feature-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #edf1f5}.feature-row:last-child{border-bottom:0}.feature-meta{font-size:11px;color:#748196;margin-top:3px}.feature-badge{font-size:11px;font-weight:800;border-radius:999px;padding:4px 7px;background:#eef3f8;color:#5e7186;white-space:nowrap}.feature-alert{background:#fff5e8;border:1px solid #f1d3a7;color:#8a5a14;border-radius:11px;padding:9px 10px;margin:7px 0;font-size:12px}.task-done{text-decoration:line-through;color:#9aa5b2}.task-actions{display:flex;gap:5px;align-items:center}.task-form{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:7px;align-items:end}.task-form input,.task-form select{min-width:0}.plan-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.plan-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.plan-stat{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:11px}.plan-stat b{font-size:20px;display:block}.plan-section{background:#fff;border:1px solid #e4e9f0;border-radius:15px;padding:14px;margin:10px 0}.plan-section h2{margin:0 0 10px}.plan-form{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;align-items:end}.plan-form .wide{grid-column:span 2}.plan-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 0;border-bottom:1px solid #edf1f5}.plan-row:last-child{border-bottom:0}.trip-plan-link{margin-left:6px}
 @media(max-width:800px){.feature-grid{grid-template-columns:1fr}.task-form{grid-template-columns:1fr 1fr}.task-form .task-title{grid-column:1/-1}.plan-summary{grid-template-columns:1fr 1fr}.plan-form{grid-template-columns:1fr 1fr}.plan-form .wide{grid-column:1/-1}}
 @media(max-width:480px){.task-form,.plan-form{grid-template-columns:1fr}.task-form .task-title,.plan-form .wide{grid-column:1}.plan-summary{grid-template-columns:1fr 1fr}}
-.wb-toggle-form{margin:0;padding:0}.lesson-toggle{position:relative;display:block;width:100%;text-align:left;background:#eaf3fb;border:0;border-radius:9px;padding:8px 62px 8px 8px;font:inherit;font-size:12px;cursor:pointer;color:inherit;margin-bottom:7px}.lesson-toggle:active{transform:scale(.985)}.lesson-toggle.done{background:#eef2f5}.lesson-toggle b{display:block;margin-bottom:3px}.wb-checkmark{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;color:#2f7a50}.lesson-toggle:not(.done) .wb-checkmark{display:none}
+.lesson-toggle{position:relative;display:block;width:100%;text-align:left;background:#eaf3fb;border:0;border-radius:9px;padding:8px 62px 8px 8px;font:inherit;font-size:12px;cursor:pointer;color:inherit;margin-bottom:7px}.lesson-toggle:active{transform:scale(.985)}.lesson-toggle.done{background:#eef2f5}.lesson-toggle b{display:block;margin-bottom:3px}.wb-checkmark{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;color:#2f7a50}.lesson-toggle:not(.done) .wb-checkmark{display:none}
 .btn.on{background:#0f4c81;color:#fff;border-color:#0f4c81}
 '''
 
