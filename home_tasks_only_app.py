@@ -1020,8 +1020,24 @@ def _wb_item(r, occurrence_date, is_done, group_days, base):
         action+=f'/{occurrence_date.isoformat()}'
         attrs+=f' data-date="{occurrence_date.isoformat()}"'
     status=f'<span class="wb-checkmark">{"✓ 완료" if is_done else ""}</span>'
+    inline=(
+        "if(typeof wbEditMode!=='undefined'&&wbEditMode){if(typeof editWb==='function')editWb(this);return false;}"
+        "if(this.dataset.busy==='1')return false;"
+        "var el=this,t=el.querySelector('b'),was=t&&t.classList.contains('task-done');"
+        "el.dataset.busy='1';el.disabled=true;var op=el.style.opacity;el.style.opacity='.58';"
+        "fetch(el.dataset.action,{method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'fetch'}})"
+        ".then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);var now=!was;"
+        "if(t)t.classList.toggle('task-done',now);el.classList.toggle('done',now);"
+        "var m=el.querySelector('.wb-checkmark');if(m)m.textContent=now?'✓ 완료':'';"
+        "var card=el.closest('.feature-card'),h=card&&card.querySelector('.toolbar h2');"
+        "if(h){var z=h.textContent.match(/이번 주 미완료\\s+(\\d+)건/);"
+        "if(z){var n=Math.max(0,parseInt(z[1],10)+(was?1:-1));"
+        "h.textContent=h.textContent.replace(/이번 주 미완료\\s+\\d+건/,'이번 주 미완료 '+n+'건');}}"
+        "}).catch(function(e){console.error(e);alert('완료 처리에 실패했어요.');})"
+        ".finally(function(){delete el.dataset.busy;el.disabled=false;el.style.opacity=op;});return false;"
+    )
     return (f'<button type="button" class="lesson-toggle{done_cls}" style="{style}" {attrs} '
-            f'data-action="{H(action)}" onclick="wbToggleNoReload(this)">'
+            f'data-action="{H(action)}" onclick="{H(inline)}">'
             f'<b class="{cls}">{H(r["title"])}</b>{meta}{status}</button>')
 
 def _workbook_section(child='지유', base='/riley', mon=None):
