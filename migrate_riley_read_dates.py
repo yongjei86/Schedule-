@@ -27,6 +27,9 @@ books=[
     ('나도 덕후가 되고 싶어','한글','창작','2026-09-20','',''),
     ('마지막 지도 제작자: 세상의 끝을 찾아서','한글','역사','2026-09-20','',''),
     ('신상문구점','한글','창작','2026-09-22','',''),
+    ('The Railway Children','영어','고전','2026-09-23','',''),
+    ('The Secret Garden','영어','고전','2026-09-23','',''),
+    ('The Adventures of King Arthur','영어','고전','2026-09-22','',''),
 ]
 
 rcols={r['name'] for r in c.execute('PRAGMA table_info(riley_reading)').fetchall()}
