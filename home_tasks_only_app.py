@@ -1759,21 +1759,40 @@ def riley_credits_detail():
 
     def stacked_series(view):
         ck=maps['workbook_checklist'][view]; wf=maps['workbook_finish'][view]; rd=maps['reading'][view]
+        keys=set(ck)|set(wf)|set(rd)
         if view=='day':
-            return [((today-timedelta(days=i)).strftime('%m/%d'),
-                     ck.get((today-timedelta(days=i)).isoformat(),0),
-                     wf.get((today-timedelta(days=i)).isoformat(),0),
-                     rd.get((today-timedelta(days=i)).isoformat(),0)) for i in range(13,-1,-1)]
+            earliest=min([qdate(k) for k in keys if qdate(k)] or [today-timedelta(days=6)])
+            earliest=min(earliest,today-timedelta(days=6))
+            out=[]; d=earliest
+            while d<=today:
+                key=d.isoformat()
+                out.append((d.strftime('%m/%d'),ck.get(key,0),wf.get(key,0),rd.get(key,0)))
+                d+=timedelta(days=1)
+            return out
         if view=='week':
             week0=today-timedelta(days=today.weekday())
-            return [((week0-timedelta(days=i*7)).strftime('%m/%d'),
-                     ck.get((week0-timedelta(days=i*7)).isoformat(),0),
-                     wf.get((week0-timedelta(days=i*7)).isoformat(),0),
-                     rd.get((week0-timedelta(days=i*7)).isoformat(),0)) for i in range(11,-1,-1)]
-        month0=today.replace(day=1); out=[]
-        for i in range(11,-1,-1):
-            d=shift_month(month0,-i); key=d.strftime('%Y-%m')
+            valid=[qdate(k) for k in keys if qdate(k)]
+            earliest=min(valid or [week0-timedelta(days=42)])
+            earliest=earliest-timedelta(days=earliest.weekday())
+            earliest=min(earliest,week0-timedelta(days=42))
+            out=[]; d=earliest
+            while d<=week0:
+                key=d.isoformat()
+                out.append((d.strftime('%m/%d'),ck.get(key,0),wf.get(key,0),rd.get(key,0)))
+                d+=timedelta(days=7)
+            return out
+        month0=today.replace(day=1)
+        parsed=[]
+        for k in keys:
+            try: parsed.append(datetime.strptime(k+'-01','%Y-%m-%d').date())
+            except Exception: pass
+        earliest=min(parsed or [shift_month(month0,-6)])
+        earliest=min(earliest,shift_month(month0,-6))
+        out=[]; d=earliest
+        while d<=month0:
+            key=d.strftime('%Y-%m')
             out.append((d.strftime('%y.%m'),ck.get(key,0),wf.get(key,0),rd.get(key,0)))
+            d=shift_month(d,1)
         return out
 
     def stacked_panel(view,label,items,active=False):
@@ -1799,19 +1818,28 @@ def riley_credits_detail():
     .credit-tabs{display:flex;gap:6px;background:#eef3f8;padding:3px;border-radius:11px}.credit-tab{border:0;background:transparent;color:#6b788a;padding:7px 12px;border-radius:8px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}.credit-tab.on{background:#fff;color:#0f4c81;box-shadow:0 1px 4px rgba(20,38,63,.12)}
     .credit-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:11px;color:#728096;margin:4px 0 10px}.credit-legend span{display:flex;align-items:center;gap:5px}.credit-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.credit-dot.checklist{background:#4c96cf}.credit-dot.workbook-finish{background:#3f9a67}.credit-dot.reading{background:#e38a3d}
     .credit-chart-card{border:1px solid #e4e9f0;border-radius:13px;padding:12px;min-width:0}.credit-chart-panel{display:none}.credit-chart-panel.on{display:block}.credit-chart-note{font-size:11px;color:#8390a1;margin:2px 0 8px}
-    .credit-bars{height:234px;display:flex;align-items:flex-end;gap:7px;overflow-x:auto;padding:8px 3px 6px;border-bottom:1px solid #edf1f5}.credit-bar-col{height:100%;min-width:36px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+    .credit-bars{height:234px;display:flex;align-items:flex-end;gap:7px;overflow-x:auto;overflow-y:hidden;padding:8px 3px 8px;border-bottom:1px solid #edf1f5;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}.credit-bar-col{height:100%;min-width:38px;flex:0 0 calc((100% - 42px)/7);display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
     .credit-bar-value{font-size:9px;font-weight:800;color:#5f6f83;margin-bottom:4px;white-space:nowrap}.credit-bar-track{height:150px;width:23px;background:#f1f4f8;border-radius:8px 8px 2px 2px;overflow:hidden}.credit-bar-track.stacked{display:flex;flex-direction:column;justify-content:flex-end}.credit-stack-fill{width:100%;flex:0 0 auto}.credit-stack-fill.checklist{background:linear-gradient(180deg,#69a9d8,#2877b5)}.credit-stack-fill.workbook-finish{background:linear-gradient(180deg,#67b987,#2f8657)}.credit-stack-fill.reading{background:linear-gradient(180deg,#e9a65a,#d87832)}.credit-bar-label{font-size:9px;color:#7c8999;margin-top:6px;white-space:nowrap}
     .credit-rule-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.credit-rule{border:1px solid #e4e9f0;border-radius:12px;padding:12px;background:#fbfcfe}.credit-rule b{display:block;font-size:22px;margin-top:3px}
     .credit-kind{display:inline-block;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:800;margin-right:4px}.credit-kind.workbook_checklist{background:#eaf3fb;color:#2877b5}.credit-kind.workbook_finish{background:#e9f6ee;color:#2f8657}.credit-kind.reading{background:#fff1e5;color:#b96020}
-    @media(max-width:560px){.credit-chart-shell{padding:12px}.credit-tabs{width:100%}.credit-tab{flex:1}.credit-bars{gap:5px}.credit-bar-col{min-width:34px}.credit-bar-track{width:21px}.credit-rule-grid{grid-template-columns:1fr}}
+    @media(max-width:560px){.credit-chart-shell{padding:12px}.credit-tabs{width:100%}.credit-tab{flex:1}.credit-bars{gap:5px}.credit-bar-col{min-width:34px;flex-basis:calc((100% - 30px)/7)}.credit-bar-track{width:21px}.credit-rule-grid{grid-template-columns:1fr}}
     </style>'''
 
     credit_js='''<script>
+    function creditScrollLatest(view){
+      var panel=document.querySelector('.credit-chart-panel[data-credit-view="'+view+'"]');
+      var bars=panel&&panel.querySelector('.credit-bars');
+      if(bars)bars.scrollLeft=bars.scrollWidth;
+    }
     function creditView(btn,view){
       document.querySelectorAll('.credit-tab').forEach(function(x){x.classList.remove('on')});
       btn.classList.add('on');
       document.querySelectorAll('.credit-chart-panel').forEach(function(x){x.classList.toggle('on',x.dataset.creditView===view)});
+      setTimeout(function(){creditScrollLatest(view)},0);
     }
+    document.addEventListener('DOMContentLoaded',function(){
+      requestAnimationFrame(function(){creditScrollLatest('day')});
+    });
     </script>'''
 
     body=(f'{credit_css}<div class="toolbar"><a class="btn s" href="/riley">← 지유 포탈</a></div>'
@@ -1819,9 +1847,9 @@ def riley_credits_detail():
           f'<div class="credit-tabs"><button type="button" class="credit-tab on" data-view="day" onclick="creditView(this,this.dataset.view)">일간</button><button type="button" class="credit-tab" data-view="week" onclick="creditView(this,this.dataset.view)">주간</button><button type="button" class="credit-tab" data-view="month" onclick="creditView(this,this.dataset.view)">월간</button></div></div>'
           f'<div class="credit-legend"><span><i class="credit-dot checklist"></i>체크리스트 +1</span><span><i class="credit-dot workbook-finish"></i>문제집 1권 완료 +10</span><span><i class="credit-dot reading"></i>독서 +3</span></div>'
           f'<div class="credit-chart-card">'
-          +stacked_panel('day','최근 14일',stacked_series('day'),True)
-          +stacked_panel('week','최근 12주 · 월요일 시작',stacked_series('week'))
-          +stacked_panel('month','최근 12개월',stacked_series('month'))
+          +stacked_panel('day','최신 7일 표시 · 좌우 스크롤로 과거 보기',stacked_series('day'),True)
+          +stacked_panel('week','최신 7주 표시 · 좌우 스크롤로 과거 보기',stacked_series('week'))
+          +stacked_panel('month','최신 7개월 표시 · 좌우 스크롤로 과거 보기',stacked_series('month'))
           +f'</div></section>{credit_js}'
           f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">⚙️ 크레딧 기준</h2>'
           f'<div class="credit-rule-grid"><div class="credit-rule"><span>매일 문제집 체크리스트 1개</span><b>+1</b></div><div class="credit-rule"><span>문제집 한 권 끝내기</span><b>+10</b></div><div class="credit-rule"><span>책 한 권 읽기</span><b>+3</b></div></div><div class="feature-meta" style="margin-top:8px">독서 DB의 지유 기록과 자동 대조하여 누락 없이 반영</div></section>'
