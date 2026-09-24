@@ -954,15 +954,30 @@ def _award_credit(child,delta,reason,event_date=None,category=None):
               (child,delta,reason,datetime.now(KST).isoformat(timespec='seconds'),event_date,category or ''))
     c.commit(); c.close()
 
-CREDIT_RATE_DEFAULTS={'workbook':1,'reading':3}
+CREDIT_RATE_DEFAULTS={'workbook':10,'reading':3}
 def _init_credit_rate_schema():
     c=db()
     c.execute('''CREATE TABLE IF NOT EXISTS credit_rates(
       key TEXT PRIMARY KEY,
       value INTEGER NOT NULL
     )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS credit_migrations(
+      key TEXT PRIMARY KEY,
+      applied_at TEXT NOT NULL
+    )''')
     for k,v in CREDIT_RATE_DEFAULTS.items():
         c.execute('insert or ignore into credit_rates(key,value) values(?,?)',(k,v))
+    migration_key='workbook_credit_10_20260924'
+    done=c.execute('select 1 from credit_migrations where key=?',(migration_key,)).fetchone()
+    if not done:
+        c.execute("update credit_rates set value=10 where key='workbook'")
+        c.execute("""update riley_credits
+                     set delta=10, category='workbook'
+                     where child='지유'
+                       and (category='workbook'
+                            or ((category is null or category='') and reason like '문제집 완료:%'))""")
+        c.execute('insert into credit_migrations(key,applied_at) values(?,?)',
+                  (migration_key,datetime.now(KST).isoformat(timespec='seconds')))
     c.commit(); c.close()
 _init_credit_rate_schema()
 
@@ -1666,50 +1681,58 @@ def riley_credits_detail():
         idx=d.year*12+(d.month-1)+offset
         return date(idx//12,idx%12+1,1)
 
-    def series_for(category,view):
-        source=maps[category][view]
+    def stacked_series(view):
+        wb=maps['workbook'][view]
+        rd=maps['reading'][view]
         if view=='day':
-            return [((today-timedelta(days=i)).strftime('%m/%d'),source.get((today-timedelta(days=i)).isoformat(),0)) for i in range(13,-1,-1)]
+            out=[]
+            for i in range(13,-1,-1):
+                d=today-timedelta(days=i)
+                key=d.isoformat()
+                out.append((d.strftime('%m/%d'),wb.get(key,0),rd.get(key,0)))
+            return out
         if view=='week':
             week0=today-timedelta(days=today.weekday())
-            return [((week0-timedelta(days=i*7)).strftime('%m/%d'),source.get((week0-timedelta(days=i*7)).isoformat(),0)) for i in range(11,-1,-1)]
+            out=[]
+            for i in range(11,-1,-1):
+                d=week0-timedelta(days=i*7)
+                key=d.isoformat()
+                out.append((d.strftime('%m/%d'),wb.get(key,0),rd.get(key,0)))
+            return out
         month0=today.replace(day=1)
         out=[]
         for i in range(11,-1,-1):
             d=shift_month(month0,-i)
-            out.append((d.strftime('%y.%m'),source.get(d.strftime('%Y-%m'),0)))
+            key=d.strftime('%Y-%m')
+            out.append((d.strftime('%y.%m'),wb.get(key,0),rd.get(key,0)))
         return out
 
-    def chart_panel(view,label,items,kind,active=False):
-        mx=max([abs(v) for _,v in items] or [1]) or 1
+    def stacked_panel(view,label,items,active=False):
+        mx=max([max(0,w)+max(0,r) for _,w,r in items] or [1]) or 1
         bars=''
-        for x,v in items:
-            height=4 if v==0 else max(10,round(abs(v)/mx*150))
-            bars+=(f'<div class="credit-bar-col" title="{H(x)} · {v:+d}">'
-                   f'<div class="credit-bar-value">{v:+d}</div>'
-                   f'<div class="credit-bar-track"><div class="credit-bar-fill {kind}" style="height:{height}px"></div></div>'
+        for x,w,r in items:
+            wp=max(0,w); rp=max(0,r); total=wp+rp
+            wh=0 if wp==0 else max(4,round(wp/mx*150))
+            rh=0 if rp==0 else max(4,round(rp/mx*150))
+            reading_seg=f'<div class="credit-stack-fill reading" style="height:{rh}px"></div>' if rh else ''
+            workbook_seg=f'<div class="credit-stack-fill workbook" style="height:{wh}px"></div>' if wh else ''
+            bars+=(f'<div class="credit-bar-col" title="{H(x)} · 문제집 {w:+d} · 독서 {r:+d} · 합계 {total:+d}">'
+                   f'<div class="credit-bar-value">{total:+d}</div>'
+                   f'<div class="credit-bar-track stacked">{reading_seg}{workbook_seg}</div>'
                    f'<div class="credit-bar-label">{H(x)}</div></div>')
         on=' on' if active else ''
         return f'<div class="credit-chart-panel{on}" data-credit-view="{view}"><div class="credit-chart-note">{label}</div><div class="credit-bars">{bars}</div></div>'
 
-    def chart_card(kind,title):
-        return (f'<div class="credit-chart-card"><h3>{title}</h3>'
-                +chart_panel('day','최근 14일',series_for(kind,'day'),kind,True)
-                +chart_panel('week','최근 12주 · 월요일 시작',series_for(kind,'week'),kind)
-                +chart_panel('month','최근 12개월',series_for(kind,'month'),kind)
-                +'</div>')
-
     credit_css='''<style>
     .credit-chart-shell{background:#fff;border:1px solid #e4e9f0;border-radius:15px;padding:14px;box-shadow:0 1px 3px rgba(20,38,63,.06)}
-    .credit-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}.credit-chart-head h2{margin:0}
+    .credit-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}.credit-chart-head h2{margin:0}
     .credit-tabs{display:flex;gap:6px;background:#eef3f8;padding:3px;border-radius:11px}.credit-tab{border:0;background:transparent;color:#6b788a;padding:7px 12px;border-radius:8px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}.credit-tab.on{background:#fff;color:#0f4c81;box-shadow:0 1px 4px rgba(20,38,63,.12)}
-    .credit-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.credit-chart-card{border:1px solid #e4e9f0;border-radius:13px;padding:12px;min-width:0}.credit-chart-card h3{margin:0 0 6px;font-size:15px}
-    .credit-chart-panel{display:none}.credit-chart-panel.on{display:block}.credit-chart-note{font-size:11px;color:#8390a1;margin:2px 0 8px}
-    .credit-bars{height:214px;display:flex;align-items:flex-end;gap:7px;overflow-x:auto;padding:8px 3px 6px;border-bottom:1px solid #edf1f5}.credit-bar-col{height:100%;min-width:36px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
-    .credit-bar-value{font-size:9px;font-weight:800;color:#5f6f83;margin-bottom:4px;white-space:nowrap}.credit-bar-track{height:150px;width:21px;display:flex;align-items:flex-end;justify-content:center;background:#f1f4f8;border-radius:8px 8px 2px 2px;overflow:hidden}.credit-bar-fill{width:100%;border-radius:8px 8px 2px 2px;transition:height .18s ease}
-    .credit-bar-fill.workbook{background:linear-gradient(180deg,#2f7fc1,#0f4c81)}.credit-bar-fill.reading{background:linear-gradient(180deg,#e9a65a,#d87832)}.credit-bar-label{font-size:9px;color:#7c8999;margin-top:6px;white-space:nowrap}
+    .credit-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:11px;color:#728096;margin:4px 0 10px}.credit-legend span{display:flex;align-items:center;gap:5px}.credit-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.credit-dot.workbook{background:#0f4c81}.credit-dot.reading{background:#e38a3d}
+    .credit-chart-card{border:1px solid #e4e9f0;border-radius:13px;padding:12px;min-width:0}.credit-chart-panel{display:none}.credit-chart-panel.on{display:block}.credit-chart-note{font-size:11px;color:#8390a1;margin:2px 0 8px}
+    .credit-bars{height:234px;display:flex;align-items:flex-end;gap:7px;overflow-x:auto;padding:8px 3px 6px;border-bottom:1px solid #edf1f5}.credit-bar-col{height:100%;min-width:36px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+    .credit-bar-value{font-size:9px;font-weight:800;color:#5f6f83;margin-bottom:4px;white-space:nowrap}.credit-bar-track{height:150px;width:23px;background:#f1f4f8;border-radius:8px 8px 2px 2px;overflow:hidden}.credit-bar-track.stacked{display:flex;flex-direction:column;justify-content:flex-end}.credit-stack-fill{width:100%;flex:0 0 auto}.credit-stack-fill.workbook{background:linear-gradient(180deg,#2f7fc1,#0f4c81)}.credit-stack-fill.reading{background:linear-gradient(180deg,#e9a65a,#d87832)}.credit-bar-label{font-size:9px;color:#7c8999;margin-top:6px;white-space:nowrap}
     .credit-kind{display:inline-block;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:800;margin-right:4px}.credit-kind.workbook{background:#eaf3fb;color:#0f4c81}.credit-kind.reading{background:#fff1e5;color:#b96020}
-    @media(max-width:800px){.credit-chart-grid{grid-template-columns:1fr}}@media(max-width:560px){.credit-chart-shell{padding:12px}.credit-tabs{width:100%}.credit-tab{flex:1}.credit-bars{gap:5px}.credit-bar-col{min-width:34px}.credit-bar-track{width:19px}}
+    @media(max-width:560px){.credit-chart-shell{padding:12px}.credit-tabs{width:100%}.credit-tab{flex:1}.credit-bars{gap:5px}.credit-bar-col{min-width:34px}.credit-bar-track{width:21px}}
     </style>'''
 
     credit_js='''<script>
@@ -1723,10 +1746,15 @@ def riley_credits_detail():
     body=(f'{credit_css}<div class="toolbar"><a class="btn s" href="/riley">← 지유 포탈</a></div>'
           f'<section class="credit-chart-shell"><div class="credit-chart-head"><div><h2>🪙 {H(child)} 크레딧 추이</h2><div class="feature-meta">문제집은 예정일 · 독서는 읽은 날짜 기준</div></div>'
           f'<div class="credit-tabs"><button type="button" class="credit-tab on" data-view="day" onclick="creditView(this,this.dataset.view)">일간</button><button type="button" class="credit-tab" data-view="week" onclick="creditView(this,this.dataset.view)">주간</button><button type="button" class="credit-tab" data-view="month" onclick="creditView(this,this.dataset.view)">월간</button></div></div>'
-          f'<div class="credit-chart-grid">{chart_card("workbook","📘 문제집 크레딧")}{chart_card("reading","📚 독서 크레딧")}</div></section>{credit_js}'
+          f'<div class="credit-legend"><span><i class="credit-dot workbook"></i>문제집</span><span><i class="credit-dot reading"></i>독서</span><span>막대 높이 = 합계 크레딧</span></div>'
+          f'<div class="credit-chart-card">'
+          +stacked_panel('day','최근 14일',stacked_series('day'),True)
+          +stacked_panel('week','최근 12주 · 월요일 시작',stacked_series('week'))
+          +stacked_panel('month','최근 12개월',stacked_series('month'))
+          +f'</div></section>{credit_js}'
           f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">⚙️ 크레딧 지급 설정</h2>'
           f'<form method="POST" action="/riley/credits/rate" style="display:flex;flex-direction:column;gap:12px">'
-          f'<label style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>문제집 완료 시</span><span><input type="number" name="workbook" value="{wb_rate}" min="0" max="20" style="width:70px;padding:8px;border:1px solid #e4e9f0;border-radius:10px;text-align:center"> 개</span></label>'
+          f'<label style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>문제집 1회 완료 시</span><span><input type="number" name="workbook" value="{wb_rate}" min="0" max="50" style="width:70px;padding:8px;border:1px solid #e4e9f0;border-radius:10px;text-align:center"> 개</span></label>'
           f'<label style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>책 1권 추가 시</span><span><input type="number" name="reading" value="{rd_rate}" min="0" max="20" style="width:70px;padding:8px;border:1px solid #e4e9f0;border-radius:10px;text-align:center"> 개</span></label>'
           f'<button type="submit" class="btn">저장</button></form></section>'
           f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">기준일별 내역</h2>')
@@ -1743,6 +1771,7 @@ def riley_credits_detail():
         body+='</div>'
     body+='</section>'
     return page(f'{child} 크레딧 현황',body)
+
 def _init_hangul_schema():
     c=db()
     c.execute('''CREATE TABLE IF NOT EXISTS hangul_words(
