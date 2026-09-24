@@ -954,7 +954,7 @@ def _award_credit(child,delta,reason,event_date=None,category=None):
               (child,delta,reason,datetime.now(KST).isoformat(timespec='seconds'),event_date,category or ''))
     c.commit(); c.close()
 
-CREDIT_RATE_DEFAULTS={'workbook':10,'reading':3}
+CREDIT_RATE_DEFAULTS={'workbook':1,'workbook_finish':10,'reading':3}
 def _init_credit_rate_schema():
     c=db()
     c.execute('''CREATE TABLE IF NOT EXISTS credit_rates(
@@ -967,14 +967,17 @@ def _init_credit_rate_schema():
     )''')
     for k,v in CREDIT_RATE_DEFAULTS.items():
         c.execute('insert or ignore into credit_rates(key,value) values(?,?)',(k,v))
-    migration_key='workbook_credit_10_20260924'
+    migration_key='split_workbook_credit_rules_20260924'
     done=c.execute('select 1 from credit_migrations where key=?',(migration_key,)).fetchone()
     if not done:
-        c.execute("update credit_rates set value=10 where key='workbook'")
+        c.execute("insert into credit_rates(key,value) values('workbook',1) on conflict(key) do update set value=1")
+        c.execute("insert into credit_rates(key,value) values('workbook_finish',10) on conflict(key) do update set value=10")
+        c.execute("insert into credit_rates(key,value) values('reading',3) on conflict(key) do update set value=3")
         c.execute("""update riley_credits
-                     set delta=10, category='workbook'
+                     set delta=1, category='workbook_checklist'
                      where child='지유'
                        and (category='workbook'
+                            or category='workbook_checklist'
                             or ((category is null or category='') and reason like '문제집 완료:%'))""")
         c.execute('insert into credit_migrations(key,applied_at) values(?,?)',
                   (migration_key,datetime.now(KST).isoformat(timespec='seconds')))
@@ -1143,7 +1146,7 @@ def riley_workbook_toggle(wid):
         credited=row['credited']
         new_done=0 if row['done'] else 1
         if new_done and not credited:
-            _award_credit(child,_credit_rate('workbook'),f'문제집 완료: {row["title"]}',datetime.now(KST).date().isoformat(),'workbook')
+            _award_credit(child,_credit_rate('workbook'),f'체크리스트 완료: {row["title"]}',datetime.now(KST).date().isoformat(),'workbook_checklist')
             credited=1
         c.execute('update riley_workbooks set done=?,credited=? where id=?',(new_done,credited,wid))
         c.commit()
@@ -1168,7 +1171,7 @@ def riley_workbook_toggle_dated(wid,date):
             already_credited=c.execute('select 1 from workbook_credited where item_id=? and date=?',(wid,date)).fetchone()
             if not already_credited:
                 child=row['child'] or '지유'
-                _award_credit(child,_credit_rate('workbook'),f'문제집 완료: {row["title"]} ({date})',date,'workbook')
+                _award_credit(child,_credit_rate('workbook'),f'체크리스트 완료: {row["title"]} ({date})',date,'workbook_checklist')
                 c.execute('insert or ignore into workbook_credited(item_id,date) values(?,?)',(wid,date))
                 c.commit()
     c.close()
@@ -1221,6 +1224,9 @@ def _init_riley_workbook_catalog():
       updated_at TEXT NOT NULL
     )''')
     c.execute('CREATE UNIQUE INDEX IF NOT EXISTS ux_riley_workbook_catalog_child_title ON riley_workbook_catalog(child,title)')
+    catalog_cols={r['name'] for r in c.execute('PRAGMA table_info(riley_workbook_catalog)')}
+    if 'finish_credit_awarded' not in catalog_cols:
+        c.execute('ALTER TABLE riley_workbook_catalog ADD COLUMN finish_credit_awarded INTEGER NOT NULL DEFAULT 0')
     now=datetime.now(KST).isoformat(timespec='seconds')
     seed=[
       ('수학','쎈연산 8권 (초등 4-2)','진행중','','','집에서 진행 중','2026-09-12'),
@@ -1257,6 +1263,19 @@ def _init_riley_workbook_catalog():
           (child,subject,title,status,started_at,completed_at,notes,source,created_at,updated_at)
           VALUES('지유',?,?,?,?,?,?,?,?,?)''',
           (subject,title,status,started,completed,notes,source,now,now))
+    migration_key='hanja_book_finish_credit_20260924'
+    migrated=c.execute('select 1 from credit_migrations where key=?',(migration_key,)).fetchone()
+    if not migrated:
+        today_iso=datetime.now(KST).date().isoformat()
+        hanja=c.execute("select id,title,status,finish_credit_awarded from riley_workbook_catalog where child='지유' and subject='한자' and title like '%7급%' order by id desc limit 1").fetchone()
+        if hanja:
+            c.execute("update riley_workbook_catalog set status='완료',completed_at=?,updated_at=?,finish_credit_awarded=1 where id=?",(today_iso,now,hanja['id']))
+            if not hanja['finish_credit_awarded']:
+                exists=c.execute("select 1 from riley_credits where child='지유' and category='workbook_finish' and reason=? limit 1",(f'문제집 1권 완료: {hanja["title"]}',)).fetchone()
+                if not exists:
+                    c.execute('insert into riley_credits(child,delta,reason,created_at,event_date,category) values(?,?,?,?,?,?)',
+                              ('지유',10,f'문제집 1권 완료: {hanja["title"]}',now,today_iso,'workbook_finish'))
+        c.execute('insert into credit_migrations(key,applied_at) values(?,?)',(migration_key,now))
     c.commit(); c.close()
 _init_riley_workbook_catalog()
 
@@ -1347,10 +1366,18 @@ def riley_workbook_db_edit(rid):
         started=(request.form.get('started_at') or '').strip()
         completed=(request.form.get('completed_at') or '').strip()
         notes=(request.form.get('notes') or '').strip()
+        c=db()
+        old=c.execute("select title,status,finish_credit_awarded from riley_workbook_catalog where id=? and child='지유'",(rid,)).fetchone()
         if status=='완료' and not completed: completed=datetime.now(KST).date().isoformat()
         if status!='완료': completed='' if not completed else completed
-        c=db(); c.execute('update riley_workbook_catalog set title=?,subject=?,status=?,started_at=?,completed_at=?,notes=?,updated_at=? where id=? and child=?',
-          (title,subject,status,started,completed,notes,datetime.now(KST).isoformat(timespec='seconds'),rid,'지유')); c.commit(); c.close()
+        now=datetime.now(KST).isoformat(timespec='seconds')
+        award_finish=bool(old and old['status']!='완료' and status=='완료' and not old['finish_credit_awarded'])
+        c.execute('update riley_workbook_catalog set title=?,subject=?,status=?,started_at=?,completed_at=?,notes=?,updated_at=?,finish_credit_awarded=case when ? then 1 else finish_credit_awarded end where id=? and child=?',
+          (title,subject,status,started,completed,notes,now,1 if award_finish else 0,rid,'지유'))
+        if award_finish:
+            c.execute('insert into riley_credits(child,delta,reason,created_at,event_date,category) values(?,?,?,?,?,?)',
+                      ('지유',_credit_rate('workbook_finish'),f'문제집 1권 완료: {title}',now,completed or datetime.now(KST).date().isoformat(),'workbook_finish'))
+        c.commit(); c.close()
     return redirect('/riley/workbook-db')
 
 @app.route('/riley/workbook-db/<int:rid>/delete',methods=['POST'])
@@ -1413,14 +1440,14 @@ def _backfill_credit_activity_dates():
         reason=r['reason'] or ''
         category=(r['category'] or '').strip()
         if not category:
-            if reason.startswith('문제집 완료:'):
-                category='workbook'
+            if reason.startswith('체크리스트 완료:') or reason.startswith('문제집 완료:'):
+                category='workbook_checklist'
             elif reason.startswith('독서 기록 추가:'):
                 category='reading'
             else:
                 category='other'
         event_date=(r['event_date'] or '').strip()
-        if not event_date and category=='workbook' and reason.endswith(')'):
+        if not event_date and category=='workbook_checklist' and reason.endswith(')'):
             candidate=reason[-11:-1]
             if qdate(candidate):
                 event_date=candidate
@@ -1636,33 +1663,31 @@ def hyeon_week():
 
 @app.route('/riley/credits/rate',methods=['POST'])
 def riley_credits_rate_update():
-    for key in ('workbook','reading'):
-        try: v=int(request.form.get(key) or 0)
-        except ValueError: v=0
-        v=max(0,min(20,v))
-        _set_credit_rate(key,v)
+    _set_credit_rate('workbook',1)
+    _set_credit_rate('workbook_finish',10)
+    _set_credit_rate('reading',3)
     return redirect('/riley/credits')
 
 @app.route('/riley/credits')
 def riley_credits_detail():
     child='지유'
-    wb_rate=_credit_rate('workbook')
-    rd_rate=_credit_rate('reading')
     c=db()
     rows=[dict(x) for x in c.execute("select * from riley_credits where child=? order by coalesce(nullif(event_date,''),substr(created_at,1,10)) desc,created_at desc",(child,)).fetchall()]
     c.close()
 
-    maps={'workbook':{'day':{},'week':{},'month':{}},'reading':{'day':{},'week':{},'month':{}}}
+    kinds=('workbook_checklist','workbook_finish','reading')
+    maps={k:{'day':{},'week':{},'month':{}} for k in kinds}
     by_day={}
     for r in rows:
         ds=(r.get('event_date') or (r.get('created_at') or '')[:10])[:10]
         d=qdate(ds)
-        if not d:
-            continue
+        if not d: continue
         category=(r.get('category') or '').strip()
         reason=r.get('reason') or ''
+        if category=='workbook': category='workbook_checklist'
         if category not in maps:
-            if reason.startswith('문제집 완료:'): category='workbook'
+            if reason.startswith('문제집 1권 완료:'): category='workbook_finish'
+            elif reason.startswith('체크리스트 완료:') or reason.startswith('문제집 완료:'): category='workbook_checklist'
             elif reason.startswith('독서 기록 추가:'): category='reading'
             else: continue
         delta=int(r.get('delta') or 0)
@@ -1682,44 +1707,38 @@ def riley_credits_detail():
         return date(idx//12,idx%12+1,1)
 
     def stacked_series(view):
-        wb=maps['workbook'][view]
-        rd=maps['reading'][view]
+        ck=maps['workbook_checklist'][view]; wf=maps['workbook_finish'][view]; rd=maps['reading'][view]
         if view=='day':
-            out=[]
-            for i in range(13,-1,-1):
-                d=today-timedelta(days=i)
-                key=d.isoformat()
-                out.append((d.strftime('%m/%d'),wb.get(key,0),rd.get(key,0)))
-            return out
+            return [((today-timedelta(days=i)).strftime('%m/%d'),
+                     ck.get((today-timedelta(days=i)).isoformat(),0),
+                     wf.get((today-timedelta(days=i)).isoformat(),0),
+                     rd.get((today-timedelta(days=i)).isoformat(),0)) for i in range(13,-1,-1)]
         if view=='week':
             week0=today-timedelta(days=today.weekday())
-            out=[]
-            for i in range(11,-1,-1):
-                d=week0-timedelta(days=i*7)
-                key=d.isoformat()
-                out.append((d.strftime('%m/%d'),wb.get(key,0),rd.get(key,0)))
-            return out
-        month0=today.replace(day=1)
-        out=[]
+            return [((week0-timedelta(days=i*7)).strftime('%m/%d'),
+                     ck.get((week0-timedelta(days=i*7)).isoformat(),0),
+                     wf.get((week0-timedelta(days=i*7)).isoformat(),0),
+                     rd.get((week0-timedelta(days=i*7)).isoformat(),0)) for i in range(11,-1,-1)]
+        month0=today.replace(day=1); out=[]
         for i in range(11,-1,-1):
-            d=shift_month(month0,-i)
-            key=d.strftime('%Y-%m')
-            out.append((d.strftime('%y.%m'),wb.get(key,0),rd.get(key,0)))
+            d=shift_month(month0,-i); key=d.strftime('%Y-%m')
+            out.append((d.strftime('%y.%m'),ck.get(key,0),wf.get(key,0),rd.get(key,0)))
         return out
 
     def stacked_panel(view,label,items,active=False):
-        mx=max([max(0,w)+max(0,r) for _,w,r in items] or [1]) or 1
+        mx=max([max(0,c)+max(0,f)+max(0,r) for _,c,f,r in items] or [1]) or 1
         bars=''
-        for x,w,r in items:
-            wp=max(0,w); rp=max(0,r); total=wp+rp
-            wh=0 if wp==0 else max(4,round(wp/mx*150))
+        for x,check,finish,reading in items:
+            cp=max(0,check); fp=max(0,finish); rp=max(0,reading); total=cp+fp+rp
+            ch=0 if cp==0 else max(3,round(cp/mx*150))
+            fh=0 if fp==0 else max(5,round(fp/mx*150))
             rh=0 if rp==0 else max(4,round(rp/mx*150))
-            reading_seg=f'<div class="credit-stack-fill reading" style="height:{rh}px"></div>' if rh else ''
-            workbook_seg=f'<div class="credit-stack-fill workbook" style="height:{wh}px"></div>' if wh else ''
-            bars+=(f'<div class="credit-bar-col" title="{H(x)} · 문제집 {w:+d} · 독서 {r:+d} · 합계 {total:+d}">'
-                   f'<div class="credit-bar-value">{total:+d}</div>'
-                   f'<div class="credit-bar-track stacked">{reading_seg}{workbook_seg}</div>'
-                   f'<div class="credit-bar-label">{H(x)}</div></div>')
+            segs=''
+            if rh: segs+=f'<div class="credit-stack-fill reading" style="height:{rh}px"></div>'
+            if fh: segs+=f'<div class="credit-stack-fill workbook-finish" style="height:{fh}px"></div>'
+            if ch: segs+=f'<div class="credit-stack-fill checklist" style="height:{ch}px"></div>'
+            bars+=(f'<div class="credit-bar-col" title="{H(x)} · 체크리스트 {check:+d} · 문제집 완독 {finish:+d} · 독서 {reading:+d} · 합계 {total:+d}">'
+                   f'<div class="credit-bar-value">{total:+d}</div><div class="credit-bar-track stacked">{segs}</div><div class="credit-bar-label">{H(x)}</div></div>')
         on=' on' if active else ''
         return f'<div class="credit-chart-panel{on}" data-credit-view="{view}"><div class="credit-chart-note">{label}</div><div class="credit-bars">{bars}</div></div>'
 
@@ -1727,12 +1746,13 @@ def riley_credits_detail():
     .credit-chart-shell{background:#fff;border:1px solid #e4e9f0;border-radius:15px;padding:14px;box-shadow:0 1px 3px rgba(20,38,63,.06)}
     .credit-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}.credit-chart-head h2{margin:0}
     .credit-tabs{display:flex;gap:6px;background:#eef3f8;padding:3px;border-radius:11px}.credit-tab{border:0;background:transparent;color:#6b788a;padding:7px 12px;border-radius:8px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}.credit-tab.on{background:#fff;color:#0f4c81;box-shadow:0 1px 4px rgba(20,38,63,.12)}
-    .credit-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:11px;color:#728096;margin:4px 0 10px}.credit-legend span{display:flex;align-items:center;gap:5px}.credit-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.credit-dot.workbook{background:#0f4c81}.credit-dot.reading{background:#e38a3d}
+    .credit-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:11px;color:#728096;margin:4px 0 10px}.credit-legend span{display:flex;align-items:center;gap:5px}.credit-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.credit-dot.checklist{background:#4c96cf}.credit-dot.workbook-finish{background:#3f9a67}.credit-dot.reading{background:#e38a3d}
     .credit-chart-card{border:1px solid #e4e9f0;border-radius:13px;padding:12px;min-width:0}.credit-chart-panel{display:none}.credit-chart-panel.on{display:block}.credit-chart-note{font-size:11px;color:#8390a1;margin:2px 0 8px}
     .credit-bars{height:234px;display:flex;align-items:flex-end;gap:7px;overflow-x:auto;padding:8px 3px 6px;border-bottom:1px solid #edf1f5}.credit-bar-col{height:100%;min-width:36px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
-    .credit-bar-value{font-size:9px;font-weight:800;color:#5f6f83;margin-bottom:4px;white-space:nowrap}.credit-bar-track{height:150px;width:23px;background:#f1f4f8;border-radius:8px 8px 2px 2px;overflow:hidden}.credit-bar-track.stacked{display:flex;flex-direction:column;justify-content:flex-end}.credit-stack-fill{width:100%;flex:0 0 auto}.credit-stack-fill.workbook{background:linear-gradient(180deg,#2f7fc1,#0f4c81)}.credit-stack-fill.reading{background:linear-gradient(180deg,#e9a65a,#d87832)}.credit-bar-label{font-size:9px;color:#7c8999;margin-top:6px;white-space:nowrap}
-    .credit-kind{display:inline-block;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:800;margin-right:4px}.credit-kind.workbook{background:#eaf3fb;color:#0f4c81}.credit-kind.reading{background:#fff1e5;color:#b96020}
-    @media(max-width:560px){.credit-chart-shell{padding:12px}.credit-tabs{width:100%}.credit-tab{flex:1}.credit-bars{gap:5px}.credit-bar-col{min-width:34px}.credit-bar-track{width:21px}}
+    .credit-bar-value{font-size:9px;font-weight:800;color:#5f6f83;margin-bottom:4px;white-space:nowrap}.credit-bar-track{height:150px;width:23px;background:#f1f4f8;border-radius:8px 8px 2px 2px;overflow:hidden}.credit-bar-track.stacked{display:flex;flex-direction:column;justify-content:flex-end}.credit-stack-fill{width:100%;flex:0 0 auto}.credit-stack-fill.checklist{background:linear-gradient(180deg,#69a9d8,#2877b5)}.credit-stack-fill.workbook-finish{background:linear-gradient(180deg,#67b987,#2f8657)}.credit-stack-fill.reading{background:linear-gradient(180deg,#e9a65a,#d87832)}.credit-bar-label{font-size:9px;color:#7c8999;margin-top:6px;white-space:nowrap}
+    .credit-rule-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.credit-rule{border:1px solid #e4e9f0;border-radius:12px;padding:12px;background:#fbfcfe}.credit-rule b{display:block;font-size:22px;margin-top:3px}
+    .credit-kind{display:inline-block;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:800;margin-right:4px}.credit-kind.workbook_checklist{background:#eaf3fb;color:#2877b5}.credit-kind.workbook_finish{background:#e9f6ee;color:#2f8657}.credit-kind.reading{background:#fff1e5;color:#b96020}
+    @media(max-width:560px){.credit-chart-shell{padding:12px}.credit-tabs{width:100%}.credit-tab{flex:1}.credit-bars{gap:5px}.credit-bar-col{min-width:34px}.credit-bar-track{width:21px}.credit-rule-grid{grid-template-columns:1fr}}
     </style>'''
 
     credit_js='''<script>
@@ -1744,30 +1764,27 @@ def riley_credits_detail():
     </script>'''
 
     body=(f'{credit_css}<div class="toolbar"><a class="btn s" href="/riley">← 지유 포탈</a></div>'
-          f'<section class="credit-chart-shell"><div class="credit-chart-head"><div><h2>🪙 {H(child)} 크레딧 추이</h2><div class="feature-meta">문제집은 예정일 · 독서는 읽은 날짜 기준</div></div>'
+          f'<section class="credit-chart-shell"><div class="credit-chart-head"><div><h2>🪙 {H(child)} 크레딧 추이</h2><div class="feature-meta">체크리스트는 예정일 · 문제집 1권 완료는 완료일 · 독서는 읽은 날짜 기준</div></div>'
           f'<div class="credit-tabs"><button type="button" class="credit-tab on" data-view="day" onclick="creditView(this,this.dataset.view)">일간</button><button type="button" class="credit-tab" data-view="week" onclick="creditView(this,this.dataset.view)">주간</button><button type="button" class="credit-tab" data-view="month" onclick="creditView(this,this.dataset.view)">월간</button></div></div>'
-          f'<div class="credit-legend"><span><i class="credit-dot workbook"></i>문제집</span><span><i class="credit-dot reading"></i>독서</span><span>막대 높이 = 합계 크레딧</span></div>'
+          f'<div class="credit-legend"><span><i class="credit-dot checklist"></i>체크리스트 +1</span><span><i class="credit-dot workbook-finish"></i>문제집 1권 완료 +10</span><span><i class="credit-dot reading"></i>독서 +3</span></div>'
           f'<div class="credit-chart-card">'
           +stacked_panel('day','최근 14일',stacked_series('day'),True)
           +stacked_panel('week','최근 12주 · 월요일 시작',stacked_series('week'))
           +stacked_panel('month','최근 12개월',stacked_series('month'))
           +f'</div></section>{credit_js}'
-          f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">⚙️ 크레딧 지급 설정</h2>'
-          f'<form method="POST" action="/riley/credits/rate" style="display:flex;flex-direction:column;gap:12px">'
-          f'<label style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>문제집 1회 완료 시</span><span><input type="number" name="workbook" value="{wb_rate}" min="0" max="50" style="width:70px;padding:8px;border:1px solid #e4e9f0;border-radius:10px;text-align:center"> 개</span></label>'
-          f'<label style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>책 1권 추가 시</span><span><input type="number" name="reading" value="{rd_rate}" min="0" max="20" style="width:70px;padding:8px;border:1px solid #e4e9f0;border-radius:10px;text-align:center"> 개</span></label>'
-          f'<button type="submit" class="btn">저장</button></form></section>'
+          f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">⚙️ 크레딧 기준</h2>'
+          f'<div class="credit-rule-grid"><div class="credit-rule"><span>매일 문제집 체크리스트 1개</span><b>+1</b></div><div class="credit-rule"><span>문제집 한 권 끝내기</span><b>+10</b></div><div class="credit-rule"><span>책 한 권 읽기</span><b>+3</b></div></div></section>'
           f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">기준일별 내역</h2>')
     if not by_day:
         body+='<div class="muted">아직 적립된 크레딧이 없습니다.</div>'
+    labels={'workbook_checklist':'체크리스트','workbook_finish':'문제집 완독','reading':'독서'}
     for d in sorted(by_day.keys(),reverse=True):
         info=by_day[d]
         body+=(f'<div style="padding:8px 0;border-bottom:1px solid #edf1f5"><div style="display:flex;justify-content:space-between"><b>{H(d)}</b><b>{info["total"]:+d}</b></div>')
         for it in info['items']:
-            kind=it['category']
-            kind_label='문제집' if kind=='workbook' else '독서'
+            kind=it['category']; kind_label=labels.get(kind,kind)
             created=(it.get('created_at') or '')[:16].replace('T',' ')
-            body+=(f'<div class="feature-meta" style="margin-top:4px"><span class="credit-kind {kind}">{kind_label}</span>{H(it["reason"] or "")} ({int(it["delta"]):+d}) · 기록 {H(created)}</div>')
+            body+=(f'<div class="feature-meta" style="margin-top:4px"><span class="credit-kind {kind}">{H(kind_label)}</span>{H(it["reason"] or "")} ({int(it["delta"]):+d}) · 기록 {H(created)}</div>')
         body+='</div>'
     body+='</section>'
     return page(f'{child} 크레딧 현황',body)
