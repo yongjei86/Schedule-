@@ -1420,6 +1420,10 @@ def _init_reading_schema():
         # into read_with so both paths show up in one place.
         c.execute("update riley_reading set read_with=companion where (read_with is null or read_with='') and companion is not null and companion!=''")
     c.execute("update riley_reading set child='지유' where child is null or child=''")
+    c.execute('''CREATE TABLE IF NOT EXISTS reading_credited(
+      reading_id INTEGER PRIMARY KEY,
+      credit_id INTEGER UNIQUE
+    )''')
     for r in c.execute("select id,summary,read_date from riley_reading where summary like '%읽은 날짜:%'").fetchall():
         m=re.search(r'읽은 날짜:\s*(\d{4}-\d{2}-\d{2})',r['summary'] or '')
         if not m: continue
@@ -1462,6 +1466,48 @@ def _backfill_credit_activity_dates():
         c.execute('update riley_credits set event_date=?,category=? where id=?',(event_date,category,r['id']))
     c.commit(); c.close()
 _backfill_credit_activity_dates()
+
+def _ensure_reading_credit(reading_id):
+    c=db()
+    rr=c.execute("select id,title,child,read_date,created_at from riley_reading where id=?",(reading_id,)).fetchone()
+    if not rr or (rr['child'] or '지유')!='지유':
+        c.close(); return
+    title=rr['title'] or ''
+    event_date=(rr['read_date'] or (rr['created_at'] or '')[:10] or datetime.now(KST).date().isoformat())[:10]
+    linked=c.execute('select credit_id from reading_credited where reading_id=?',(reading_id,)).fetchone()
+    if linked:
+        c.execute("update riley_credits set delta=3,reason=?,event_date=?,category='reading' where id=?",
+                  (f'독서 기록 추가: {title}',event_date,linked['credit_id']))
+        c.commit(); c.close(); return
+    reason=f'독서 기록 추가: {title}'
+    existing=c.execute("""select rc.id
+                          from riley_credits rc
+                          left join reading_credited rl on rl.credit_id=rc.id
+                          where rc.child='지유'
+                            and (rc.category='reading' or ((rc.category is null or rc.category='') and rc.reason like '독서 기록 추가:%'))
+                            and rc.reason=?
+                            and coalesce(nullif(rc.event_date,''),substr(rc.created_at,1,10))=?
+                            and rl.credit_id is null
+                          order by rc.id
+                          limit 1""",(reason,event_date)).fetchone()
+    if existing:
+        credit_id=existing['id']
+        c.execute("update riley_credits set delta=3,event_date=?,category='reading' where id=?",(event_date,credit_id))
+    else:
+        cur=c.execute('insert into riley_credits(child,delta,reason,created_at,event_date,category) values(?,?,?,?,?,?)',
+                      ('지유',3,reason,datetime.now(KST).isoformat(timespec='seconds'),event_date,'reading'))
+        credit_id=cur.lastrowid
+    c.execute('insert or replace into reading_credited(reading_id,credit_id) values(?,?)',(reading_id,credit_id))
+    c.commit(); c.close()
+
+def _reconcile_reading_credits():
+    c=db()
+    ids=[r['id'] for r in c.execute("select id from riley_reading where child='지유' order by id").fetchall()]
+    c.close()
+    for rid in ids:
+        _ensure_reading_credit(rid)
+
+_reconcile_reading_credits()
 
 READING_LANGS=('한글','영어')
 READING_GENRES=('동화','그림책','과학','역사','전래동화','만화','위인전','창작','기타')
@@ -1545,9 +1591,12 @@ def riley_reading_add():
         except ValueError: rating=0
         rating=max(0,min(5,rating))
         summary=(request.form.get('summary') or '').strip()
-        c=db(); c.execute('insert into riley_reading(title,language,genre,sr_score,lexile_score,read_date,rating,summary,created_at,child,read_with) values(?,?,?,?,?,?,?,?,?,?,?)',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,datetime.now().isoformat(timespec='seconds'),child,read_with)); c.commit(); c.close()
+        c=db()
+        cur=c.execute('insert into riley_reading(title,language,genre,sr_score,lexile_score,read_date,rating,summary,created_at,child,read_with) values(?,?,?,?,?,?,?,?,?,?,?)',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,datetime.now().isoformat(timespec='seconds'),child,read_with))
+        reading_id=cur.lastrowid
+        c.commit(); c.close()
         if child=='지유':
-            _award_credit(child,_credit_rate('reading'),f'독서 기록 추가: {title}',read_date or datetime.now(KST).date().isoformat(),'reading')
+            _ensure_reading_credit(reading_id)
     return redirect(request.referrer or '/riley')
 
 @app.route('/riley/reading/<int:i>/edit',methods=['POST'])
@@ -1567,20 +1616,22 @@ def riley_reading_edit(i):
         rating=max(0,min(5,rating))
         summary=(request.form.get('summary') or '').strip()
         c=db()
-        old=c.execute('select title,child,read_date,created_at from riley_reading where id=?',(i,)).fetchone()
+        old=c.execute('select child from riley_reading where id=?',(i,)).fetchone()
         c.execute('update riley_reading set title=?,language=?,genre=?,sr_score=?,lexile_score=?,read_date=?,rating=?,summary=?,read_with=? where id=?',(title,language,genre,sr_score,lexile_score,read_date,rating,summary,read_with,i))
-        if old and (old['child'] or '지유')=='지유':
-            old_reason=f'독서 기록 추가: {old["title"]}'
-            cr=c.execute("select id from riley_credits where child='지유' and (category='reading' or category is null or category='') and reason=? order by abs(julianday(created_at)-julianday(?)) asc,id desc limit 1",(old_reason,old['created_at'])).fetchone()
-            if cr:
-                event_date=read_date or old['read_date'] or (old['created_at'] or '')[:10]
-                c.execute("update riley_credits set reason=?,event_date=?,category='reading' where id=?",(f'독서 기록 추가: {title}',event_date,cr['id']))
         c.commit(); c.close()
+        if old and (old['child'] or '지유')=='지유':
+            _ensure_reading_credit(i)
     return redirect(request.referrer or '/riley')
 @app.route('/riley/reading/<int:i>/delete',methods=['POST'])
 @app.route('/hyeon/reading/<int:i>/delete',methods=['POST'])
 def riley_reading_delete(i):
-    c=db(); c.execute('delete from riley_reading where id=?',(i,)); c.commit(); c.close()
+    c=db()
+    link=c.execute('select credit_id from reading_credited where reading_id=?',(i,)).fetchone()
+    if link:
+        c.execute('delete from riley_credits where id=?',(link['credit_id'],))
+        c.execute('delete from reading_credited where reading_id=?',(i,))
+    c.execute('delete from riley_reading where id=?',(i,))
+    c.commit(); c.close()
     return redirect(request.referrer or '/riley')
 
 def _kid_portal(slug,child,academy_workbook=True):
@@ -1773,7 +1824,7 @@ def riley_credits_detail():
           +stacked_panel('month','최근 12개월',stacked_series('month'))
           +f'</div></section>{credit_js}'
           f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">⚙️ 크레딧 기준</h2>'
-          f'<div class="credit-rule-grid"><div class="credit-rule"><span>매일 문제집 체크리스트 1개</span><b>+1</b></div><div class="credit-rule"><span>문제집 한 권 끝내기</span><b>+10</b></div><div class="credit-rule"><span>책 한 권 읽기</span><b>+3</b></div></div></section>'
+          f'<div class="credit-rule-grid"><div class="credit-rule"><span>매일 문제집 체크리스트 1개</span><b>+1</b></div><div class="credit-rule"><span>문제집 한 권 끝내기</span><b>+10</b></div><div class="credit-rule"><span>책 한 권 읽기</span><b>+3</b></div></div><div class="feature-meta" style="margin-top:8px">독서 DB의 지유 기록과 자동 대조하여 누락 없이 반영</div></section>'
           f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">기준일별 내역</h2>')
     if not by_day:
         body+='<div class="muted">아직 적립된 크레딧이 없습니다.</div>'
