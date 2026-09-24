@@ -1796,21 +1796,22 @@ def riley_credits_detail():
         return out
 
     def stacked_panel(view,label,items,active=False):
-        mx=max([max(0,c)+max(0,f)+max(0,r) for _,c,f,r in items] or [1]) or 1
+        latest=items[-7:] if len(items)>7 else items
+        mx=max([max(0,c)+max(0,f)+max(0,r) for _,c,f,r in latest] or [1]) or 1
         bars=''
         for x,check,finish,reading in items:
             cp=max(0,check); fp=max(0,finish); rp=max(0,reading); total=cp+fp+rp
-            ch=0 if cp==0 else max(3,round(cp/mx*150))
-            fh=0 if fp==0 else max(5,round(fp/mx*150))
-            rh=0 if rp==0 else max(4,round(rp/mx*150))
+            ch=0 if cp==0 else max(2,round(cp/mx*150))
+            fh=0 if fp==0 else max(2,round(fp/mx*150))
+            rh=0 if rp==0 else max(2,round(rp/mx*150))
             segs=''
-            if rh: segs+=f'<div class="credit-stack-fill reading" style="height:{rh}px"></div>'
-            if fh: segs+=f'<div class="credit-stack-fill workbook-finish" style="height:{fh}px"></div>'
-            if ch: segs+=f'<div class="credit-stack-fill checklist" style="height:{ch}px"></div>'
-            bars+=(f'<div class="credit-bar-col" title="{H(x)} · 체크리스트 {check:+d} · 문제집 완독 {finish:+d} · 독서 {reading:+d} · 합계 {total:+d}">'
+            if rh: segs+=f'<div class="credit-stack-fill reading" data-value="{rp}" style="height:{rh}px"></div>'
+            if fh: segs+=f'<div class="credit-stack-fill workbook-finish" data-value="{fp}" style="height:{fh}px"></div>'
+            if ch: segs+=f'<div class="credit-stack-fill checklist" data-value="{cp}" style="height:{ch}px"></div>'
+            bars+=(f'<div class="credit-bar-col" data-total="{total}" data-check="{cp}" data-finish="{fp}" data-reading="{rp}" title="{H(x)} · 체크리스트 {check:+d} · 문제집 완독 {finish:+d} · 독서 {reading:+d} · 합계 {total:+d}">'
                    f'<div class="credit-bar-value">{total:+d}</div><div class="credit-bar-track stacked">{segs}</div><div class="credit-bar-label">{H(x)}</div></div>')
         on=' on' if active else ''
-        return f'<div class="credit-chart-panel{on}" data-credit-view="{view}"><div class="credit-chart-note">{label}</div><div class="credit-bars">{bars}</div></div>'
+        return f'<div class="credit-chart-panel{on}" data-credit-view="{view}"><div class="credit-chart-note">{label} · 현재 보이는 7개 중 최고값이 최대 높이</div><div class="credit-bars">{bars}</div></div>'
 
     credit_css='''<style>
     .credit-chart-shell{background:#fff;border:1px solid #e4e9f0;border-radius:15px;padding:14px;box-shadow:0 1px 3px rgba(20,38,63,.06)}
@@ -1826,10 +1827,43 @@ def riley_credits_detail():
     </style>'''
 
     credit_js='''<script>
+    function creditVisibleScale(bars){
+      if(!bars)return;
+      var cols=[].slice.call(bars.querySelectorAll('.credit-bar-col'));
+      if(!cols.length)return;
+      var count=Math.min(7,cols.length);
+      var step=cols.length>1?(cols[1].offsetLeft-cols[0].offsetLeft):1;
+      var start=step>0?Math.round(bars.scrollLeft/step):0;
+      start=Math.max(0,Math.min(start,cols.length-count));
+      var visible=cols.slice(start,start+count);
+      var mx=Math.max.apply(null,visible.map(function(col){return Number(col.dataset.total||0)}).concat([1]));
+      cols.forEach(function(col){
+        [['checklist','check'],['workbook-finish','finish'],['reading','reading']].forEach(function(pair){
+          var seg=col.querySelector('.credit-stack-fill.'+pair[0]);
+          if(!seg)return;
+          var v=Number(col.dataset[pair[1]]||0);
+          var h=v<=0?0:Math.max(2,Math.round(v/mx*150));
+          seg.style.height=h+'px';
+        });
+      });
+    }
+    function creditBindScale(bars){
+      if(!bars||bars.dataset.scaleBound==='1')return;
+      bars.dataset.scaleBound='1';
+      var ticking=false;
+      bars.addEventListener('scroll',function(){
+        if(ticking)return;
+        ticking=true;
+        requestAnimationFrame(function(){creditVisibleScale(bars);ticking=false});
+      },{passive:true});
+    }
     function creditScrollLatest(view){
       var panel=document.querySelector('.credit-chart-panel[data-credit-view="'+view+'"]');
       var bars=panel&&panel.querySelector('.credit-bars');
-      if(bars)bars.scrollLeft=bars.scrollWidth;
+      if(!bars)return;
+      creditBindScale(bars);
+      bars.scrollLeft=bars.scrollWidth;
+      requestAnimationFrame(function(){creditVisibleScale(bars)});
     }
     function creditView(btn,view){
       document.querySelectorAll('.credit-tab').forEach(function(x){x.classList.remove('on')});
@@ -1838,7 +1872,13 @@ def riley_credits_detail():
       setTimeout(function(){creditScrollLatest(view)},0);
     }
     document.addEventListener('DOMContentLoaded',function(){
+      document.querySelectorAll('.credit-bars').forEach(creditBindScale);
       requestAnimationFrame(function(){creditScrollLatest('day')});
+    });
+    window.addEventListener('resize',function(){
+      var panel=document.querySelector('.credit-chart-panel.on');
+      var bars=panel&&panel.querySelector('.credit-bars');
+      creditVisibleScale(bars);
     });
     </script>'''
 
