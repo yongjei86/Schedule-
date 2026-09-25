@@ -32,6 +32,7 @@ books=[
     ('The Adventures of King Arthur','영어','고전','2026-09-22','3.6','530L'),
     ('Romeo & Juliet','영어','고전','2026-09-25','3.5','490L'),
     ('행운이 구르는 속도','한글','창작','2026-09-24','',''),
+    ('The Amazing Adventures of Ulysses','영어','고전','2026-09-25','3.7','620L'),
 ]
 
 rcols={r['name'] for r in c.execute('PRAGMA table_info(riley_reading)').fetchall()}
