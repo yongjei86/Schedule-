@@ -30,7 +30,7 @@ books=[
     ('The Railway Children','영어','고전','2026-09-23','',''),
     ('The Secret Garden','영어','고전','2026-09-23','',''),
     ('The Adventures of King Arthur','영어','고전','2026-09-22','',''),
-    ('Romeo & Juliet','영어','고전','2026-09-25','',''),
+    ('Romeo & Juliet','영어','고전','2026-09-25','3.5','490L'),
 ]
 
 rcols={r['name'] for r in c.execute('PRAGMA table_info(riley_reading)').fetchall()}
