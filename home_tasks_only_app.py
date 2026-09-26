@@ -1476,7 +1476,7 @@ def _ensure_reading_credit(reading_id):
     event_date=(rr['read_date'] or (rr['created_at'] or '')[:10] or datetime.now(KST).date().isoformat())[:10]
     linked=c.execute('select credit_id from reading_credited where reading_id=?',(reading_id,)).fetchone()
     if linked:
-        c.execute("update riley_credits set delta=3,reason=?,event_date=?,category='reading' where id=?",
+        c.execute("update riley_credits set reason=?,event_date=?,category='reading' where id=?",
                   (f'독서 기록 추가: {title}',event_date,linked['credit_id']))
         c.commit(); c.close(); return
     reason=f'독서 기록 추가: {title}'
@@ -1492,10 +1492,10 @@ def _ensure_reading_credit(reading_id):
                           limit 1""",(reason,event_date)).fetchone()
     if existing:
         credit_id=existing['id']
-        c.execute("update riley_credits set delta=3,event_date=?,category='reading' where id=?",(event_date,credit_id))
+        c.execute("update riley_credits set event_date=?,category='reading' where id=?",(event_date,credit_id))
     else:
         cur=c.execute('insert into riley_credits(child,delta,reason,created_at,event_date,category) values(?,?,?,?,?,?)',
-                      ('지유',3,reason,datetime.now(KST).isoformat(timespec='seconds'),event_date,'reading'))
+                      ('지유',_credit_rate('reading'),reason,datetime.now(KST).isoformat(timespec='seconds'),event_date,'reading'))
         credit_id=cur.lastrowid
     c.execute('insert or replace into reading_credited(reading_id,credit_id) values(?,?)',(reading_id,credit_id))
     c.commit(); c.close()
@@ -1714,14 +1714,21 @@ def hyeon_week():
 
 @app.route('/riley/credits/rate',methods=['POST'])
 def riley_credits_rate_update():
-    _set_credit_rate('workbook',1)
-    _set_credit_rate('workbook_finish',10)
-    _set_credit_rate('reading',3)
+    for key in ('workbook','workbook_finish','reading'):
+        try:
+            value=int(request.form.get(key,''))
+        except (TypeError,ValueError):
+            continue
+        value=max(0,min(100,value))
+        _set_credit_rate(key,value)
     return redirect('/riley/credits')
 
 @app.route('/riley/credits')
 def riley_credits_detail():
     child='지유'
+    checklist_rate=_credit_rate('workbook')
+    finish_rate=_credit_rate('workbook_finish')
+    reading_rate=_credit_rate('reading')
     c=db()
     rows=[dict(x) for x in c.execute("select * from riley_credits where child=? order by coalesce(nullif(event_date,''),substr(created_at,1,10)) desc,created_at desc",(child,)).fetchall()]
     c.close()
@@ -1821,7 +1828,7 @@ def riley_credits_detail():
     .credit-chart-card{border:1px solid #e4e9f0;border-radius:13px;padding:12px;min-width:0}.credit-chart-panel{display:none}.credit-chart-panel.on{display:block}.credit-chart-note{font-size:11px;color:#8390a1;margin:2px 0 8px}
     .credit-bars{height:234px;display:flex;align-items:flex-end;gap:7px;overflow-x:auto;overflow-y:hidden;padding:8px 3px 8px;border-bottom:1px solid #edf1f5;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}.credit-bar-col{height:100%;min-width:38px;flex:0 0 calc((100% - 42px)/7);display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
     .credit-bar-value{font-size:9px;font-weight:800;color:#5f6f83;margin-bottom:4px;white-space:nowrap}.credit-bar-track{height:150px;width:23px;background:#f1f4f8;border-radius:8px 8px 2px 2px;overflow:hidden}.credit-bar-track.stacked{display:flex;flex-direction:column;justify-content:flex-end}.credit-stack-fill{width:100%;flex:0 0 auto}.credit-stack-fill.checklist{background:linear-gradient(180deg,#69a9d8,#2877b5)}.credit-stack-fill.workbook-finish{background:linear-gradient(180deg,#67b987,#2f8657)}.credit-stack-fill.reading{background:linear-gradient(180deg,#e9a65a,#d87832)}.credit-bar-label{font-size:9px;color:#7c8999;margin-top:6px;white-space:nowrap}
-    .credit-rule-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.credit-rule{border:1px solid #e4e9f0;border-radius:12px;padding:12px;background:#fbfcfe}.credit-rule b{display:block;font-size:22px;margin-top:3px}
+    .credit-rule-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.credit-rule{border:1px solid #e4e9f0;border-radius:12px;padding:12px;background:#fbfcfe}.credit-rule label{display:block;color:#14263f;font-size:13px}.credit-rule-value{display:flex;align-items:center;gap:6px;margin-top:7px}.credit-rule-value span{font-size:22px;font-weight:900}.credit-rule input{width:76px;padding:7px 9px;border:1px solid #d7dfe8;border-radius:9px;font:inherit;font-size:20px;font-weight:900;text-align:center;background:#fff;color:#14263f}.credit-save-row{display:flex;justify-content:flex-end;margin-top:10px}
     .credit-kind{display:inline-block;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:800;margin-right:4px}.credit-kind.workbook_checklist{background:#eaf3fb;color:#2877b5}.credit-kind.workbook_finish{background:#e9f6ee;color:#2f8657}.credit-kind.reading{background:#fff1e5;color:#b96020}
     @media(max-width:560px){.credit-chart-shell{padding:12px}.credit-tabs{width:100%}.credit-tab{flex:1}.credit-bars{gap:5px}.credit-bar-col{min-width:34px;flex-basis:calc((100% - 30px)/7)}.credit-bar-track{width:21px}.credit-rule-grid{grid-template-columns:1fr}}
     </style>'''
@@ -1885,14 +1892,20 @@ def riley_credits_detail():
     body=(f'{credit_css}<div class="toolbar"><a class="btn s" href="/riley">← 지유 포탈</a></div>'
           f'<section class="credit-chart-shell"><div class="credit-chart-head"><div><h2>🪙 {H(child)} 크레딧 추이</h2><div class="feature-meta">체크리스트는 예정일 · 문제집 1권 완료는 완료일 · 독서는 읽은 날짜 기준</div></div>'
           f'<div class="credit-tabs"><button type="button" class="credit-tab on" data-view="day" onclick="creditView(this,this.dataset.view)">일간</button><button type="button" class="credit-tab" data-view="week" onclick="creditView(this,this.dataset.view)">주간</button><button type="button" class="credit-tab" data-view="month" onclick="creditView(this,this.dataset.view)">월간</button></div></div>'
-          f'<div class="credit-legend"><span><i class="credit-dot checklist"></i>체크리스트 +1</span><span><i class="credit-dot workbook-finish"></i>문제집 1권 완료 +10</span><span><i class="credit-dot reading"></i>독서 +3</span></div>'
+          f'<div class="credit-legend"><span><i class="credit-dot checklist"></i>체크리스트 +{checklist_rate}</span><span><i class="credit-dot workbook-finish"></i>문제집 1권 완료 +{finish_rate}</span><span><i class="credit-dot reading"></i>독서 +{reading_rate}</span></div>'
           f'<div class="credit-chart-card">'
           +stacked_panel('day','최신 7일 표시 · 좌우 스크롤로 과거 보기',stacked_series('day'),True)
           +stacked_panel('week','최신 7주 표시 · 좌우 스크롤로 과거 보기',stacked_series('week'))
           +stacked_panel('month','최신 7개월 표시 · 좌우 스크롤로 과거 보기',stacked_series('month'))
           +f'</div></section>{credit_js}'
           f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">⚙️ 크레딧 기준</h2>'
-          f'<div class="credit-rule-grid"><div class="credit-rule"><span>매일 문제집 체크리스트 1개</span><b>+1</b></div><div class="credit-rule"><span>문제집 한 권 끝내기</span><b>+10</b></div><div class="credit-rule"><span>책 한 권 읽기</span><b>+3</b></div></div><div class="feature-meta" style="margin-top:8px">독서 DB의 지유 기록과 자동 대조하여 누락 없이 반영</div></section>'
+          f'<form method="post" action="/riley/credits/rate">'
+          f'<div class="credit-rule-grid">'
+          f'<div class="credit-rule"><label>매일 문제집 체크리스트 1개</label><div class="credit-rule-value"><span>+</span><input type="number" name="workbook" min="0" max="100" step="1" value="{checklist_rate}"></div></div>'
+          f'<div class="credit-rule"><label>문제집 한 권 끝내기</label><div class="credit-rule-value"><span>+</span><input type="number" name="workbook_finish" min="0" max="100" step="1" value="{finish_rate}"></div></div>'
+          f'<div class="credit-rule"><label>책 한 권 읽기</label><div class="credit-rule-value"><span>+</span><input type="number" name="reading" min="0" max="100" step="1" value="{reading_rate}"></div></div>'
+          f'</div><div class="credit-save-row"><button type="submit" class="btn">크레딧 기준 저장</button></div></form>'
+          f'<div class="feature-meta" style="margin-top:8px">저장한 값은 이후 새로 적립되는 크레딧부터 적용 · 기존 적립 내역은 유지</div></section>'
           f'<section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">기준일별 내역</h2>')
     if not by_day:
         body+='<div class="muted">아직 적립된 크레딧이 없습니다.</div>'
