@@ -8,37 +8,69 @@ cols={r['name'] for r in c.execute('PRAGMA table_info(riley_reading)').fetchall(
 if 'read_date' not in cols:
     c.execute('ALTER TABLE riley_reading ADD COLUMN read_date TEXT')
 
-confirmed_dates={
-    'The Worst Witch':'2026-06-22',
-    '이상한 과자 가게 전천당 19':'2026-09-13',
-}
+books=[
+    ('이상한 과자 가게 전천당 19','한글','창작','2026-09-13','',''),
+    ('룰스: 단 한 사람만을 위한 규칙','한글','성장','2026-09-15','',''),
+    ('황금성','한글','성장','2026-09-15','',''),
+    ('A Little Princess','영어','고전','2026-09-09','3.7','640L'),
+    ('Robin Hood','영어','고전','2026-09-15','3.7','640L'),
+    ('엄마가 사라진 어느 날','한글','성장','2026-09-16','',''),
+    ('이상한 과자 가게 전천당 18','한글','창작','2026-09-17','',''),
+    ('편의점을 털어라! 지리편','한글','지리','2026-09-17','',''),
+    ('산불에서 코알라를 구하라!','한글','과학','2026-09-17','',''),
+    ('The Canterville Ghost','영어','고전','2026-09-19','3.7','550L'),
+    ('Hamlet','영어','고전','2026-09-19','','480L'),
+    ('Treasure Island','영어','고전','2026-09-19','3.8','670L'),
+    ('최범식간에 지구를 구하는 법','한글','창작','2026-09-20','',''),
+    ('어느 날 앱에 접속했습니다','한글','창작','2026-09-20','',''),
+    ('편의점을 털어라! 인체편','한글','과학','2026-09-20','',''),
+    ('나도 덕후가 되고 싶어','한글','창작','2026-09-20','',''),
+    ('마지막 지도 제작자: 세상의 끝을 찾아서','한글','역사','2026-09-20','',''),
+    ('신상문구점','한글','창작','2026-09-22','',''),
+    ('The Railway Children','영어','고전','2026-09-23','3.6','640L'),
+    ('The Secret Garden','영어','고전','2026-09-23','3.4','630L'),
+    ('The Adventures of King Arthur','영어','고전','2026-09-22','3.6','530L'),
+    ('Romeo & Juliet','영어','고전','2026-09-25','3.5','490L'),
+    ('행운이 구르는 속도','한글','창작','2026-09-24','',''),
+    ('The Amazing Adventures of Ulysses','영어','고전','2026-09-25','3.7','620L'),
+    ('환경 슈퍼히어로 태오 3: 위험에 처한 바다를 구하라!','한글','과학','2026-09-26','',''),
+    ('환경 슈퍼히어로 태오 2: 암탉들을 구하라!','한글','과학','2026-09-26','',''),
+    ('환경 슈퍼히어로 태오 1: 곤충들을 구하라!','한글','과학','2026-09-26','',''),
+    ('어린이 과학동아 2025년 22호','한글','과학','2026-09-27','',''),
+    ('어린이 과학동아 2025년 23호','한글','과학','2026-09-27','',''),
+    ('어린이 과학동아 2025년 24호','한글','과학','2026-09-27','',''),
+    ('A Comic Strip History of Planet Earth: Part 1 From the Big Bang to Birds','영어','과학','2026-09-27','',''),
+    ('리틀 레이','한글','창작','2026-09-27','',''),
+    ('미세먼지 수사대','한글','과학','2026-09-29','',''),
+]
 
-# Add the confirmed read if it is not already present.
-title='이상한 과자 가게 전천당 19'
-if not c.execute('SELECT 1 FROM riley_reading WHERE title=? LIMIT 1',(title,)).fetchone():
-    rcols={r['name'] for r in c.execute('PRAGMA table_info(riley_reading)').fetchall()}
-    fields=['title','language','rating','summary','created_at']
-    values=[title,'한글',0,'','2026-09-13T21:00:00']
-    if 'genre' in rcols:
-        fields.append('genre'); values.append('창작')
-    if 'sr_score' in rcols:
-        fields.append('sr_score'); values.append('')
-    if 'lexile_score' in rcols:
-        fields.append('lexile_score'); values.append('')
-    if 'read_date' in rcols:
-        fields.append('read_date'); values.append('2026-09-13')
-    q=','.join('?' for _ in fields)
-    c.execute(f"INSERT INTO riley_reading({','.join(fields)}) VALUES({q})",values)
 
-for title, read_date in confirmed_dates.items():
+rcols={r['name'] for r in c.execute('PRAGMA table_info(riley_reading)').fetchall()}
+for title,language,genre,read_date,sr_score,lexile_score in books:
+    row=c.execute('SELECT id FROM riley_reading WHERE title=? LIMIT 1',(title,)).fetchone()
+    if not row:
+        fields=['title','language','rating','summary','created_at']
+        values=[title,language,0,'',read_date+'T21:00:00']
+        if 'genre' in rcols: fields.append('genre'); values.append(genre)
+        if 'sr_score' in rcols: fields.append('sr_score'); values.append(sr_score)
+        if 'lexile_score' in rcols: fields.append('lexile_score'); values.append(lexile_score)
+        if 'read_date' in rcols: fields.append('read_date'); values.append(read_date)
+        q=','.join('?' for _ in fields)
+        c.execute(f"INSERT INTO riley_reading({','.join(fields)}) VALUES({q})",values)
+    else:
+        updates=[]; vals=[]
+        if 'read_date' in rcols:
+            updates.append("read_date=CASE WHEN COALESCE(read_date,'')='' THEN ? ELSE read_date END"); vals.append(read_date)
+        if 'sr_score' in rcols and sr_score:
+            updates.append("sr_score=CASE WHEN COALESCE(sr_score,'')='' THEN ? ELSE sr_score END"); vals.append(sr_score)
+        if 'lexile_score' in rcols and lexile_score:
+            updates.append("lexile_score=CASE WHEN COALESCE(lexile_score,'')='' THEN ? ELSE lexile_score END"); vals.append(lexile_score)
+        if updates:
+            vals.append(row['id']); c.execute('UPDATE riley_reading SET '+','.join(updates)+' WHERE id=?',vals)
+
+confirmed_dates={'The Worst Witch':'2026-06-22'}
+for title,read_date in confirmed_dates.items():
     c.execute("UPDATE riley_reading SET read_date=? WHERE title=? AND COALESCE(read_date,'')=''",(read_date,title))
-    row=c.execute('SELECT id,summary FROM riley_reading WHERE title=? LIMIT 1',(title,)).fetchone()
-    if row:
-        summary=(row['summary'] or '').strip()
-        marker=f'읽은 날짜: {read_date}'
-        if marker not in summary:
-            summary=(summary+' · ' if summary else '')+marker
-            c.execute('UPDATE riley_reading SET summary=? WHERE id=?',(summary,row['id']))
 
 c.commit(); c.close()
-print('Riley reading dates migrated')
+print('Riley reading dates and levels migrated')
