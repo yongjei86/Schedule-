@@ -30,4 +30,5 @@ import add_hyeon_winter_is_here_20260914
 import add_hyeon_reading_20260915
 import add_hyeon_reading_dad_20260915_2
 import add_hyeon_reading_20260916_21
+import add_hyeon_reading_20261005
 print('SQLite schema ready:',DB)
