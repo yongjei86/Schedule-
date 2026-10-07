@@ -31,4 +31,5 @@ import add_hyeon_reading_20260915
 import add_hyeon_reading_dad_20260915_2
 import add_hyeon_reading_20260916_21
 import add_hyeon_reading_20261005
+import add_hyeon_reading_20261007
 print('SQLite schema ready:',DB)
