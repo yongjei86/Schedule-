@@ -61,6 +61,7 @@ books=[
     ('동물 회의','한글','창작','2026-10-06','',''),
     ('Bear Grylls Adventures: The Sailing Challenge','영어','창작','2026-10-07','4.4','670L'),
     ('Bear Grylls Adventures: The Mountain Challenge','영어','창작','2026-10-09','4.2','620L'),
+    ('안네의 일기','한글','역사','2026-10-09','',''),
 ]
 
 
