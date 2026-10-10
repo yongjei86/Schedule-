@@ -59,8 +59,8 @@ books=[
     ('꿈을 향해 스타 오디션','한글','창작','2026-10-07','',''),
     ('또 한 번의 전학','한글','창작','2026-10-04','',''),
     ('동물 회의','한글','창작','2026-10-06','',''),
-    ('Bear Grylls Adventures: The Sailing Challenge','영어','창작','2026-10-07','',''),
-    ('Bear Grylls Adventures: The Mountain Challenge','영어','창작','2026-10-09','',''),
+    ('Bear Grylls Adventures: The Sailing Challenge','영어','창작','2026-10-07','4.4','670L'),
+    ('Bear Grylls Adventures: The Mountain Challenge','영어','창작','2026-10-09','4.2','620L'),
 ]
 
 
