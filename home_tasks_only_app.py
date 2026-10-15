@@ -1938,6 +1938,42 @@ def _init_hangul_schema():
     c.commit(); c.close()
 _init_hangul_schema()
 
+def _init_hangul_practice_schema():
+    c=db()
+    c.execute("""CREATE TABLE IF NOT EXISTS hangul_practice(
+      activity_date TEXT NOT NULL, item TEXT NOT NULL,
+      activity TEXT NOT NULL, status TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY(activity_date,item,activity,status)
+    )""")
+    c.commit(); c.close()
+_init_hangul_practice_schema()
+
+@app.route('/hyeon/hangul/practice',methods=['POST'])
+def hangul_practice_log():
+    data=request.get_json(silent=True) or {}
+    if not isinstance(data,dict): return jsonify(error='invalid input'),400
+    item=data.get('item'); activity=data.get('activity'); status=data.get('status')
+    if not isinstance(item,str) or len(item)>32 or activity not in ('letters','combine','trace','cards','quiz','listen','family') or status not in ('seen','assisted','independent'):
+        return jsonify(error='invalid input'),400
+    c=db()
+    chars={r['char'] for r in c.execute('select char from hangul_letters')}
+    words={r['word'] for r in c.execute('select word from hangul_words where active=1')}
+    words.update(('혜온','지유','엄마','아빠','꽃','집','거북이','오리','케이크','나무'))
+    valid=(item in chars if activity in ('letters','trace') else len(item)==1 and 0xAC00<=ord(item)<=0xD7A3 and (ord(item)-0xAC00)%28==0 if activity=='combine' else item in words)
+    if not valid:
+        c.close(); return jsonify(error='unknown item'),400
+    now=datetime.now(KST)
+    cur=c.execute('insert or ignore into hangul_practice(activity_date,item,activity,status,created_at) values(?,?,?,?,?)',(now.date().isoformat(),item,activity,status,now.isoformat()))
+    saved=cur.rowcount==1
+    c.commit(); c.close()
+    # Preserve the earlier activity totals, without counting repeated taps.
+    if saved:
+        if activity in ('cards','family') and status=='seen': _hangul_bump('cards_flipped')
+        elif activity in ('listen','quiz') and status in ('assisted','independent'): _hangul_bump('quiz_correct')
+        elif activity=='trace' and status in ('assisted','independent'): _hangul_bump('letters_done')
+    return jsonify(saved=saved)
+
 def _hangul_bump(field):
     today=datetime.now(KST).date().isoformat()
     c=db()
@@ -1956,397 +1992,47 @@ HANGUL_STAR_GOAL=5
 
 @app.route('/hyeon/hangul')
 def hangul_page():
-    c=db(); words=[dict(x) for x in c.execute('select emoji,word from hangul_words where active=1').fetchall()]; c.close()
-    c=db(); letters=[dict(x) for x in c.execute('select char,kind,sound from hangul_letters order by sort_order').fetchall()]; c.close()
-    today=datetime.now(KST).date()
-    mon=today-timedelta(days=today.weekday())
-    c=db(); prog_rows=c.execute('select * from hangul_progress where activity_date>=? and activity_date<=?',(mon.isoformat(),(mon+timedelta(days=6)).isoformat())).fetchall(); c.close()
-    prog={r['activity_date']:dict(r) for r in prog_rows}
-    stickers=''
-    for i in range(7):
-        d=mon+timedelta(days=i)
-        p=prog.get(d.isoformat())
-        total=(p['cards_flipped']+p['quiz_correct']+p['letters_done']) if p else 0
-        if total>=HANGUL_STAR_GOAL: cls,icon='hg-sticker-day done big','🏆'
-        elif total>0: cls,icon='hg-sticker-day done','⭐'
-        else: cls,icon='hg-sticker-day','·'
-        today_cls=' today' if d==today else ''
-        stickers+=f'<div class="{cls}{today_cls}"><div class="hg-sd-label">{DAYS[i]}</div><div class="hg-sd-icon">{icon}</div></div>'
-    month_start=today.replace(day=1)
-    c=db(); all_prog=c.execute('select activity_date,cards_flipped,quiz_correct,letters_done from hangul_progress').fetchall(); c.close()
-    def _tier_counts(rows):
-        stars=0; trophies=0
-        for p in rows:
-            t=p['cards_flipped']+p['quiz_correct']+p['letters_done']
-            if t>=HANGUL_STAR_GOAL: trophies+=1
-            elif t>0: stars+=1
-        return stars,trophies
-    week_rows=[p for p in all_prog if mon.isoformat()<=p['activity_date']<=(mon+timedelta(days=6)).isoformat()]
-    month_rows=[p for p in all_prog if p['activity_date']>=month_start.isoformat()]
-    today_rows=[p for p in all_prog if p['activity_date']==today.isoformat()]
-    ts,tt=_tier_counts(today_rows); ws,wt=_tier_counts(week_rows); ms,mt=_tier_counts(month_rows); ls,lt=_tier_counts(all_prog)
-    summary=(f'<a href="/hyeon/hangul/stats" class="hg-total-summary" style="display:block;text-decoration:none;cursor:pointer">오늘 ⭐{ts} 🏆{tt} · 이번 주 ⭐{ws} 🏆{wt} · 이번 달 ⭐{ms} 🏆{mt} · 총 ⭐{ls} 🏆{lt}'
-               f'<div style="font-weight:600;font-size:11px;color:#9aa5b1;margin-top:2px">눌러서 자세히 보기</div></a>')
-    words_json=json.dumps(words,ensure_ascii=False)
-    letters_json=json.dumps(letters,ensure_ascii=False)
-    body=f'''
-<style>
-.hg-topbar{{display:flex;gap:8px;margin-bottom:14px}}
-.hg-btn{{width:56px;height:56px;border-radius:16px;border:1px solid #e4e9f0;background:#fff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center}}
-.hg-btn.on{{background:#0f4c81;border-color:#0f4c81}}
-.hg-sticker-board{{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px}}
-.hg-sticker-day{{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:8px 4px;text-align:center}}
-.hg-sticker-day.today{{border-color:#0f4c81;border-width:2px}}
-.hg-sticker-day.big{{background:#fff8e6;border-color:#e9b949}}
-.hg-sticker-day.big .hg-sd-icon{{font-size:26px}}
-.hg-total-summary{{text-align:center;font-size:13px;font-weight:800;color:#748196;background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:8px;margin-bottom:10px}}
-.hg-sd-label{{font-size:11px;color:#748196}}
-.hg-sd-icon{{font-size:22px;margin-top:4px}}
-.hg-card-grid,.hg-quiz-grid,.hg-letter-grid{{display:grid;gap:10px}}
-.hg-card-grid{{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
-.hg-card{{aspect-ratio:1;border-radius:18px;border:2px solid #e4e9f0;background:#fff;font-size:40px;cursor:pointer;display:flex;align-items:center;justify-content:center}}
-.hg-card .back{{font-size:22px;font-weight:900;color:#0f4c81}}
-.hg-letter-section h3{{margin:16px 0 8px}}
-.hg-letter-grid{{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px}}
-.hg-letter{{aspect-ratio:1;border-radius:16px;border:2px solid #e4e9f0;background:#fff;font-size:34px;font-weight:900;color:#0f4c81;cursor:pointer;display:flex;align-items:center;justify-content:center}}
-.hg-letter:active{{background:#eaf3fb}}
-.hg-quiz-grid{{grid-template-columns:1fr 1fr}}
-.hg-quiz-col{{display:flex;flex-direction:column;gap:10px}}
-.hg-quiz-item{{min-height:64px;border-radius:14px;border:2px solid #e4e9f0;background:#fff;font-size:28px;font-weight:800;cursor:pointer}}
-.hg-quiz-item.sel{{border-color:#0f4c81}}
-.hg-quiz-item.matched{{background:#eafaf0;border-color:#3fa965;opacity:.55}}
-.hg-quiz-item.wrong{{background:#fdeceb;border-color:#d9534f}}
-.hg-combine-row{{display:grid;gap:10px;margin-bottom:14px}}
-.hg-combine-row.pick{{grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}}
-.hg-pick{{aspect-ratio:1;border-radius:14px;border:2px solid #e4e9f0;background:#fff;font-size:26px;font-weight:900;color:#0f4c81;cursor:pointer}}
-.hg-pick.sel{{background:#0f4c81;color:#fff}}
-.hg-combine-eq{{text-align:center;font-size:22px;font-weight:800;color:#748196;min-height:28px}}
-.hg-combine-result{{display:flex;align-items:center;justify-content:center;height:180px;background:#fff;border:2px dashed #d7dfe8;border-radius:20px;font-size:96px;font-weight:900;color:#0f4c81;margin:8px 0}}
-.hg-combine-word{{display:flex;align-items:center;justify-content:center;gap:10px;font-size:26px;font-weight:800;color:#14263f;margin-bottom:14px}}
-.hg-combine-word span:first-child{{font-size:44px}}
-.hg-trace-toolbar{{display:flex;gap:8px;justify-content:center;margin-bottom:12px}}
-.hg-trace-wrap{{position:relative;width:100%;max-width:320px;height:320px;margin:0 auto;background:#fff;border:2px solid #e4e9f0;border-radius:20px;overflow:hidden}}
-.hg-trace-guide{{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:220px;font-weight:900;color:#e4e9f0;user-select:none}}
-.hg-trace-canvas{{position:absolute;inset:0;touch-action:none}}
-@media(max-width:430px){{.hg-btn{{width:48px;height:48px;font-size:22px}}.hg-card{{font-size:32px}}.hg-combine-result{{height:130px;font-size:64px}}.hg-trace-guide{{font-size:150px}}}}
-</style>
-<div class="hg-topbar">
-<a class="hg-btn" href="/hyeon">🏠</a>
-<button type="button" class="hg-btn on" id="hg-tab-letters" onclick="hgTab('letters')">ㄱㄴ</button>
-<button type="button" class="hg-btn" id="hg-tab-combine" onclick="hgTab('combine')">가+</button>
-<button type="button" class="hg-btn" id="hg-tab-trace" onclick="hgTab('trace')">✍️</button>
-<button type="button" class="hg-btn" id="hg-tab-cards" onclick="hgTab('cards')">🃏</button>
-<button type="button" class="hg-btn" id="hg-tab-quiz" onclick="hgTab('quiz')">🔗</button>
-</div>
-{summary}
-<div class="hg-sticker-board">{stickers}</div>
-<div id="hg-letters">
-  <div class="hg-letter-section"><h3>자음</h3><div class="hg-letter-grid" id="hg-consonant-grid"></div></div>
-  <div class="hg-letter-section"><h3>모음</h3><div class="hg-letter-grid" id="hg-vowel-grid"></div></div>
-</div>
-<div id="hg-combine" style="display:none">
-  <div class="hg-combine-eq" id="hg-combine-eq">&nbsp;</div>
-  <div class="hg-combine-result" id="hg-combine-result">?</div>
-  <div class="hg-combine-word" id="hg-combine-word" style="display:none"><span id="hg-combine-emoji"></span><span id="hg-combine-wordtext"></span></div>
-  <div class="hg-letter-section"><h3>자음</h3><div class="hg-combine-row pick" id="hg-combine-cons"></div></div>
-  <div class="hg-letter-section"><h3>모음</h3><div class="hg-combine-row pick" id="hg-combine-vowel"></div></div>
-</div>
-<div id="hg-trace" style="display:none">
-  <div class="hg-trace-toolbar">
-    <button type="button" class="hg-btn" onclick="hgTracePrev()">◀</button>
-    <button type="button" class="hg-btn" onclick="hgSpeak(HG_LETTERS[hgTraceIdx].sound)">🔊</button>
-    <button type="button" class="hg-btn" onclick="hgTraceClear()">🔄</button>
-    <button type="button" class="hg-btn" onclick="hgTraceNext()">▶</button>
-  </div>
-  <div class="hg-trace-wrap">
-    <div class="hg-trace-guide" id="hg-trace-guide">ㄱ</div>
-    <canvas class="hg-trace-canvas" id="hg-trace-canvas"></canvas>
-  </div>
-</div>
-<div id="hg-cards" style="display:none"><div class="hg-card-grid" id="hg-card-grid"></div></div>
-<div id="hg-quiz" style="display:none"><div class="hg-quiz-grid" id="hg-quiz-grid"></div></div>
-<script>
-const HG_WORDS={words_json};
-const HG_LETTERS={letters_json};
-const HG_TABS=['letters','combine','trace','cards','quiz'];
-function hgTab(which){{
-  HG_TABS.forEach(function(t){{
-    document.getElementById('hg-'+t).style.display=(t===which)?'block':'none';
-    document.getElementById('hg-tab-'+t).classList.toggle('on',t===which);
-  }});
-  if(which==='quiz') hgBuildQuiz();
-  if(which==='trace') hgTraceShow();
-}}
-function hgSpeak(text){{
-  try{{
-    const u=new SpeechSynthesisUtterance(text);
-    u.lang='ko-KR'; u.rate=0.85;
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
-  }}catch(e){{}}
-}}
-function hgLog(kind){{
-  fetch('/hyeon/hangul/log',{{method:'POST',headers:{{'Content-Type':'application/x-www-form-urlencoded'}},body:'kind='+kind}}).catch(function(){{}});
-}}
-let hgAudioCtx=null;
-function hgChime(){{
-  try{{
-    if(!hgAudioCtx) hgAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    if(hgAudioCtx.state==='suspended') hgAudioCtx.resume();
-    const notes=[523.25,659.25,783.99];
-    notes.forEach(function(freq,i){{
-      const t=hgAudioCtx.currentTime+i*0.11;
-      const osc=hgAudioCtx.createOscillator();
-      const gain=hgAudioCtx.createGain();
-      osc.type='sine'; osc.frequency.value=freq;
-      gain.gain.setValueAtTime(0.0001,t);
-      gain.gain.linearRampToValueAtTime(0.25,t+0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001,t+0.3);
-      osc.connect(gain); gain.connect(hgAudioCtx.destination);
-      osc.start(t); osc.stop(t+0.32);
-    }});
-  }}catch(e){{}}
-}}
-function hgBuildLetters(){{
-  const cGrid=document.getElementById('hg-consonant-grid'); cGrid.innerHTML='';
-  const vGrid=document.getElementById('hg-vowel-grid'); vGrid.innerHTML='';
-  HG_LETTERS.forEach(function(l){{
-    const b=document.createElement('button');
-    b.type='button'; b.className='hg-letter'; b.textContent=l.char;
-    b.onclick=function(){{ hgSpeak(l.sound); hgLog('letter'); }};
-    (l.kind==='자음'?cGrid:vGrid).appendChild(b);
-  }});
-}}
-function hgBuildCards(){{
-  const grid=document.getElementById('hg-card-grid'); grid.innerHTML='';
-  HG_WORDS.forEach(function(w){{
-    const card=document.createElement('button');
-    card.type='button'; card.className='hg-card';
-    card.innerHTML='<span class="front">'+w.emoji+'</span><span class="back" style="display:none">'+w.word+'</span>';
-    card.onclick=function(){{
-      const front=card.querySelector('.front'), back=card.querySelector('.back');
-      const flipped=back.style.display!=='none';
-      front.style.display=flipped?'':'none';
-      back.style.display=flipped?'none':'';
-      if(!flipped){{ hgSpeak(w.word); hgLog('card'); }}
-    }};
-    grid.appendChild(card);
-  }});
-}}
-let hgQuiz=null;
-function hgBuildQuiz(){{
-  const pool=HG_WORDS.slice().sort(function(){{return Math.random()-0.5}}).slice(0,6);
-  const left=pool.slice();
-  const right=pool.slice().sort(function(){{return Math.random()-0.5}});
-  hgQuiz={{selected:null, matched:new Set()}};
-  const grid=document.getElementById('hg-quiz-grid'); grid.innerHTML='';
-  const leftCol=document.createElement('div'); leftCol.className='hg-quiz-col'; leftCol.id='hg-quiz-left';
-  const rightCol=document.createElement('div'); rightCol.className='hg-quiz-col'; rightCol.id='hg-quiz-right';
-  grid.appendChild(leftCol); grid.appendChild(rightCol);
-  left.forEach(function(w){{
-    const b=document.createElement('button'); b.type='button'; b.className='hg-quiz-item'; b.textContent=w.emoji; b.dataset.word=w.word;
-    b.onclick=function(){{
-      if(hgQuiz.matched.has(w.word))return;
-      leftCol.querySelectorAll('.hg-quiz-item').forEach(function(x){{x.classList.remove('sel')}});
-      b.classList.add('sel'); hgQuiz.selected=w.word; hgSpeak(w.word);
-    }};
-    leftCol.appendChild(b);
-  }});
-  right.forEach(function(w){{
-    const b=document.createElement('button'); b.type='button'; b.className='hg-quiz-item'; b.textContent=w.word; b.dataset.word=w.word;
-    b.onclick=function(){{
-      if(hgQuiz.matched.has(w.word))return;
-      if(hgQuiz.selected===w.word){{
-        hgQuiz.matched.add(w.word);
-        b.classList.add('matched');
-        leftCol.querySelectorAll('.hg-quiz-item').forEach(function(x){{if(x.dataset.word===w.word){{x.classList.add('matched');x.classList.remove('sel')}}}});
-        hgSpeak('딩동댕');
-        hgLog('quiz');
-        hgQuiz.selected=null;
-      }} else if(hgQuiz.selected){{
-        b.classList.add('wrong');
-        setTimeout(function(){{b.classList.remove('wrong')}},400);
-      }}
-    }};
-    rightCol.appendChild(b);
-  }});
-}}
-const HG_CONS_IDX={{'ㄱ':0,'ㄴ':2,'ㄷ':3,'ㄹ':5,'ㅁ':6,'ㅂ':7,'ㅅ':9,'ㅇ':11,'ㅈ':12,'ㅊ':14,'ㅋ':15,'ㅌ':16,'ㅍ':17,'ㅎ':18}};
-const HG_VOWEL_IDX={{'ㅏ':0,'ㅑ':2,'ㅓ':4,'ㅕ':6,'ㅗ':8,'ㅛ':12,'ㅜ':13,'ㅠ':17,'ㅡ':18,'ㅣ':20}};
-let hgCombine={{cons:null,vowel:null}};
-function hgBuildCombine(){{
-  const consGrid=document.getElementById('hg-combine-cons'); consGrid.innerHTML='';
-  const vowelGrid=document.getElementById('hg-combine-vowel'); vowelGrid.innerHTML='';
-  HG_LETTERS.filter(function(l){{return l.kind==='자음'}}).forEach(function(l){{
-    const b=document.createElement('button'); b.type='button'; b.className='hg-pick'; b.textContent=l.char;
-    b.onclick=function(){{
-      consGrid.querySelectorAll('.hg-pick').forEach(function(x){{x.classList.remove('sel')}});
-      b.classList.add('sel'); hgCombine.cons=l.char; hgTryCombine();
-    }};
-    consGrid.appendChild(b);
-  }});
-  HG_LETTERS.filter(function(l){{return l.kind==='모음'}}).forEach(function(l){{
-    const b=document.createElement('button'); b.type='button'; b.className='hg-pick'; b.textContent=l.char;
-    b.onclick=function(){{
-      vowelGrid.querySelectorAll('.hg-pick').forEach(function(x){{x.classList.remove('sel')}});
-      b.classList.add('sel'); hgCombine.vowel=l.char; hgTryCombine();
-    }};
-    vowelGrid.appendChild(b);
-  }});
-}}
-const HG_SYLLABLE_WORDS={{
-  '가':['가방','🎒'],'나':['나비','🦋'],'다':['다리','🦵'],'라':['라면','🍜'],'마':['마이크','🎤'],
-  '바':['바나나','🍌'],'사':['사과','🍎'],'아':['아기','👶'],'자':['자동차','🚗'],'차':['차','🚙'],
-  '카':['카메라','📷'],'타':['타조','🐦'],'파':['파도','🌊'],'하':['하마','🦛'],
-  '고':['고래','🐋'],'노':['노루','🦌'],'도':['도넛','🍩'],'로':['로봇','🤖'],'모':['모자','🎩'],
-  '보':['보석','💎'],'소':['소','🐮'],'오':['오리','🦆'],'조':['조개','🐚'],'초':['초콜릿','🍫'],
-  '코':['코끼리','🐘'],'토':['토끼','🐰'],'포':['포도','🍇'],'호':['호랑이','🐯'],
-  '구':['구름','☁️'],'누':['누나','👧'],'무':['무지개','🌈'],'부':['부엉이','🦉'],'수':['수박','🍉'],
-  '우':['우유','🥛'],'주':['주스','🧃'],'쿠':['쿠키','🍪'],'후':['후추','🌶️'],
-  '기':['기차','🚂'],'리':['리본','🎀'],'미':['미소','😊'],'비':['비행기','✈️'],'시':['시계','🕐'],
-  '이':['이빨','🦷'],'지':['지구','🌍'],'치':['치즈','🧀'],'피':['피자','🍕'],
-  '여':['여우','🦊'],'거':['거북이','🐢'],'너':['너구리','🦝'],
-  '겨':['겨울','❄️'],'어':['어항','🐠'],'요':['요요','🪀'],'야':['야구','⚾'],'유':['유모차','🍼'],
-  '저':['저금통','🐷'],'머':['머핀','🧁'],'벼':['벼','🌾'],'버':['버스','🚌'],'혀':['혀','👅'],
-  '휴':['휴지','🧻'],'키':['키위','🥝'],'터':['터널','🚇'],'트':['트럭','🚚'],
-  '퍼':['퍼즐','🧩'],'푸':['푸딩','🍮'],'교':['교실','🏫'],'뉴':['뉴스','📺'],'니':['니트','🧶'],
-  '루':['루돌프','🦌'],'슈':['슈퍼맨','🦸'],'스':['스키','🎿'],'커':['커피','☕'],
-  '프':['프라이팬','🍳'],'히':['히어로','🦸']
-}};
-function hgTryCombine(){{
-  const c=hgCombine.cons, v=hgCombine.vowel;
-  const eq=document.getElementById('hg-combine-eq');
-  const out=document.getElementById('hg-combine-result');
-  const wordBox=document.getElementById('hg-combine-word');
-  wordBox.style.display='none';
-  if(c&&v!==null&&v!==undefined&&HG_CONS_IDX[c]!==undefined&&HG_VOWEL_IDX[v]!==undefined){{
-    const code=0xAC00+HG_CONS_IDX[c]*588+HG_VOWEL_IDX[v]*28;
-    const syll=String.fromCharCode(code);
-    eq.textContent=c+' + '+v;
-    out.textContent=syll;
-    hgSpeak(syll+'!');
-    hgLog('letter');
-    const wordData=HG_SYLLABLE_WORDS[syll];
-    if(wordData){{
-      setTimeout(function(){{
-        document.getElementById('hg-combine-emoji').textContent=wordData[1];
-        document.getElementById('hg-combine-wordtext').textContent=wordData[0];
-        wordBox.style.display='flex';
-        hgSpeak(syll+', '+wordData[0]+'!');
-      }},600);
-    }}
-  }} else {{
-    eq.innerHTML='&nbsp;';
-    out.textContent=(c||'')+(v||'')||'?';
-  }}
-}}
-const HG_TRACE_CHECKPOINTS={{
-  'ㄱ':[[0.28,0.22],[0.72,0.22],[0.72,0.78]],
-  'ㄴ':[[0.3,0.2],[0.3,0.78],[0.75,0.78]],
-  'ㄷ':[[0.75,0.24],[0.3,0.24],[0.3,0.78],[0.75,0.78]],
-  'ㄹ':[[0.28,0.18],[0.72,0.18],[0.28,0.42],[0.72,0.42],[0.28,0.66],[0.72,0.82]],
-  'ㅁ':[[0.25,0.25],[0.75,0.25],[0.75,0.75],[0.25,0.75],[0.25,0.28]]
-}};
-const HG_TRACE_START_R=0.22, HG_TRACE_CP_R=0.26;
-let hgTraceIdx=0, hgTraceDrawing=false, hgTraceCtx=null, hgTraceCpIdx=0, hgTraceSucceeded=false;
-function hgTraceShow(){{
-  const cvs=document.getElementById('hg-trace-canvas');
-  if(!hgTraceCtx){{
-    const wrap=cvs.parentElement;
-    cvs.width=wrap.clientWidth; cvs.height=wrap.clientHeight;
-    hgTraceCtx=cvs.getContext('2d');
-    hgTraceCtx.lineWidth=16; hgTraceCtx.lineCap='round'; hgTraceCtx.lineJoin='round'; hgTraceCtx.strokeStyle='#0f4c81';
-    function pos(e){{
-      const r=cvs.getBoundingClientRect();
-      const p=(e.touches&&e.touches[0])||e;
-      return [(p.clientX-r.left)/cvs.width,(p.clientY-r.top)/cvs.height];
-    }}
-    function dist(a,b){{ return Math.hypot(a[0]-b[0],a[1]-b[1]); }}
-    function checkpoints(){{ return HG_TRACE_CHECKPOINTS[HG_LETTERS[hgTraceIdx].char]; }}
-    let hgTraceMoveCount=0;
-    function start(e){{
-      e.preventDefault();
-      const p=pos(e);
-      const cps=checkpoints();
-      if(cps){{
-        if(dist(p,cps[0])>HG_TRACE_START_R) return;
-        hgTraceCpIdx=1; hgTraceSucceeded=false;
-      }}
-      hgTraceDrawing=true; hgTraceMoveCount=0;
-      hgTraceCtx.beginPath(); hgTraceCtx.moveTo(p[0]*cvs.width,p[1]*cvs.height);
-    }}
-    function move(e){{
-      if(!hgTraceDrawing)return;
-      e.preventDefault();
-      const p=pos(e);
-      hgTraceCtx.lineTo(p[0]*cvs.width,p[1]*cvs.height); hgTraceCtx.stroke(); hgTraceMoveCount++;
-      const cps=checkpoints();
-      if(cps&&!hgTraceSucceeded&&hgTraceCpIdx<cps.length&&dist(p,cps[hgTraceCpIdx])<=HG_TRACE_CP_R){{
-        hgTraceCpIdx++;
-        if(hgTraceCpIdx>=cps.length){{
-          hgTraceSucceeded=true; hgTraceDrawing=false;
-          hgLog('letter'); hgChime(); hgSpeak(HG_LETTERS[hgTraceIdx].char+'!');
-        }}
-      }}
-    }}
-    function end(e){{
-      if(hgTraceDrawing){{
-        hgTraceDrawing=false;
-        if(!checkpoints()){{ hgLog('letter'); if(hgTraceMoveCount>=4) hgChime(); }}
-      }}
-    }}
-    cvs.addEventListener('mousedown',start); cvs.addEventListener('mousemove',move); window.addEventListener('mouseup',end);
-    cvs.addEventListener('touchstart',start,{{passive:false}}); cvs.addEventListener('touchmove',move,{{passive:false}}); cvs.addEventListener('touchend',end);
-  }}
-  hgTraceCpIdx=0; hgTraceSucceeded=false;
-  document.getElementById('hg-trace-guide').textContent=HG_LETTERS[hgTraceIdx].char;
-}}
-function hgTraceClear(){{ if(hgTraceCtx) hgTraceCtx.clearRect(0,0,hgTraceCtx.canvas.width,hgTraceCtx.canvas.height); hgTraceCpIdx=0; hgTraceSucceeded=false; }}
-function hgTracePrev(){{ hgTraceIdx=(hgTraceIdx-1+HG_LETTERS.length)%HG_LETTERS.length; hgTraceClear(); hgTraceShow(); hgSpeak(HG_LETTERS[hgTraceIdx].sound); }}
-function hgTraceNext(){{ hgTraceIdx=(hgTraceIdx+1)%HG_LETTERS.length; hgTraceClear(); hgTraceShow(); hgSpeak(HG_LETTERS[hgTraceIdx].sound); }}
-hgBuildLetters();
-hgBuildCombine();
-hgBuildCards();
-</script>
-'''
-    return page('혜온 한글 공부',body)
+    c=db()
+    words=[dict(x) for x in c.execute('select emoji,word from hangul_words where active=1 order by id')]
+    letters=[dict(x) for x in c.execute('select char,kind,sound from hangul_letters order by sort_order')]
+    day=datetime.now(KST).date().isoformat()
+    logged=['|'.join((r['item'],r['activity'],r['status'])) for r in c.execute('select item,activity,status from hangul_practice where activity_date=?',(day,))]
+    c.close()
+    config=json.dumps(dict(words=words,letters=letters,day=day,logged=logged),ensure_ascii=False).replace('<','\\u003c')
+    items=[('today','⭐','오늘 놀이'),('letters','ㄱ','글자 듣기'),('combine','가','글자 만들기'),('trace','✍️','따라쓰기'),('cards','🖼️','그림 낱말'),('listen','👂','듣고 고르기'),('quiz','🔗','짝 맞추기'),('family','💛','우리 가족')]
+    menu=''.join(f'<button type="button" class="hg-nav" data-mode="{key}"><span>{icon}</span>{label}</button>' for key,icon,label in items)
+    body=(f'<link rel="stylesheet" href="/static/hyeon-hangul.css?v=20261015-v1">'
+          f'<div class="hg-app"><aside class="hg-menu"><div class="hg-brand">혜온의 한글 놀이</div><nav class="hg-menu-items">{menu}</nav><div class="hg-parent-links"><a href="/hyeon">🏠 홈</a><a href="/hyeon/hangul/stats">보호자 기록</a></div></aside>'
+          '<section class="hg-work"><div class="hg-head"><h1 id="hg-title">오늘의 한글 놀이</h1><div class="hg-levels" aria-label="난이도">'
+          '<button type="button" class="hg-level on">처음</button><button type="button" class="hg-level">익숙해요</button><button type="button" class="hg-level">더 해볼래요</button></div></div>'
+          '<div class="hg-panel" id="hg-panel"></div></section></div><div id="hg-toast" class="hg-toast" role="status" hidden></div>'
+          f'<script id="hg-config" type="application/json">{config}</script><script src="/static/hyeon-hangul.js?v=20261015-v1"></script>')
+    return page('혜온 한글 놀이',body)
 
 @app.route('/hyeon/hangul/stats')
 def hangul_stats_detail():
-    today=datetime.now(KST).date()
-    mon=today-timedelta(days=today.weekday())
-    month_start=today.replace(day=1)
-    c=db(); all_prog=c.execute('select * from hangul_progress order by activity_date desc').fetchall(); c.close()
-    def tier(total):
-        if total>=HANGUL_STAR_GOAL: return '🏆'
-        elif total>0: return '⭐'
-        else: return '·'
-    def tier_counts(rows):
-        s=t=0
-        for p in rows:
-            tot=p['cards_flipped']+p['quiz_correct']+p['letters_done']
-            if tot>=HANGUL_STAR_GOAL: t+=1
-            elif tot>0: s+=1
-        return s,t
-    week_rows=[p for p in all_prog if mon.isoformat()<=p['activity_date']<=(mon+timedelta(days=6)).isoformat()]
-    month_rows=[p for p in all_prog if p['activity_date']>=month_start.isoformat()]
-    today_rows=[p for p in all_prog if p['activity_date']==today.isoformat()]
-    ts,tt=tier_counts(today_rows); ws,wt=tier_counts(week_rows); ms,mt=tier_counts(month_rows); ls,lt=tier_counts(all_prog)
-    body=(f'<div class="toolbar"><a class="btn s" href="/hyeon/hangul">← 한글 공부</a></div>'
-          f'<section class="feature-card"><h2 style="margin:0 0 10px">혜온 한글 공부 현황</h2>'
-          f'<div class="stat-grid"><div class="stat-card"><span class="muted">오늘</span><div class="big">⭐{ts} 🏆{tt}</div></div>'
-          f'<div class="stat-card"><span class="muted">이번 주</span><div class="big">⭐{ws} 🏆{wt}</div></div>'
-          f'<div class="stat-card"><span class="muted">이번 달</span><div class="big">⭐{ms} 🏆{mt}</div></div>'
-          f'<div class="stat-card"><span class="muted">전체</span><div class="big">⭐{ls} 🏆{lt}</div></div></div>'
-          f'</section><section class="feature-card" style="margin-top:14px"><h2 style="margin:0 0 10px">일자별 내역</h2>')
-    if not all_prog:
-        body+='<div class="muted">아직 활동 기록이 없습니다.</div>'
-    for p in all_prog:
-        total=p['cards_flipped']+p['quiz_correct']+p['letters_done']
-        body+=(f'<div style="padding:8px 0;border-bottom:1px solid #edf1f5;display:flex;justify-content:space-between">'
-               f'<b>{H(p["activity_date"])}</b>'
-               f'<span>{tier(total)} 카드 {p["cards_flipped"]} · 퀴즈 {p["quiz_correct"]} · 자모 {p["letters_done"]}</span></div>')
+    c=db()
+    rows=[dict(r) for r in c.execute('select * from hangul_practice order by activity_date desc,created_at desc')]
+    legacy=c.execute('select count(*) from hangul_progress').fetchone()[0]
+    c.close()
+    today=datetime.now(KST).date().isoformat()
+    current=[r for r in rows if r['activity_date']==today]
+    heard={r['item'] for r in current if r['status']=='seen'}
+    independent={r['item'] for r in current if r['activity'] in ('listen','quiz') and r['status']=='independent'}
+    assisted={r['item'] for r in current if r['activity'] in ('listen','quiz') and r['status']=='assisted'}-independent
+    traced={r['item'] for r in current if r['activity']=='trace' and r['status'] in ('assisted','independent')}
+    body='<div class="toolbar"><a class="btn s" href="/hyeon/hangul">한글 놀이로</a></div><section class="feature-card"><h2>오늘 혜온이가 해본 것</h2>'
+    labels=[('들어봤어요',heard),('도움받아 맞혔어요',assisted),('혼자 맞혔어요',independent),('따라썼어요',traced)]
+    for label,values in labels:
+        body+=f'<div style="padding:13px 0;border-bottom:1px solid #edf1f5"><b>{label} · {len(values)}개</b><p style="margin:7px 0;color:#64748b">{H(" · ".join(sorted(values)) or "아직 기록이 없어요")}</p></div>'
+    body+='</section><section class="feature-card" style="margin-top:14px"><h2>최근 활동 기록</h2><p class="muted">같은 날 같은 활동·항목·결과는 한 번만 기록합니다. ‘혼자 맞혔어요’는 해당 문제에서 정답 안내나 오답 없이 맞힌 기록이며, 읽기 능력의 진단 점수는 아닙니다.</p>'
+    names={'letters':'글자 듣기','combine':'글자 만들기','trace':'따라쓰기','cards':'그림 낱말','quiz':'짝 맞추기','listen':'듣고 고르기','family':'우리 가족'}
+    status_names={'seen':'들어봤어요','assisted':'도움받아 했어요','independent':'혼자 했어요'}
+    for r in rows[:120]:
+        body+=f'<div style="padding:10px 0;border-bottom:1px solid #edf1f5"><b>{H(r["item"])}</b> · {H(names[r["activity"]])} · {H(status_names[r["status"]])}<span style="float:right;color:#8190a4">{H(r["activity_date"])}</span></div>'
+    if not rows: body+='<p>새 한글 놀이를 시작하면 기록이 쌓여요.</p>'
     body+='</section>'
-    return page('혜온 한글 공부 현황',body)
+    return page('혜온 한글 놀이 기록',body)
 
 COLORING_TEMPLATES=[
     {'id': 'ppodeukping', 'name': '뽀득핑', 'emoji': '👑', 'svg': '<image href="/static/coloring/ppodeukping.svg?v=2" x="0" y="0" width="300" height="300"/>', 'regions': [{'type': 'rect', 'x': 0, 'y': 0, 'w': 300, 'h': 300}], 'isCustomSheet': True, 'contourPng': '/static/coloring/ppodeukping.svg?v=2', 'outerPath': 'M162 17h11.5v0.5h-11.5zM157 17.5h20.5v0.5h-20.5zM154 18h27v0.5h-27zM152 18.5h31v0.5h-31zM149.5 19h35.5v0.5h-35.5zM148 19.5h38.5v0.5h-38.5zM146 20h42.5v0.5h-42.5zM144.5 20.5h45.5v0.5h-45.5zM143 21h48.5v0.5h-48.5zM141.5 21.5h51v0.5h-51zM140.5 22h53.5v0.5h-53.5zM139 22.5h56v0.5h-56zM138 23h58.5v0.5h-58.5zM137 23.5h60.5v0.5h-60.5zM136 24h62.5v0.5h-62.5zM135 24.5h64.5v0.5h-64.5zM134 25h66.5v0.5h-66.5zM133 25.5h68.5v0.5h-68.5zM132 26h70v0.5h-70zM131.5 26.5h71.5v0.5h-71.5zM130.5 27h73.5v0.5h-73.5zM130 27.5h74.5v0.5h-74.5zM129 28h76.5v0.5h-76.5zM128.5 28.5h78v0.5h-78zM128 29h79v0.5h-79zM127.5 29.5h80v0.5h-80zM127 30h81.5v0.5h-81.5zM126 30.5h83v0.5h-83zM125.5 31h84.5v0.5h-84.5zM125 31.5h85.5v0.5h-85.5zM124.5 32h86.5v0.5h-86.5zM124 32.5h87.5v0.5h-87.5zM123.5 33h88.5v0.5h-88.5zM123 33.5h90v0.5h-90zM122.5 34h91v0.5h-91zM122 34.5h92v0.5h-92zM121.5 35h93v0.5h-93zM121 35.5h94v0.5h-94zM120.5 36h95v0.5h-95zM120 36.5h96v0.5h-96zM119.5 37h97v0.5h-97zM119.5 37.5h97.5v0.5h-97.5zM119 38h98.5v0.5h-98.5zM118.5 38.5h99.5v0.5h-99.5zM118 39h100v0.5h-100zM118 39.5h100.5v0.5h-100.5zM117.5 40h101.5v0.5h-101.5zM117 40.5h102.5v0.5h-102.5zM116.5 41h103.5v0.5h-103.5zM116.5 41.5h104v0.5h-104zM116 42h104.5v0.5h-104.5zM115.5 42.5h105.5v0.5h-105.5zM115.5 43h106v0.5h-106zM115 43.5h107v1h-107zM114.5 44.5h108v0.5h-108zM114 45h109v1h-109zM113.5 46h110v1h-110zM113.5 47h110.5v0.5h-110.5zM113 47.5h111.5v1h-111.5zM112.5 48.5h112.5v1h-112.5zM112 49.5h113.5v1h-113.5zM111.5 50.5h114.5v0.5h-114.5zM111.5 51h115v1h-115zM111 52h116v1h-116zM110.5 53h117v0.5h-117zM110 53.5h117.5v0.5h-117.5zM110 54h118v0.5h-118zM109.5 54.5h118.5v0.5h-118.5zM109 55h119.5v0.5h-119.5zM108.5 55.5h120v0.5h-120zM107 56h122v0.5h-122zM105.5 56.5h123.5v0.5h-123.5zM104.5 57h125v0.5h-125zM103.5 57.5h126v0.5h-126zM102 58h128v0.5h-128zM101.5 58.5h128.5v0.5h-128.5zM100.5 59h129.5v0.5h-129.5zM99.5 59.5h131v0.5h-131zM98.5 60h132v0.5h-132zM98 60.5h133v0.5h-133zM97.5 61h133.5v0.5h-133.5zM96.5 61.5h134.5v0.5h-134.5zM96 62h135.5v0.5h-135.5zM95.5 62.5h136v0.5h-136zM95 63h137v0.5h-137zM94.5 63.5h137.5v0.5h-137.5zM94 64h138v0.5h-138zM93.5 64.5h139v0.5h-139zM93 65h139.5v0.5h-139.5zM92.5 65.5h140v0.5h-140zM92 66h141v0.5h-141zM91.5 66.5h141.5v0.5h-141.5zM91 67h142v0.5h-142zM90.5 67.5h143v0.5h-143zM90 68h143.5v0.5h-143.5zM89.5 68.5h144v1h-144zM89 69.5h145v0.5h-145zM88.5 70h145.5v1h-145.5zM88 71h146v0.5h-146zM87.5 71.5h147v1h-147zM87 72.5h147.5v0.5h-147.5zM86.5 73h148v0.5h-148zM86.5 73.5h148.5v0.5h-148.5zM86 74h149v1h-149zM85.5 75h149.5v0.5h-149.5zM85.5 75.5h150v0.5h-150zM85 76h150.5v1.5h-150.5zM84.5 77.5h151v1h-151zM84 78.5h152v1.5h-152zM83.5 80h152.5v1h-152.5zM83.5 81h153v0.5h-153zM83 81.5h153.5v1h-153.5zM82.5 82.5h154v0.5h-154zM82 83h154.5v0.5h-154.5zM81.5 83.5h155v0.5h-155zM80 84h156.5v0.5h-156.5zM79.5 84.5h157.5v0.5h-157.5zM78.5 85h158.5v0.5h-158.5zM77.5 85.5h159.5v0.5h-159.5zM77 86h160v0.5h-160zM76.5 86.5h160.5v0.5h-160.5zM75.5 87h161.5v0.5h-161.5zM75 87.5h162v0.5h-162zM74.5 88h162.5v0.5h-162.5zM74 88.5h163.5v0.5h-163.5zM73.5 89h164v0.5h-164zM73 89.5h164.5v0.5h-164.5zM72.5 90h165v1h-165zM72 91h165.5v0.5h-165.5zM71.5 91.5h166v1h-166zM71 92.5h166.5v1h-166.5zM70.5 93.5h167v1h-167zM70.5 94.5h167.5v1.5h-167.5zM70 96h168v3h-168zM70.5 99h167.5v3h-167.5zM71 102h167v1.5h-167zM71.5 103.5h166.5v1h-166.5zM72 104.5h166v1.5h-166zM72.5 106h165.5v1h-165.5zM73 107h165v0.5h-165zM73.5 107.5h164.5v2h-164.5zM73 109.5h165v3.5h-165zM73 113h164.5v2h-164.5zM72.5 115h165v4.5h-165zM73 119.5h164.5v1h-164.5zM73 120.5h164v3.5h-164zM64.5 124h3v0.5h-3zM63.5 124.5h5v0.5h-5zM63 125h6.5v0.5h-6.5zM62.5 125.5h7.5v0.5h-7.5zM73.5 124h163.5v2h-163.5zM62.5 126h8v0.5h-8zM73 126h164v0.5h-164zM62 126.5h9v0.5h-9zM72.5 126.5h164.5v0.5h-164.5zM62 127h9.5v0.5h-9.5zM72 127h165v0.5h-165zM62 127.5h175v2h-175zM62 129.5h174.5v3.5h-174.5zM62.5 133h174v1.5h-174zM63 134.5h173.5v1.5h-173.5zM262.5 136h2.5v0.5h-2.5zM63.5 136h173v1h-173zM259 136.5h8.5v0.5h-8.5zM257.5 137h11.5v0.5h-11.5zM256 137.5h14v0.5h-14zM64 137h172.5v1.5h-172.5zM254.5 138h16.5v0.5h-16.5zM64.5 138.5h172v0.5h-172zM253.5 138.5h18v0.5h-18zM252.5 139h20v0.5h-20zM64.5 139h172.5v1h-172.5zM251.5 139.5h21.5v0.5h-21.5zM251 140h22.5v0.5h-22.5zM65 140h172v1h-172zM250 140.5h23.5v0.5h-23.5zM50 141h9.5v0.5h-9.5zM64.5 141h172.5v0.5h-172.5zM249.5 141h24.5v0.5h-24.5zM47 141.5h14.5v0.5h-14.5zM64 141.5h173v0.5h-173zM249 141.5h25.5v0.5h-25.5zM45 142h18v0.5h-18zM63.5 142h173.5v0.5h-173.5zM248 142h26.5v0.5h-26.5zM43.5 142.5h193.5v0.5h-193.5zM247.5 142.5h27.5v0.5h-27.5zM42 143h195v0.5h-195zM247 143h28v0.5h-28zM41 143.5h196v0.5h-196zM40 144h197.5v0.5h-197.5zM246.5 143.5h29v1h-29zM39 144.5h198.5v0.5h-198.5zM246 144.5h30v0.5h-30zM38.5 145h199v0.5h-199zM245.5 145h30.5v0.5h-30.5zM37.5 145.5h200v0.5h-200zM245 145.5h31v0.5h-31zM37 146h200.5v0.5h-200.5zM244.5 146h31.5v0.5h-31.5zM36.5 146.5h201v0.5h-201zM244.5 146.5h32v0.5h-32zM35.5 147h202v0.5h-202zM35 147.5h202.5v0.5h-202.5zM244 147h32.5v1h-32.5zM34.5 148h203.5v0.5h-203.5zM243.5 148h33v0.5h-33zM34 148.5h204v0.5h-204zM33.5 149h204.5v0.5h-204.5zM243 148.5h33.5v1h-33.5zM33 149.5h205v0.5h-205zM242.5 149.5h34v0.5h-34zM32.5 150h205.5v0.5h-205.5zM32 150.5h206v0.5h-206zM242.5 150h34.5v1h-34.5zM31.5 151h207v0.5h-207zM31 151.5h207.5v0.5h-207.5zM242 151h35v1h-35zM30.5 152h208.5v0.5h-208.5zM241.5 152h35.5v0.5h-35.5zM30 152.5h209.5v0.5h-209.5zM241 152.5h36v0.5h-36zM29.5 153h210.5v0.5h-210.5zM240.5 153h37v0.5h-37zM29 153.5h248.5v0.5h-248.5zM28.5 154h249.5v1h-249.5zM28 155h250.5v0.5h-250.5zM27.5 155.5h251.5v0.5h-251.5zM27 156h252v0.5h-252zM26.5 156.5h253v0.5h-253zM26 157h253.5v0.5h-253.5zM25.5 157.5h254.5v0.5h-254.5zM21 158h1v0.5h-1zM25 158h255v0.5h-255zM19.5 158.5h261v0.5h-261zM19 159h261.5v0.5h-261.5zM18.5 159.5h262.5v1h-262.5zM18 160.5h263v0.5h-263zM18 161h263.5v1h-263.5zM18.5 162h263v1h-263zM19 163h262.5v1h-262.5zM19.5 164h262v1h-262zM20 165h261.5v0.5h-261.5zM20.5 165.5h261v1h-261zM21 166.5h260.5v0.5h-260.5zM21.5 167h260v0.5h-260zM22 167.5h259v1h-259zM22.5 168.5h258.5v0.5h-258.5zM23 169h258.5v1h-258.5zM23.5 170h258v0.5h-258zM24 170.5h257.5v3.5h-257.5zM24.5 174h257v1h-257zM24.5 175h256.5v1.5h-256.5zM25 176.5h256v0.5h-256zM25 177h255.5v1h-255.5zM25.5 178h255v0.5h-255zM25.5 178.5h254.5v1h-254.5zM26 179.5h253.5v0.5h-253.5zM26 180h253v0.5h-253zM26.5 180.5h252v0.5h-252zM26.5 181h251.5v0.5h-251.5zM27 181.5h250.5v0.5h-250.5zM27 182h250v0.5h-250zM27.5 182.5h248.5v0.5h-248.5zM27.5 183h247v0.5h-247zM28 183.5h246v0.5h-246zM28.5 184h245v0.5h-245zM28.5 184.5h244.5v0.5h-244.5zM29 185h244v0.5h-244zM29.5 185.5h243.5v0.5h-243.5zM30 186h242.5v0.5h-242.5zM30.5 186.5h242v0.5h-242zM31 187h241v0.5h-241zM31.5 187.5h240.5v0.5h-240.5zM32 188h239.5v0.5h-239.5zM32.5 188.5h239v0.5h-239zM33 189h238.5v0.5h-238.5zM33.5 189.5h237.5v0.5h-237.5zM34.5 190h236v0.5h-236zM35 190.5h235.5v0.5h-235.5zM35.5 191h234.5v0.5h-234.5zM36.5 191.5h233.5v0.5h-233.5zM37.5 192h232v0.5h-232zM38.5 192.5h230.5v0.5h-230.5zM39.5 193h229.5v0.5h-229.5zM40.5 193.5h228v0.5h-228zM41.5 194h226.5v0.5h-226.5zM43.5 194.5h17.5v0.5h-17.5zM63.5 194.5h204v0.5h-204zM45.5 195h13.5v0.5h-13.5zM64 195h203.5v0.5h-203.5zM48 195.5h8.5v0.5h-8.5zM64.5 195.5h202.5v0.5h-202.5zM65 196h201.5v0.5h-201.5zM65.5 196.5h200.5v0.5h-200.5zM66 197h200v0.5h-200zM67 197.5h198.5v0.5h-198.5zM67.5 198h197.5v0.5h-197.5zM68 198.5h196.5v0.5h-196.5zM68.5 199h195.5v0.5h-195.5zM69 199.5h194.5v0.5h-194.5zM69.5 200h193.5v0.5h-193.5zM70.5 200.5h192v0.5h-192zM71 201h191v0.5h-191zM71.5 201.5h190v0.5h-190zM72 202h189v0.5h-189zM72.5 202.5h187.5v0.5h-187.5zM73 203h186.5v0.5h-186.5zM74 203.5h185v0.5h-185zM74.5 204h183.5v0.5h-183.5zM75 204.5h182.5v0.5h-182.5zM75.5 205h181.5v0.5h-181.5zM76 205.5h180v0.5h-180zM76.5 206h179v0.5h-179zM77.5 206.5h177.5v0.5h-177.5zM78 207h176v0.5h-176zM78.5 207.5h175v0.5h-175zM79 208h173.5v0.5h-173.5zM79.5 208.5h172.5v0.5h-172.5zM80 209h171v0.5h-171zM80.5 209.5h169.5v0.5h-169.5zM81.5 210h167.5v0.5h-167.5zM82 210.5h166.5v0.5h-166.5zM82.5 211h165v0.5h-165zM83 211.5h163.5v0.5h-163.5zM83.5 212h162v0.5h-162zM84 212.5h27v0.5h-27zM114 212.5h2.5v0.5h-2.5zM121 212.5h123.5v0.5h-123.5zM85 213h25.5v0.5h-25.5zM122.5 213h121v0.5h-121zM85.5 213.5h24.5v0.5h-24.5zM123 213.5h119.5v0.5h-119.5zM86 214h23.5v0.5h-23.5zM124 214h117.5v0.5h-117.5zM86.5 214.5h23v0.5h-23zM125 214.5h115.5v0.5h-115.5zM87 215h22v0.5h-22zM125.5 215h114v0.5h-114zM87.5 215.5h21.5v0.5h-21.5zM126 215.5h112v0.5h-112zM88 216h21v0.5h-21zM126.5 216h110.5v0.5h-110.5zM88.5 216.5h20.5v0.5h-20.5zM126 216.5h109.5v0.5h-109.5zM89.5 217h20v0.5h-20zM126 217h108v0.5h-108zM90 217.5h19.5v0.5h-19.5zM125.5 217.5h107.5v0.5h-107.5zM90.5 218h19.5v0.5h-19.5zM125.5 218h106v0.5h-106zM91.5 218.5h18.5v0.5h-18.5zM125 218.5h104.5v0.5h-104.5zM92 219h18v0.5h-18zM125 219h103v0.5h-103zM92.5 219.5h18v0.5h-18zM125 219.5h101v0.5h-101zM93 220h17.5v0.5h-17.5zM124.5 220h99.5v0.5h-99.5zM94 220.5h16.5v0.5h-16.5zM124.5 220.5h97.5v0.5h-97.5zM94.5 221h16v0.5h-16zM124.5 221h95v0.5h-95zM95 221.5h16v0.5h-16zM124 221.5h91.5v0.5h-91.5zM95.5 222h16v0.5h-16zM124 222h80.5v0.5h-80.5zM96.5 222.5h15v0.5h-15zM124 222.5h80v0.5h-80zM97.5 223h14.5v0.5h-14.5zM124 223h79.5v0.5h-79.5zM101.5 223.5h10.5v0.5h-10.5zM124 223.5h79v0.5h-79zM102 224h10v0.5h-10zM123.5 224h80v0.5h-80zM102.5 224.5h9.5v0.5h-9.5zM123.5 224.5h80.5v0.5h-80.5zM103 225h9v0.5h-9zM123.5 225h81v0.5h-81zM103.5 225.5h8.5v0.5h-8.5zM123 225.5h81.5v0.5h-81.5zM104 226h8.5v0.5h-8.5zM103.5 226.5h9v0.5h-9zM123 226h82v1h-82zM104 227h8.5v1.5h-8.5zM104.5 228.5h8.5v0.5h-8.5zM123 227h82.5v2h-82.5zM104 229h9v0.5h-9zM122.5 229h83v0.5h-83zM103.5 229.5h9.5v0.5h-9.5zM122.5 229.5h82.5v0.5h-82.5zM103 230h10v0.5h-10zM102 230.5h11v0.5h-11zM122 230h83v1h-83zM101.5 231h11.5v0.5h-11.5zM101 231.5h12v0.5h-12zM121.5 231h83.5v1h-83.5zM121 232h84.5v0.5h-84.5zM100.5 232h12v1h-12zM120.5 232.5h85.5v0.5h-85.5zM120 233h86.5v0.5h-86.5zM100 233h12v1h-12zM119.5 233.5h87.5v0.5h-87.5zM119 234h88.5v0.5h-88.5zM100 234h11.5v1h-11.5zM118.5 234.5h89v0.5h-89zM100 235h11v0.5h-11zM118 235h90v0.5h-90zM100.5 235.5h10v0.5h-10zM117.5 235.5h91v0.5h-91zM100.5 236h9.5v0.5h-9.5zM116.5 236h92v0.5h-92zM101 236.5h8v0.5h-8zM116 236.5h93v0.5h-93zM102 237h6.5v0.5h-6.5zM115.5 237h94v0.5h-94zM103.5 237.5h3.5v0.5h-3.5zM115 237.5h94.5v0.5h-94.5zM114 238h95.5v0.5h-95.5zM113.5 238.5h96.5v0.5h-96.5zM112.5 239h97.5v0.5h-97.5zM111.5 239.5h98.5v0.5h-98.5zM111 240h99.5v0.5h-99.5zM110 240.5h100.5v0.5h-100.5zM109.5 241h101v0.5h-101zM108.5 241.5h102v0.5h-102zM108 242h102.5v0.5h-102.5zM107.5 242.5h103v0.5h-103zM107 243h104v1h-104zM106.5 244h104.5v0.5h-104.5zM106 244.5h105v0.5h-105zM105.5 245h105.5v1h-105.5zM105 246h106v1h-106zM104.5 247h106.5v1.5h-106.5zM104 248.5h107v2h-107zM104 250.5h106.5v3h-106.5zM104 253.5h106v1h-106zM104.5 254.5h105.5v0.5h-105.5zM104.5 255h105v1h-105zM105 256h104.5v0.5h-104.5zM105 256.5h104v0.5h-104zM105.5 257h103.5v0.5h-103.5zM106 257.5h102.5v1h-102.5zM106.5 258.5h101.5v0.5h-101.5zM107 259h101v0.5h-101zM107.5 259.5h100v0.5h-100zM108 260h99v0.5h-99zM108.5 260.5h98.5v0.5h-98.5zM109 261h97.5v0.5h-97.5zM109.5 261.5h96.5v0.5h-96.5zM110 262h95.5v0.5h-95.5zM111 262.5h94v0.5h-94zM111.5 263h92.5v0.5h-92.5zM112.5 263.5h91v0.5h-91zM113.5 264h89v0.5h-89zM114.5 264.5h63v0.5h-63zM178 264.5h23.5v0.5h-23.5zM115.5 265h61.5v0.5h-61.5zM180 265h20.5v0.5h-20.5zM117 265.5h59.5v0.5h-59.5zM181.5 265.5h18v0.5h-18zM118.5 266h57.5v0.5h-57.5zM183.5 266h14v0.5h-14zM121 266.5h12v0.5h-12zM134 266.5h41.5v0.5h-41.5zM187.5 266.5h6.5v0.5h-6.5zM125.5 267h2.5v0.5h-2.5zM134.5 267h41v0.5h-41zM135 267.5h40v0.5h-40zM135.5 268h39.5v0.5h-39.5zM136 268.5h38.5v1h-38.5zM136 269.5h38v1h-38zM136.5 270.5h37v1h-37zM136.5 271.5h36.5v0.5h-36.5zM137 272h36v0.5h-36zM137 272.5h35.5v0.5h-35.5zM137.5 273h35v0.5h-35zM138 273.5h34v0.5h-34zM138 274h15.5v0.5h-15.5zM154 274h18v0.5h-18zM138.5 274.5h14.5v0.5h-14.5zM154.5 274.5h17v0.5h-17zM139 275h13.5v0.5h-13.5zM155 275h16.5v0.5h-16.5zM139.5 275.5h12.5v0.5h-12.5zM155.5 275.5h15.5v0.5h-15.5zM140 276h11v0.5h-11zM156 276h15v0.5h-15zM141 276.5h9.5v0.5h-9.5zM142 277h7v0.5h-7zM156 276.5h14.5v1h-14.5zM144 277.5h3v0.5h-3zM156 277.5h14v0.5h-14zM156.5 278h13.5v0.5h-13.5zM156.5 278.5h13v0.5h-13zM157 279h12.5v0.5h-12.5zM157.5 279.5h11.5v0.5h-11.5zM158 280h10.5v0.5h-10.5zM158.5 280.5h9.5v0.5h-9.5zM159 281h8v0.5h-8zM160 281.5h6.5v0.5h-6.5z', 'allowDelete': False},
