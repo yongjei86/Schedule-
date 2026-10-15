@@ -82,6 +82,8 @@
     var token = currentImageToken;
     var imported = clCurrent && clCurrent.isCustomSheet;
     tools.style.display = imported ? 'flex' : 'none';
+    var deleteButton = document.getElementById('cl-remove-sheet');
+    if (deleteButton) deleteButton.style.display = (imported && clCurrent.allowDelete !== false) ? '' : 'none';
     if (!imported) return;
     var img = new Image();
     img.onload = function () {
@@ -143,7 +145,7 @@
   });
 
   document.getElementById('cl-remove-sheet').addEventListener('click', function () {
-    if (!clCurrent || !clCurrent.isCustomSheet) return;
+    if (!clCurrent || !clCurrent.isCustomSheet || clCurrent.allowDelete === false) return;
     var id = clCurrent.id;
     stored = stored.filter(function (x) {return x.id !== id;});
     var idx = CL_TEMPLATES.findIndex(function (x) { return x.id === id; });
@@ -214,4 +216,6 @@
   ['mousemove','mouseup','touchmove','touchend','touchcancel'].forEach(function (type) {
     canvas.addEventListener(type,captureRemaining,{capture:true,passive:false});
   });
+  // Activate the imported-art masking workflow for a permanent first template.
+  if (CL_TEMPLATES[0] && CL_TEMPLATES[0].isCustomSheet) clSelect(CL_TEMPLATES[0].id);
 })();
