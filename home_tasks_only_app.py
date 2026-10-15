@@ -2613,7 +2613,7 @@ clInit();
 clSelect(CL_TEMPLATES[0].id);
 document.querySelector('.cl-swatch').classList.add('on');
 </script>
-<script src="/static/hyeon-custom-coloring.js?v=20261015-3"></script>
+<script src="/static/hyeon-custom-coloring.js?v=20261015-tablet-v2"></script>
 '''
     return page('혜온 색칠 공부',body)
 
