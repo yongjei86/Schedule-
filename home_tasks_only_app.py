@@ -2349,6 +2349,10 @@ def hangul_stats_detail():
     return page('혜온 한글 공부 현황',body)
 
 COLORING_TEMPLATES=[
+    # Permanent character worksheets. Shared across devices; never removable by the child.
+    {'id':'ororaping','name':'오로라핑','emoji':'👑','svg':'<image href="/static/coloring/ororaping.svg" x="0" y="0" width="300" height="300"/>','regions':[{'type':'rect','x':0,'y':0,'w':300,'h':300}],'isCustomSheet':True,'contourPng':'/static/coloring/ororaping.svg','allowDelete':False},
+    {'id':'hachuping','name':'하츄핑','emoji':'💗','svg':'<image href="/static/coloring/hachuping.svg" x="0" y="0" width="300" height="300"/>','regions':[{'type':'rect','x':0,'y':0,'w':300,'h':300}],'isCustomSheet':True,'contourPng':'/static/coloring/hachuping.svg','allowDelete':False},
+    {'id':'princess-hachuping','name':'프린세스 하츄핑','emoji':'💖','svg':'<image href="/static/coloring/princess-hachuping.svg" x="0" y="0" width="300" height="300"/>','regions':[{'type':'rect','x':0,'y':0,'w':300,'h':300}],'isCustomSheet':True,'contourPng':'/static/coloring/princess-hachuping.svg','allowDelete':False},
     {'id':'cat','name':'고양이','emoji':'🐱','svg':'''
 <circle cx="150" cy="170" r="90"/>
 <polygon points="70,110 110,40 130,110"/>
