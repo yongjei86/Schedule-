@@ -7,28 +7,17 @@
   if (!picker || !canvas || typeof CL_TEMPLATES === 'undefined') return;
 
   var KEY = 'hyeon-coloring-custom-sheets-v1';
-  var MAX_SHEETS = 8, SIDE = 300;
+  var MAX_SHEETS = 8;
   var stored = [];
 
   var style = document.createElement('style');
   style.textContent =
-    '.cl-import-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}' +
-    '.cl-import-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 15px;border-radius:13px;background:#faeafa;border:2px solid #e8b6e4;color:#7d367d;font-size:14px;font-weight:850;cursor:pointer}' +
-    '.cl-import-hint{font-size:12px;color:#6d778b;line-height:1.5}' +
     '.cl-import-tools{display:none;gap:8px;align-items:center;justify-content:center;margin:4px auto 12px}' +
     '.cl-import-tools button{border:1px solid #e0d3de;border-radius:10px;background:#fff;padding:8px 10px;color:#834079;font-size:12px;font-weight:750;cursor:pointer}' +
     '.cl-import-tools span{color:#6d778b;font-size:12px}' +
-    '.cl-import-bar input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}' +
     '.cl-pick.cl-custom{border-color:#e6cbe7;background:#fff8ff}' +
     '.cl-pick.cl-custom.on{border-color:#9c51ab;background:#fceaff}';
   document.head.appendChild(style);
-
-  var bar = document.createElement('div');
-  bar.className = 'cl-import-bar';
-  bar.innerHTML = '<label class="cl-import-button" for="cl-file-upload">🎀 티니핑 등 내 도안 추가</label>' +
-      '<input id="cl-file-upload" type="file" accept="image/*" aria-label="색칠할 도안 선택">' +
-      '<span class="cl-import-hint">휴대폰 사진에서 흑백 도안 선택 · 이 기기에만 보관</span>';
-  picker.parentNode.insertBefore(bar, picker);
 
   var tools = document.createElement('div');
   tools.className = 'cl-import-tools';
@@ -51,9 +40,6 @@
     .cl-sidebar .cl-picker-row {display:grid;grid-template-columns:repeat(auto-fill,minmax(65px,1fr));gap:7px;margin:0}
     .cl-sidebar .cl-pick {aspect-ratio:auto;height:73px;min-width:0;border-radius:12px;font-size:27px}
     .cl-sidebar .cl-pick span {font-size:11px;line-height:1.2;word-break:keep-all}
-    .cl-sidebar .cl-import-bar {margin:0 0 10px;display:block}
-    .cl-sidebar .cl-import-button {display:flex;width:100%;text-align:center;box-sizing:border-box;min-height:48px;line-height:1.3;padding:7px}
-    .cl-sidebar .cl-import-hint {display:none}
     .cl-workspace {min-height:0;min-width:0;background:#fff;border:1px solid #e4e9f0;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:8px;overflow:hidden}
     .cl-workspace .hg-topbar {align-self:stretch;margin:0 0 6px;flex:0 0 auto}
     .cl-workspace .hg-btn {width:46px;height:46px;border-radius:12px;font-size:23px}
@@ -67,8 +53,6 @@
       body.hyeon-coloring-fullscreen main.wrap {padding:5px}
       .cl-studio {display:flex;flex-direction:column;gap:5px}
       .cl-sidebar {flex:0 0 auto;min-height:0;overflow:visible;border-radius:12px;padding:4px;display:flex;flex-direction:column;gap:4px;touch-action:auto}
-      .cl-sidebar .cl-import-bar {flex:0 0 auto;margin:0}
-      .cl-sidebar .cl-import-button {width:auto;min-height:31px;display:inline-flex;font-size:12px;padding:4px 9px}
       .cl-sidebar .cl-picker-row {display:flex;flex-wrap:nowrap;gap:5px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;touch-action:pan-x;padding:1px 0 4px}
       .cl-sidebar .cl-pick {height:58px;min-width:66px;width:66px;flex:0 0 66px;font-size:22px}
       .cl-sidebar .cl-pick span {font-size:9px}
@@ -94,7 +78,7 @@
   var sidebar = document.createElement('aside'); sidebar.className = 'cl-sidebar';
   var workspace = document.createElement('section'); workspace.className = 'cl-workspace';
   var footer = document.createElement('div'); footer.className = 'cl-control-footer';
-  sidebar.appendChild(bar); sidebar.appendChild(picker);
+  sidebar.appendChild(picker);
   workspace.appendChild(topbar);
   workspace.appendChild(wrap);
   footer.appendChild(tools); footer.appendChild(palette);
@@ -169,53 +153,6 @@
     var deleteButton = document.getElementById('cl-remove-sheet');
     if (deleteButton) deleteButton.style.display = canDelete ? '' : 'none';
   };
-
-  document.getElementById('cl-file-upload').addEventListener('change', function (event) {
-    var file = event.target.files && event.target.files[0];
-    event.target.value = '';
-    if (!file) return;
-    if (!file.type || file.type.indexOf('image/') !== 0) {
-      alert('그림 파일을 선택해 주세요.'); return;
-    }
-    var url = URL.createObjectURL(file), source = new Image();
-    source.onerror = function () {
-      URL.revokeObjectURL(url);
-      alert('도안 이미지를 읽을 수 없어요. 다른 사진을 선택해 주세요.');
-    };
-    source.onload = function () {
-      URL.revokeObjectURL(url);
-      var c = document.createElement('canvas');
-      c.width = SIDE; c.height = SIDE;
-      var ctx = c.getContext('2d', {willReadFrequently:true});
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,SIDE,SIDE);
-      var scale = Math.min((SIDE-14)/source.width, (SIDE-14)/source.height);
-      var w = source.width*scale, h = source.height*scale;
-      ctx.drawImage(source, (SIDE-w)/2, (SIDE-h)/2, w, h);
-      var pixels = ctx.getImageData(0,0,SIDE,SIDE);
-      var data = pixels.data;
-      // Remove the white paper. Keep just dark contours on transparent pixels.
-      for (var i=0;i<data.length;i+=4) {
-        var lum = 0.2126*data[i] + 0.7152*data[i+1] + 0.0722*data[i+2];
-        var alpha = Math.max(0,Math.min(255,(185-lum)*4));
-        data[i]=28; data[i+1]=29; data[i+2]=39; data[i+3]=alpha;
-      }
-      ctx.putImageData(pixels,0,0);
-      var name = (file.name || '내 도안').replace(/\.[^.]+$/,'').slice(0,12) || '내 도안';
-      var item = {id:'sheet-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7),
-                  name:name,png:c.toDataURL('image/png')};
-      stored.push(item);
-      while (stored.length > MAX_SHEETS) {
-        var old = stored.shift();
-        CL_TEMPLATES.splice(CL_TEMPLATES.findIndex(function(x){return x.id===old.id;}),1);
-        var node = document.getElementById('cl-pick-'+old.id);
-        if (node) node.remove();
-      }
-      persist();
-      addPicker(item);
-      clSelect(item.id);
-    };
-    source.src = url;
-  });
 
   document.getElementById('cl-remove-sheet').addEventListener('click', function () {
     if (!clCurrent || !clCurrent.isCustomSheet || clCurrent.allowDelete === false) return;
