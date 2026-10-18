@@ -108,3 +108,48 @@ def workbook_toggle_no_redirect_for_fetch(response):
 
 # Register Riley's creative workspace after dashboard integrations.
 import riley_creative
+
+# Keep Hyeon's games and parent reading screens in one visual language.
+@app.after_request
+def hyeon_shared_theme(response):
+ import re
+ from html import escape
+ path = _main.request.path
+ if not (path == '/hyeon' or path.startswith('/hyeon/')):
+  return response
+ if response.status_code != 200 or response.mimetype != 'text/html':
+  return response
+ response.direct_passthrough = False
+ html = response.get_data(as_text=True)
+ if 'id="hyeon-theme-style"' in html:
+  return response
+ html = html.replace('</head>', '<link id="hyeon-theme-style" rel="stylesheet" href="/static/hyeon-theme.css?v=1"><script defer src="/static/hyeon-theme.js?v=1"></script></head>', 1)
+ def themed_body(match):
+  attrs = match.group(1)
+  if re.search(r'\bclass\s*=', attrs):
+   attrs = re.sub(r'''\bclass=(['"])(.*?)\1''', lambda m: 'class='+m.group(1)+m.group(2)+' hyeon-theme'+m.group(1), attrs, count=1)
+  else:
+   attrs += ' class="hyeon-theme"'
+  return '<body'+attrs+'>'
+ html = re.sub(r'<body\b([^>]*)>', themed_body, html, count=1)
+ if path.rstrip('/') == '/hyeon/dressup':
+  # Preserve the village and sound controls, including their event targets.
+  html = html.replace('<header>', '<header id="hy-header">', 1)
+  html = html.replace('</nav>', '<a href="/hyeon/reading/dashboard">📚 독서기록</a></nav>', 1)
+ else:
+  items = [('/hyeon/hangul','🔤 한글놀이'),('/hyeon/coloring','🎨 색칠공부'),('/hyeon/dressup','👗 옷입히기'),('/hyeon/reading/dashboard','📚 독서기록')]
+  nav = ''
+  for href,label in items:
+   active = path.startswith('/hyeon/reading') if '/reading/' in href else path.startswith(href)
+   current = ' aria-current="page"' if active else ''
+   nav += '<a href="'+escape(href)+'"'+current+'>'+label+'</a>'
+  header = '<header id="hy-header"><a href="/hyeon" aria-label="혜온 포탈 홈">🏠</a><nav aria-label="놀이 메뉴">'+nav+'</nav><a class="hy-family" href="/">가족 포탈 ↗</a></header>'
+  if re.search(r'<header\b', html):
+   html = re.sub(r'<header\b[^>]*>.*?</header>', lambda m: header, html, count=1, flags=re.S)
+  else:
+   html = re.sub(r'(<body\b[^>]*>)', lambda m: m.group(1)+header, html, count=1)
+ response.set_data(html)
+ response.headers.pop('ETag',None)
+ response.headers.pop('Last-Modified',None)
+ response.headers['Cache-Control'] = 'no-cache'
+ return response
