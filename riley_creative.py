@@ -22,6 +22,10 @@ with connection() as c:
     if 'template' not in {row['name'] for row in c.execute('PRAGMA table_info(riley_art)')}:
         c.execute("ALTER TABLE riley_art ADD COLUMN template TEXT NOT NULL DEFAULT 'sunflowers'")
 
+with connection() as c:
+    if 'design_version' not in {row['name'] for row in c.execute('PRAGMA table_info(riley_art)')}:
+        c.execute('ALTER TABLE riley_art ADD COLUMN design_version INTEGER NOT NULL DEFAULT 1')
+
 TEMPLATES = {'sunflowers','starry','cezanne','chagall','monet','colosseum','duomo','pisa','sagrada','alhambra','madrid'}
 
 def now():
@@ -63,8 +67,10 @@ def riley_creative_art():
     title = str(data.get('title') or '나의 그림')[:100]
     template = data.get('template','sunflowers')
     if not isinstance(template,str) or template not in TEMPLATES: abort(400)
+    version = data.get('design_version',1)
+    if type(version) is not int or version not in (1,2): abort(400)
     with connection() as c:
-        c.execute('INSERT INTO riley_art(id,title,colors,completed,updated,template) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,colors=excluded.colors,completed=excluded.completed,updated=excluded.updated,template=excluded.template', (ident,title,json.dumps(colors),int(bool(data.get('completed'))),now(),template))
+        c.execute('INSERT INTO riley_art(id,title,colors,completed,updated,template,design_version) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,colors=excluded.colors,completed=excluded.completed,updated=excluded.updated,template=excluded.template,design_version=excluded.design_version', (ident,title,json.dumps(colors),int(bool(data.get('completed'))),now(),template,version))
     return jsonify(id=ident)
 
 @app.post('/riley/creative/diary')
