@@ -132,6 +132,11 @@ function greetResident(c,replay=false){
  }catch(_){failed();}
 }
 $('resident-replay').onclick=()=>{if(!selectedResident)return;const c=catalog.find(c=>c.id===selectedResident.character_id);if(c)greetResident(c,true);};
+$('resident-modal').addEventListener('click',e=>{
+ if(e.target!==e.currentTarget)return;
+ $('resident-modal').hidden=true;
+ stopVillageSpeech();
+});
 document.addEventListener('click',e=>{
  const id=e.target.closest?.('button')?.id;
  if(['close-resident','stay-village','redress','return-closet','back-dressing'].includes(id)||(id==='sound'&&muted))stopVillageSpeech();
