@@ -10,7 +10,7 @@ async function refresh(){const r=await fetch('/riley/creative/data',{cache:'no-s
 function node(tag,attrs,parent){const e=document.createElementNS(ns,tag);for(const [k,v]of Object.entries(attrs))e.setAttribute(k,v);parent.append(e);return e}
 // Closed vector regions prevent paint leaking across outlines at any zoom level.
 function drawing(paint={},interactive=false){const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 680 820');svg.setAttribute('xmlns',ns);svg.setAttribute('role','img');svg.setAttribute('aria-label','꽃병에 담긴 해바라기 색칠 도안');let idx=0;
-const region=(tag,attrs,id)=>{id=id||'region-'+idx++;const e=node(tag,{...attrs,fill:paint[id]||'#fffdf7',stroke:'#443d31','stroke-width':1.8,'stroke-linejoin':'round','data-region':id},svg);if(interactive)e.addEventListener('click',()=>{if(pan||Date.now()-lastDrag<180)return;const previous=colors[id]||'#fffdf7',next=erasing?'#fffdf7':color;if(previous===next)return;history.push({id,previous,next});future=[];colors[id]=next;e.setAttribute('fill',next);if(!erasing){recent=[color,...recent.filter(c=>c!==color)].slice(0,10);palette($('recent'),recent)}changed();});return e};
+const region=(tag,attrs,id)=>{id=id||'region-'+idx++;const e=node(tag,{...attrs,fill:paint[id]||'#fffdf7',stroke:'#443d31','stroke-width':1.8,'stroke-linejoin':'round','data-region':id},svg);if(interactive)e.addEventListener('click',()=>{if(pan||Date.now()-lastDrag<500)return;const previous=colors[id]||'#fffdf7',next=erasing?'#fffdf7':color;if(previous===next)return;history.push({id,previous,next});future=[];colors[id]=next;e.setAttribute('fill',next);if(!erasing){recent=[color,...recent.filter(c=>c!==color)].slice(0,10);palette($('recent'),recent)}changed();});return e};
 region('rect',{x:6,y:6,width:668,height:808},'background');region('path',{d:'M6 645 Q340 625 674 645 L674 814 H6 Z'},'table');
 const flowers=[[190,205,42,-18],[320,155,48,5],[448,218,43,18],[116,348,37,-25],[266,316,48,-9],[390,350,42,15],[535,365,34,30],[204,456,38,-18],[470,476,36,26],[338,435,34,2],[155,128,29,-10]];
 flowers.forEach(([x,y,r,a],f)=>{region('path',{d:`M${x-4} ${y} Q${x+35} ${y+140} ${330+f*2} 668 L${340+f*2} 668 Q${x+45} ${y+130} ${x+4} ${y}Z`},`stem-${f}`)});
@@ -35,7 +35,50 @@ $('undo').onclick=()=>travel(history,future,'previous');$('redo').onclick=()=>tr
 $('art-title').oninput=()=>{currentTitle=$('art-title').value;changed()};$('pause').onclick=async()=>{try{await saveArt();notice('저장했어요. 다음에 이어서 색칠할 수 있어요.');await tab('gallery')}catch(e){notice(e.message)}};$('finish').onclick=async()=>{try{await saveArt(true);notice('갤러리에 완성작을 저장했어요!');await tab('gallery')}catch(e){notice(e.message)}};
 function transform(){$('art-host').style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;$('zoom-label').textContent=Math.round(scale*100)+'%'}
 $('zoom-in').onclick=()=>{scale=Math.min(4,scale+.25);transform()};$('zoom-out').onclick=()=>{scale=Math.max(.75,scale-.25);transform()};$('fit').onclick=()=>{scale=1;tx=ty=0;transform()};$('pan').onclick=()=>{pan=!pan;$('pan').classList.toggle('active',pan)};let drag=null;
-$('viewport').onpointerdown=e=>{if(!pan)return;drag={x:e.clientX,y:e.clientY,tx,ty};e.currentTarget.setPointerCapture(e.pointerId)};$('viewport').onpointermove=e=>{if(!drag)return;tx=drag.tx+e.clientX-drag.x;ty=drag.ty+e.clientY-drag.y;lastDrag=Date.now();transform()};$('viewport').onpointerup=$('viewport').onpointercancel=()=>drag=null;
+// Touch gestures stay inside the canvas; a short single tap still paints.
+const viewport=$('viewport');
+let touchGesture=null;
+function touchPoint(t){const r=viewport.getBoundingClientRect();return {x:t.clientX-r.left-r.width/2,y:t.clientY-r.top-r.height/2};}
+function beginTouch(touches){
+ if(touches.length>=2){
+  const a=touchPoint(touches[0]),b=touchPoint(touches[1]);
+  touchGesture={kind:'pinch',distance:Math.max(1,Math.hypot(b.x-a.x,b.y-a.y)),cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,scale,tx,ty};
+  lastDrag=Date.now();
+ }else if(touches.length===1){
+  const p=touchPoint(touches[0]);
+  touchGesture={kind:'single',x:p.x,y:p.y,tx,ty,moved:false};
+ }else touchGesture=null;
+}
+viewport.addEventListener('touchstart',e=>{beginTouch(e.touches);if(e.touches.length>=2)e.preventDefault();},{passive:false});
+viewport.addEventListener('touchmove',e=>{
+ if(!touchGesture)return;
+ if(e.touches.length>=2){
+  e.preventDefault();
+  if(touchGesture.kind!=='pinch')beginTouch(e.touches);
+  const g=touchGesture,a=touchPoint(e.touches[0]),b=touchPoint(e.touches[1]);
+  const next=Math.max(.75,Math.min(4,g.scale*Math.hypot(b.x-a.x,b.y-a.y)/g.distance));
+  const ratio=next/g.scale;
+  tx=(a.x+b.x)/2-(g.cx-g.tx)*ratio;
+  ty=(a.y+b.y)/2-(g.cy-g.ty)*ratio;
+  scale=next;lastDrag=Date.now();transform();
+ }else if(e.touches.length===1&&touchGesture.kind==='single'){
+  const p=touchPoint(e.touches[0]),g=touchGesture,dx=p.x-g.x,dy=p.y-g.y;
+  if(g.moved||Math.hypot(dx,dy)>7){
+   g.moved=true;lastDrag=Date.now();e.preventDefault();
+   if(pan||scale>1){tx=g.tx+dx;ty=g.ty+dy;transform();}
+  }
+ }
+},{passive:false});
+viewport.addEventListener('touchend',e=>{
+ const used=touchGesture&&(touchGesture.kind==='pinch'||touchGesture.moved);
+ if(used){lastDrag=Date.now();e.preventDefault();}
+ beginTouch(e.touches);
+},{passive:false});
+viewport.addEventListener('touchcancel',()=>{lastDrag=Date.now();touchGesture=null;},{passive:true});
+// Mouse and Apple Pencil keep the explicit move mode.
+viewport.onpointerdown=e=>{if(e.pointerType==='touch'||!pan)return;drag={x:e.clientX,y:e.clientY,tx,ty};e.currentTarget.setPointerCapture(e.pointerId)};
+viewport.onpointermove=e=>{if(e.pointerType==='touch'||!drag)return;tx=drag.tx+e.clientX-drag.x;ty=drag.ty+e.clientY-drag.y;lastDrag=Date.now();transform()};
+viewport.onpointerup=viewport.onpointercancel=()=>drag=null;
 $('reference').onclick=()=>$('story').showModal();
 function button(text,fn){const e=document.createElement('button');e.textContent=text;e.onclick=fn;return e}
 function gallery(){const host=$('gallery-list');host.replaceChildren();if(!arts.length){const p=document.createElement('p');p.textContent='아직 그림이 없어요. 새 그림으로 시작해 보세요.';host.append(p)}arts.forEach(a=>{const card=document.createElement('article');card.className='art-card';card.append(drawing(a.colors));const title=document.createElement('h3');title.textContent=a.title;const sub=document.createElement('p');sub.textContent=(a.completed?'완성작':'그리는 중')+' · '+a.updated.slice(0,10);card.append(title,sub,button('이어서 색칠',()=>loadArt(a)),button('이미지 저장',()=>download(a)));if(a.completed)card.append(button('일기에 붙이기',async()=>{await tab('diary');$('entry-art').value=a.id;previewEntry();diaryChange()}));host.append(card)})}
