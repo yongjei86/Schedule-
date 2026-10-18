@@ -123,7 +123,7 @@ def hyeon_shared_theme(response):
  html = response.get_data(as_text=True)
  if 'id="hyeon-theme-style"' in html:
   return response
- html = html.replace('</head>', '<link id="hyeon-theme-style" rel="stylesheet" href="/static/hyeon-theme.css?v=1"><script defer src="/static/hyeon-theme.js?v=1"></script></head>', 1)
+ html = html.replace('</head>', '<link id="hyeon-theme-style" rel="stylesheet" href="/static/hyeon-theme.css?v=2"><script defer src="/static/hyeon-theme.js?v=2"></script></head>', 1)
  def themed_body(match):
   attrs = match.group(1)
   if re.search(r'\bclass\s*=', attrs):
@@ -132,12 +132,12 @@ def hyeon_shared_theme(response):
    attrs += ' class="hyeon-theme"'
   return '<body'+attrs+'>'
  html = re.sub(r'<body\b([^>]*)>', themed_body, html, count=1)
- if path.rstrip('/') == '/hyeon/dressup':
+ if path.rstrip('/') in ('/hyeon/dressup','/hyeon/princess'):
   # Preserve the village and sound controls, including their event targets.
   html = html.replace('<header>', '<header id="hy-header">', 1)
   html = html.replace('</nav>', '<a href="/hyeon/reading/dashboard">📚 독서기록</a></nav>', 1)
  else:
-  items = [('/hyeon/hangul','🔤 한글놀이'),('/hyeon/coloring','🎨 색칠공부'),('/hyeon/dressup','👗 옷입히기'),('/hyeon/reading/dashboard','📚 독서기록')]
+  items = [('/hyeon/hangul','🔤 한글놀이'),('/hyeon/coloring','🎨 색칠공부'),('/hyeon/dressup','🏡 티니핑 마을'),('/hyeon/princess','👑 디즈니 공주'),('/hyeon/reading/dashboard','📚 독서기록')]
   nav = ''
   for href,label in items:
    active = path.startswith('/hyeon/reading') if '/reading/' in href else path.startswith(href)
@@ -148,11 +148,18 @@ def hyeon_shared_theme(response):
    html = re.sub(r'<header\b[^>]*>.*?</header>', lambda m: header, html, count=1, flags=re.S)
   else:
    html = re.sub(r'(<body\b[^>]*>)', lambda m: m.group(1)+header, html, count=1)
+ html = html.replace('👗 옷입히기</a>','🏡 티니핑 마을</a>').replace('aria-label="옷입히기"','aria-label="티니핑 마을"')
  response.set_data(html)
  response.headers.pop('ETag',None)
  response.headers.pop('Last-Modified',None)
  response.headers['Cache-Control'] = 'no-cache'
  return response
+
+
+@app.route('/hyeon/princess')
+def hyeon_princess_dressup():
+ from pathlib import Path
+ return _main.send_from_directory(Path(__file__).parent / 'static','hyeon-princess.html')
 
 
 @app.route('/hyeon/dressup/village/return', methods=['POST'])
