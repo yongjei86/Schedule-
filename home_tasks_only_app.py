@@ -2005,6 +2005,43 @@ def hangul_log():
 
 HANGUL_STAR_GOAL=5
 
+def _dressup_catalog():
+    return json.loads((Path(__file__).parent / 'static' / 'dressup' / 'catalog.json').read_text())
+
+
+def _dressup_residents(c):
+    return [dict(character_id=r['character_id'], outfit=json.loads(r['outfit']), updated_at=r['updated_at'])
+            for r in c.execute('select character_id,outfit,updated_at from hyeon_village_residents order by created_at,character_id')]
+
+
+@app.route('/hyeon/dressup/village', methods=['GET', 'POST'])
+def hyeon_dressup_village():
+    c=db()
+    try:
+        c.execute("""CREATE TABLE IF NOT EXISTS hyeon_village_residents(
+            character_id TEXT PRIMARY KEY, outfit TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+        if request.method == 'POST':
+            payload=request.get_json(silent=True)
+            if not isinstance(payload,dict): return jsonify(error='invalid_request'),400
+            character_id=payload.get('character_id'); outfit=payload.get('outfit')
+            catalog={item['id']:item for item in _dressup_catalog()}
+            if not isinstance(character_id,str) or character_id not in catalog or not isinstance(outfit,dict):
+                return jsonify(error='invalid_character'),400
+            sprites=catalog[character_id]['sprites']
+            if not outfit or any(kind not in ('outfit','head','hand') or type(index) is not int or index < 1
+                    or index >= len(sprites) or sprites[index]['kind'] != kind for kind,index in outfit.items()):
+                return jsonify(error='invalid_outfit'),400
+            c.execute("""INSERT INTO hyeon_village_residents(character_id,outfit) VALUES(?,?)
+                ON CONFLICT(character_id) DO UPDATE SET outfit=excluded.outfit,updated_at=CURRENT_TIMESTAMP""",
+                (character_id,json.dumps(outfit,ensure_ascii=False,separators=(',',':'))))
+        c.commit()
+        return jsonify(residents=_dressup_residents(c))
+    finally:
+        c.close()
+
+
 @app.route('/hyeon/dressup')
 def hyeon_dressup_page():
     return send_from_directory(Path(__file__).parent / 'static', 'hyeon-dressup.html')
