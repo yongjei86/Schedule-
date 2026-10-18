@@ -105,3 +105,6 @@ def workbook_toggle_no_redirect_for_fetch(response):
   response.set_data(b'')
   response.headers.pop('Location',None)
  return response
+
+# Register Riley's creative workspace after dashboard integrations.
+import riley_creative
