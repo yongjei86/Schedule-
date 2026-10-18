@@ -18,6 +18,12 @@ with connection() as c:
     c.executescript('''CREATE TABLE IF NOT EXISTS riley_art(id TEXT PRIMARY KEY, title TEXT NOT NULL, colors TEXT NOT NULL, completed INTEGER NOT NULL DEFAULT 0, updated TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS riley_journal(day TEXT PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, art_id TEXT, updated TEXT NOT NULL);''')
 
+with connection() as c:
+    if 'template' not in {row['name'] for row in c.execute('PRAGMA table_info(riley_art)')}:
+        c.execute("ALTER TABLE riley_art ADD COLUMN template TEXT NOT NULL DEFAULT 'sunflowers'")
+
+TEMPLATES = {'sunflowers','starry','cezanne','chagall','monet','colosseum','duomo','pisa','sagrada','alhambra','madrid'}
+
 def now():
     return main.datetime.now(main.KST).isoformat(timespec='seconds')
 
@@ -54,9 +60,11 @@ def riley_creative_art():
     colors = data.get('colors',{})
     if not isinstance(colors,dict) or len(colors)>1500: abort(400)
     if any(not re.fullmatch(r'[a-z0-9-]{1,50}',str(k)) or not isinstance(v,str) or not re.fullmatch(r'#[0-9a-fA-F]{6}',v) for k,v in colors.items()): abort(400)
-    title = str(data.get('title') or '나의 해바라기')[:100]
+    title = str(data.get('title') or '나의 그림')[:100]
+    template = data.get('template','sunflowers')
+    if not isinstance(template,str) or template not in TEMPLATES: abort(400)
     with connection() as c:
-        c.execute('INSERT INTO riley_art VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,colors=excluded.colors,completed=excluded.completed,updated=excluded.updated', (ident,title,json.dumps(colors),int(bool(data.get('completed'))),now()))
+        c.execute('INSERT INTO riley_art(id,title,colors,completed,updated,template) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,colors=excluded.colors,completed=excluded.completed,updated=excluded.updated,template=excluded.template', (ident,title,json.dumps(colors),int(bool(data.get('completed'))),now(),template))
     return jsonify(id=ident)
 
 @app.post('/riley/creative/diary')
