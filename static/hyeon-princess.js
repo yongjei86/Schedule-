@@ -37,7 +37,7 @@ function saveBallroom(){try{localStorage.setItem('hyeon-ballroom-v1',JSON.string
 function renderBallroom(){
  const host=$('ballroom-guests');host.replaceChildren();$('ballroom-empty').hidden=ballroomResidents.length>0;
  ballroomResidents.forEach((resident,i)=>{const c=catalog.find(c=>c.id===resident.character_id);if(!c)return;
- const b=document.createElement('button');b.className='ballroom-guest';b.setAttribute('aria-label',c.name+' 옷장으로 돌아가기');b.style.left=[18,39,61,82,12,30,50,70,88,24,48,75][i%12]+'%';b.style.top=[73,73,73,73,86,86,86,86,86,96,97,96][i%12]+'%';b.style.zIndex=String(i+3);b.style.setProperty('--delay',(-i*.9)+'s');
+ const b=document.createElement('button');b.className='ballroom-guest';b.setAttribute('aria-label',c.name+' 옷장으로 돌아가기');b.style.left=[18,39,61,82,12,30,50,70,88,24,48,75][i%12]+'%';b.style.top=[73,73,73,73,86,86,86,86,86,96,97,96][i%12]+'%';if(ballroomResidents.length>12){b.style.left=(8+(i%7)*14)+'%';b.style.top=(i<7?73:94)+'%';}b.style.zIndex=String(i+3);b.style.setProperty('--delay',(-i*.9)+'s');
  const doll=document.createElement('div');doll.className='ballroom-doll';const outfit=resident.outfit||{};doll.append(sprite(c,c.baseVariants?.[Math.max(0,(outfit.outfit||1)-1)]||0));
  for(const kind of ['head','hand']){const index=outfit[kind];if(c.sprites[index]?.kind!==kind)continue;const layer=document.createElement('div');layer.className='layer '+kind;fitLayer(layer,kind,index,c);layer.append(sprite(c,index));doll.append(layer);}
  const label=document.createElement('span');label.textContent=c.name;b.append(doll,label);b.onclick=()=>returnFromBallroom(resident,c);host.append(b);

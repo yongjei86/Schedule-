@@ -2,7 +2,7 @@
   {
     "id": "elsa",
     "name": "엘사",
-    "src": "/static/princess/elsa.svg?v=6",
+    "src": "/static/princess/elsa.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -223,7 +223,7 @@
   {
     "id": "anna",
     "name": "안나",
-    "src": "/static/princess/anna.svg?v=6",
+    "src": "/static/princess/anna.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -444,7 +444,7 @@
   {
     "id": "rapunzel",
     "name": "라푼젤",
-    "src": "/static/princess/rapunzel.svg?v=6",
+    "src": "/static/princess/rapunzel.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -665,7 +665,7 @@
   {
     "id": "ariel",
     "name": "인어공주",
-    "src": "/static/princess/ariel.svg?v=6",
+    "src": "/static/princess/ariel.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -886,7 +886,7 @@
   {
     "id": "belle",
     "name": "벨",
-    "src": "/static/princess/belle.svg?v=6",
+    "src": "/static/princess/belle.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -1107,7 +1107,7 @@
   {
     "id": "cinderella",
     "name": "신데렐라",
-    "src": "/static/princess/cinderella.svg?v=6",
+    "src": "/static/princess/cinderella.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -1328,7 +1328,7 @@
   {
     "id": "jasmine",
     "name": "자스민",
-    "src": "/static/princess/jasmine.svg?v=6",
+    "src": "/static/princess/jasmine.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -1549,7 +1549,7 @@
   {
     "id": "snowwhite",
     "name": "백설공주",
-    "src": "/static/princess/snowwhite.svg?v=6",
+    "src": "/static/princess/snowwhite.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -1770,7 +1770,7 @@
   {
     "id": "aurora",
     "name": "오로라",
-    "src": "/static/princess/aurora.svg?v=6",
+    "src": "/static/princess/aurora.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -1991,7 +1991,7 @@
   {
     "id": "merida",
     "name": "메리다",
-    "src": "/static/princess/merida.svg?v=6",
+    "src": "/static/princess/merida.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -2212,7 +2212,7 @@
   {
     "id": "mulan",
     "name": "뮬란",
-    "src": "/static/princess/mulan.svg?v=6",
+    "src": "/static/princess/mulan.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -2433,7 +2433,7 @@
   {
     "id": "pocahontas",
     "name": "포카혼타스",
-    "src": "/static/princess/pocahontas.svg?v=6",
+    "src": "/static/princess/pocahontas.svg?v=7",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -2630,6 +2630,448 @@
       }
     ],
     "color": "#d7b385",
+    "slots": {
+      "outfit": {
+        "x": 50,
+        "y": 63,
+        "rx": 35,
+        "ry": 32
+      },
+      "head": {
+        "x": 50,
+        "y": 12,
+        "rx": 35,
+        "ry": 27
+      },
+      "hand": {
+        "x": 74,
+        "y": 55,
+        "rx": 32,
+        "ry": 33
+      }
+    }
+  },
+  {
+    "id": "tiana",
+    "name": "티아나",
+    "src": "/static/princess/tiana.svg?v=7",
+    "width": 2400,
+    "height": 3200,
+    "baseVariants": [
+      9,
+      10,
+      11
+    ],
+    "sprites": [
+      {
+        "name": "티아나",
+        "kind": "base",
+        "box": [
+          0,
+          0,
+          800,
+          800
+        ]
+      },
+      {
+        "name": "식당에서 입는 기본 옷",
+        "kind": "outfit",
+        "box": [
+          1005,
+          264,
+          385,
+          498
+        ],
+        "fit": {
+          "x": 49.6875,
+          "y": 64.125,
+          "w": 48.125,
+          "h": 62.25
+        }
+      },
+      {
+        "name": "연꽃 공주 드레스",
+        "kind": "outfit",
+        "box": [
+          1805,
+          264,
+          385,
+          498
+        ],
+        "fit": {
+          "x": 49.6875,
+          "y": 64.125,
+          "w": 48.125,
+          "h": 62.25
+        }
+      },
+      {
+        "name": "푸른 무도회 드레스",
+        "kind": "outfit",
+        "box": [
+          205,
+          1064,
+          385,
+          498
+        ],
+        "fit": {
+          "x": 49.6875,
+          "y": 64.125,
+          "w": 48.125,
+          "h": 62.25
+        }
+      },
+      {
+        "name": "연꽃 왕관",
+        "kind": "head",
+        "box": [
+          1109,
+          827,
+          182,
+          93
+        ],
+        "fit": {
+          "x": 50.0,
+          "y": 9.1875,
+          "w": 22.75,
+          "h": 11.625
+        }
+      },
+      {
+        "name": "하얀 꽃 머리 장식",
+        "kind": "head",
+        "box": [
+          1909,
+          827,
+          182,
+          93
+        ],
+        "fit": {
+          "x": 50.0,
+          "y": 9.1875,
+          "w": 22.75,
+          "h": 11.625
+        }
+      },
+      {
+        "name": "개구리 왕자",
+        "kind": "hand",
+        "box": [
+          515,
+          1948,
+          155,
+          194
+        ],
+        "fit": {
+          "x": 74.0625,
+          "y": 55.625,
+          "w": 19.375,
+          "h": 24.25
+        }
+      },
+      {
+        "name": "연꽃 한 송이",
+        "kind": "hand",
+        "box": [
+          1315,
+          1948,
+          155,
+          194
+        ],
+        "fit": {
+          "x": 74.0625,
+          "y": 55.625,
+          "w": 19.375,
+          "h": 24.25
+        }
+      },
+      {
+        "name": "요리 도구",
+        "kind": "hand",
+        "box": [
+          2115,
+          1948,
+          155,
+          194
+        ],
+        "fit": {
+          "x": 74.0625,
+          "y": 55.625,
+          "w": 19.375,
+          "h": 24.25
+        }
+      },
+      {
+        "name": "티아나",
+        "kind": "base",
+        "box": [
+          0,
+          2400,
+          800,
+          800
+        ],
+        "fit": {
+          "x": 50.0,
+          "y": 50.0,
+          "w": 100.0,
+          "h": 100.0
+        }
+      },
+      {
+        "name": "티아나",
+        "kind": "base",
+        "box": [
+          800,
+          2400,
+          800,
+          800
+        ],
+        "fit": {
+          "x": 50.0,
+          "y": 50.0,
+          "w": 100.0,
+          "h": 100.0
+        }
+      },
+      {
+        "name": "티아나",
+        "kind": "base",
+        "box": [
+          1600,
+          2400,
+          800,
+          800
+        ],
+        "fit": {
+          "x": 50.0,
+          "y": 50.0,
+          "w": 100.0,
+          "h": 100.0
+        }
+      }
+    ],
+    "color": "#b5cf7e",
+    "slots": {
+      "outfit": {
+        "x": 50,
+        "y": 63,
+        "rx": 35,
+        "ry": 32
+      },
+      "head": {
+        "x": 50,
+        "y": 12,
+        "rx": 35,
+        "ry": 27
+      },
+      "hand": {
+        "x": 74,
+        "y": 55,
+        "rx": 32,
+        "ry": 33
+      }
+    }
+  },
+  {
+    "id": "moana",
+    "name": "모아나",
+    "src": "/static/princess/moana.svg?v=7",
+    "width": 2400,
+    "height": 3200,
+    "baseVariants": [
+      9,
+      10,
+      11
+    ],
+    "sprites": [
+      {
+        "name": "모아나",
+        "kind": "base",
+        "box": [
+          0,
+          0,
+          800,
+          800
+        ]
+      },
+      {
+        "name": "섬의 모험 복장",
+        "kind": "outfit",
+        "box": [
+          1005,
+          264,
+          385,
+          498
+        ],
+        "fit": {
+          "x": 49.6875,
+          "y": 64.125,
+          "w": 48.125,
+          "h": 62.25
+        }
+      },
+      {
+        "name": "항해 망토 복장",
+        "kind": "outfit",
+        "box": [
+          1805,
+          264,
+          385,
+          498
+        ],
+        "fit": {
+          "x": 49.6875,
+          "y": 64.125,
+          "w": 48.125,
+          "h": 62.25
+        }
+      },
+      {
+        "name": "섬의 축제 복장",
+        "kind": "outfit",
+        "box": [
+          205,
+          1064,
+          385,
+          498
+        ],
+        "fit": {
+          "x": 49.6875,
+          "y": 64.125,
+          "w": 48.125,
+          "h": 62.25
+        }
+      },
+      {
+        "name": "섬의 꽃 화관",
+        "kind": "head",
+        "box": [
+          1109,
+          827,
+          182,
+          93
+        ],
+        "fit": {
+          "x": 50.0,
+          "y": 9.1875,
+          "w": 22.75,
+          "h": 11.625
+        }
+      },
+      {
+        "name": "붉은 꽃 머리핀",
+        "kind": "head",
+        "box": [
+          1909,
+          827,
+          182,
+          93
+        ],
+        "fit": {
+          "x": 50.0,
+          "y": 9.1875,
+          "w": 22.75,
+          "h": 11.625
+        }
+      },
+      {
+        "name": "항해 노",
+        "kind": "hand",
+        "box": [
+          515,
+          1948,
+          155,
+          194
+        ],
+        "fit": {
+          "x": 74.0625,
+          "y": 55.625,
+          "w": 19.375,
+          "h": 24.25
+        }
+      },
+      {
+        "name": "테피티의 심장",
+        "kind": "hand",
+        "box": [
+          1315,
+          1948,
+          155,
+          194
+        ],
+        "fit": {
+          "x": 74.0625,
+          "y": 55.625,
+          "w": 19.375,
+          "h": 24.25
+        }
+      },
+      {
+        "name": "푸아 친구",
+        "kind": "hand",
+        "box": [
+          2115,
+          1948,
+          155,
+          194
+        ],
+        "fit": {
+          "x": 74.0625,
+          "y": 55.625,
+          "w": 19.375,
+          "h": 24.25
+        }
+      },
+      {
+        "name": "모아나",
+        "kind": "base",
+        "box": [
+          0,
+          2400,
+          800,
+          800
+        ],
+        "fit": {
+          "x": 50.0,
+          "y": 50.0,
+          "w": 100.0,
+          "h": 100.0
+        }
+      },
+      {
+        "name": "모아나",
+        "kind": "base",
+        "box": [
+          800,
+          2400,
+          800,
+          800
+        ],
+        "fit": {
+          "x": 50.0,
+          "y": 50.0,
+          "w": 100.0,
+          "h": 100.0
+        }
+      },
+      {
+        "name": "모아나",
+        "kind": "base",
+        "box": [
+          1600,
+          2400,
+          800,
+          800
+        ],
+        "fit": {
+          "x": 50.0,
+          "y": 50.0,
+          "w": 100.0,
+          "h": 100.0
+        }
+      }
+    ],
+    "color": "#d67458",
     "slots": {
       "outfit": {
         "x": 50,

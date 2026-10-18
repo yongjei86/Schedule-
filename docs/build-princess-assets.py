@@ -181,16 +181,18 @@ def base(pid,hair,eye,variant=0):
 def base(pid,hair,eye,variant=0):
  colors={'elsa':('#f8edc9','#c9b97b'),'anna':('#a9512d','#693c2c'),'rapunzel':('#f3d564','#c99b36'),'ariel':('#d53c35','#962535'),'belle':('#75452f','#452b29'),'cinderella':('#edca6c','#b48c41')}
  colors.update({'jasmine':('#182e3c','#101b2a'),'snowwhite':('#2d2434','#171927'),'aurora':('#f0d37b','#c49a4e'),'merida':('#c86832','#853e25'),'mulan':('#28313c','#101c29'),'pocahontas':('#222a34','#101822')})
- hair,shade=colors[pid];edge='#68434e';skin={'jasmine':'#dca777','pocahontas':'#c9976d','mulan':'#f2d4b6'}.get(pid,'#ffe4cf');pre=pid+'-face-'+str(variant)
+ colors.update({'tiana':('#302525','#171b20'),'moana':('#30262b','#171d26')})
+ hair,shade=colors[pid];edge='#68434e';skin={'tiana':'#a76c49','moana':'#bd835c','jasmine':'#dca777','pocahontas':'#c9976d','mulan':'#f2d4b6'}.get(pid,'#ffe4cf');pre=pid+'-face-'+str(variant)
  s=f'''<defs><linearGradient id="{pre}-hair" x2="1" y2=".7"><stop stop-color="{hair}"/><stop offset=".55" stop-color="{hair}"/><stop offset="1" stop-color="{shade}"/></linearGradient><radialGradient id="{pre}-skin" cx=".4" cy=".3" r=".8"><stop stop-color="{skin}"/><stop offset="1" stop-color="{skin}"/></radialGradient><radialGradient id="{pre}-iris"><stop stop-color="#b1e4d8"/><stop offset=".45" stop-color="{eye}"/><stop offset="1" stop-color="#274d69"/></radialGradient><radialGradient id="{pre}-blush"><stop stop-color="#ec8d9b" stop-opacity=".55"/><stop offset="1" stop-color="#ec8d9b" stop-opacity="0"/></radialGradient></defs>'''
  s+=f'<g transform="translate(100 0)" stroke="{edge}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">'
  fill=f'url(#{pre}-hair)'
- if pid in ('rapunzel','ariel','belle','jasmine','snowwhite','aurora','merida','mulan','pocahontas'):
-  hair_type={'jasmine':'belle','snowwhite':'belle','aurora':'rapunzel','merida':'ariel','mulan':'belle','pocahontas':'rapunzel'}.get(pid,pid)
+ if pid in ('rapunzel','ariel','belle','tiana','moana','jasmine','snowwhite','aurora','merida','mulan','pocahontas'):
+  hair_type={'tiana':'belle','moana':'ariel','jasmine':'belle','snowwhite':'belle','aurora':'rapunzel','merida':'ariel','mulan':'belle','pocahontas':'rapunzel'}.get(pid,pid)
   path={'rapunzel':'M226 72 Q169 153 194 304 Q146 441 188 561 Q147 694 208 747 Q248 765 267 713 L351 711 Q406 760 438 707 Q463 661 421 554 Q458 424 405 297 Q431 136 371 73Z','ariel':'M232 52 Q147 82 179 220 Q135 304 182 380 Q136 470 188 574 Q137 650 192 715 Q256 768 274 688 L351 706 Q419 765 453 687 Q475 620 423 538 Q472 430 415 325 Q462 220 408 108 Q374 45 326 47Z','belle':'M225 86 Q185 159 203 267 Q160 364 201 456 Q165 555 195 673 Q222 724 269 693 L347 694 Q405 726 429 667 Q447 572 408 461 Q447 359 404 265 Q422 151 366 85Z'}[hair_type]
+  if pid=='tiana':path='M225 86 Q191 128 211 201 L236 219 L365 219 Q410 168 380 110 L367 81Z'
   if pid=='snowwhite':path='M226 80 Q172 104 186 188 Q169 258 224 288 Q266 308 300 279 Q343 309 382 284 Q429 255 409 185 Q425 100 371 78Z'
   s+=f'<path d="{path}" fill="{fill}"/>'
-  for d in ['M208 258 Q189 367 218 453 T211 670','M397 261 Q429 370 400 463 T408 662']:s+=f'<path d="{d}" fill="none" stroke="{hair}" stroke-width="7" opacity=".75"/>'
+  for d in ([] if pid=='tiana' else ['M208 258 Q189 367 218 453 T211 670','M397 261 Q429 370 400 463 T408 662']):s+=f'<path d="{d}" fill="none" stroke="{hair}" stroke-width="7" opacity=".75"/>'
  if pid=='cinderella':
   s+=f'<ellipse cx="305" cy="61" rx="57" ry="39" fill="{fill}"/>'
   if variant==0:s+=f'<path d="M375 175 Q437 223 398 331 Q433 361 412 414 Q369 404 360 356 Q391 286 362 228Z" fill="{fill}"/>'
@@ -206,7 +208,7 @@ def base(pid,hair,eye,variant=0):
  'rapunzel':'M210 177 Q182 86 239 54 Q292 21 351 50 Q413 84 391 178 L376 155 Q378 103 346 80 Q321 125 280 139 Q251 149 224 144 L224 177Z',
  'ariel':'M205 183 Q164 121 196 71 Q216 26 282 39 Q326 13 376 52 Q425 94 391 190 L375 166 Q388 105 345 81 Q353 137 279 145 Q241 138 218 176Z',
  'belle':'M209 170 Q187 98 229 64 Q261 33 300 50 Q341 30 375 65 Q410 109 390 171 L375 151 Q374 98 344 84 Q321 112 300 123 Q267 112 254 87 Q223 104 224 168Z',
- 'cinderella':'M208 171 Q189 107 218 77 Q224 43 270 43 Q320 29 361 56 Q409 87 390 171 L375 148 Q375 106 349 88 Q328 143 276 127 Q253 122 248 104 Q225 119 224 170Z'}.get(pid,{'jasmine':'M207 174 Q181 92 237 56 Q299 22 363 57 Q417 94 390 177 L376 150 Q374 112 343 90 Q321 117 300 121 Q277 114 255 91 Q223 110 224 173Z','snowwhite':'M209 171 Q183 97 227 64 Q267 36 300 56 Q342 32 377 71 Q414 106 389 173 L375 155 Q375 112 346 91 Q314 118 284 103 Q246 128 224 155 L224 176Z','aurora':'M207 174 Q188 91 242 59 Q290 25 352 53 Q415 86 391 180 L376 158 Q377 102 345 85 Q322 128 280 139 Q249 148 224 141 L223 176Z','merida':'M207 178 Q167 122 196 78 Q218 36 270 50 Q315 20 365 57 Q422 80 393 180 L376 152 Q378 109 345 93 Q303 130 266 114 Q236 122 223 171Z','mulan':'M208 173 Q186 95 236 63 Q298 26 361 61 Q411 97 391 176 L376 153 Q377 107 345 86 Q300 133 223 130 L223 176Z','pocahontas':'M207 175 Q185 88 237 59 Q298 24 362 59 Q415 96 391 177 L376 151 Q374 108 345 85 Q316 123 224 139 L224 176Z'}.get(pid,''))
+ 'cinderella':'M208 171 Q189 107 218 77 Q224 43 270 43 Q320 29 361 56 Q409 87 390 171 L375 148 Q375 106 349 88 Q328 143 276 127 Q253 122 248 104 Q225 119 224 170Z'}.get(pid,{'tiana':'M210 171 Q184 102 231 62 Q268 32 305 53 Q350 34 378 75 Q410 117 389 174 L375 152 Q376 107 347 85 Q321 121 278 122 Q248 118 244 98 Q222 121 224 173Z','moana':'M205 180 Q167 104 224 60 Q284 20 351 51 Q422 84 392 185 L376 159 Q376 104 345 82 Q322 122 279 131 Q250 143 225 141 L224 180Z','jasmine':'M207 174 Q181 92 237 56 Q299 22 363 57 Q417 94 390 177 L376 150 Q374 112 343 90 Q321 117 300 121 Q277 114 255 91 Q223 110 224 173Z','snowwhite':'M209 171 Q183 97 227 64 Q267 36 300 56 Q342 32 377 71 Q414 106 389 173 L375 155 Q375 112 346 91 Q314 118 284 103 Q246 128 224 155 L224 176Z','aurora':'M207 174 Q188 91 242 59 Q290 25 352 53 Q415 86 391 180 L376 158 Q377 102 345 85 Q322 128 280 139 Q249 148 224 141 L223 176Z','merida':'M207 178 Q167 122 196 78 Q218 36 270 50 Q315 20 365 57 Q422 80 393 180 L376 152 Q378 109 345 93 Q303 130 266 114 Q236 122 223 171Z','mulan':'M208 173 Q186 95 236 63 Q298 26 361 61 Q411 97 391 176 L376 153 Q377 107 345 86 Q300 133 223 130 L223 176Z','pocahontas':'M207 175 Q185 88 237 59 Q298 24 362 59 Q415 96 391 177 L376 151 Q374 108 345 85 Q316 123 224 139 L224 176Z'}.get(pid,''))
  s+=f'<path d="{bang}" fill="{fill}"/>'
  if pid=='elsa':
   s+=f'<path d="M224 105 Q266 81 270 45 M248 111 Q295 78 301 44 M276 111 Q323 89 331 65" fill="none" stroke="#fff9df" stroke-width="4"/>'
@@ -216,12 +218,15 @@ def base(pid,hair,eye,variant=0):
     x=side+(j*2 if side>300 else -j*2);y=208+j*27
     s+=f'<path d="M{x-13} {y-12} Q{x+17} {y-24} {x+20} {y} Q{x+12} {y+20} {x-13} {y+21} Q{x-28} {y+4} {x-13} {y-12}Z" fill="{fill}"/>'
    s+=f'<path d="M{x-15} {y+19} q15 10 31 0 l-4 12 -23 0Z" fill="'+('#a0cee6' if pid=='elsa' else '#294b63')+'"/>'
- if pid=='belle':s+=f'<ellipse cx="301" cy="50" rx="38" ry="24" fill="{fill}"/><path d="M268 63 Q300 77 334 63" fill="none" stroke="#e4c16c" stroke-width="7"/>'
+ if pid=='tiana':s+=f'<ellipse cx="303" cy="43" rx="51" ry="34" fill="{fill}"/>'
+ if pid in ('belle','tiana'):s+=f'<ellipse cx="301" cy="50" rx="38" ry="24" fill="{fill}"/><path d="M268 63 Q300 77 334 63" fill="none" stroke="#e4c16c" stroke-width="7"/>'
  if pid=='cinderella':
   s+='<path d="M213 121 Q225 53 299 51 Q370 53 387 121" fill="none" stroke="#8cc9ed" stroke-width="9"/>'
   if variant==0:s+='<path d="M211 119 Q215 55 271 44 Q338 31 377 88 Q314 53 259 89Z" fill="#dedfe5" stroke="#b2acb9"/><path d="M374 99 l31 -16 -8 40 -20 -9Z" fill="#dedfe5"/>'
  # Character-specific classic animation eyes. Clip irises to the eyelids.
  profiles={
+  'tiana':(26,17,4,14,'#855334',True),
+  'moana':(28,20,1,16,'#795237',True),
   'cinderella':(23,15,2,13,'#558cbb',False),
   'ariel':(27,21,0,16,'#3b93aa',True),
   'belle':(25,17,3,14,'#8b7044',True),
@@ -399,6 +404,66 @@ def prop(pid,variant):
  return s+'</g>'
 
 
+PRINCESSES += [
+ ('tiana','티아나','#302525','#855334','#b5cf7e','#6c914c','#f3efd1','','',''),
+ ('moana','모아나','#30262b','#795237','#d67458','#a3413c','#f4dbac','','','')]
+STORY.update({
+ 'tiana':[('식당에서 입는 기본 옷','#e9dc97','#f4e8ba'),('연꽃 공주 드레스','#aecb72','#e3e8b8'),('푸른 무도회 드레스','#8ac4df','#d6ecf7')],
+ 'moana':[('섬의 모험 복장','#c95947','#eed7a8'),('항해 망토 복장','#ce6550','#eed7a8'),('섬의 축제 복장','#d87c52','#e4c995')]})
+CROWN_NAMES.update({'tiana':['연꽃 왕관','하얀 꽃 머리 장식'],'moana':['섬의 꽃 화관','붉은 꽃 머리핀']})
+PROP_NAMES.update({'tiana':['개구리 왕자','연꽃 한 송이','요리 도구'],'moana':['항해 노','테피티의 심장','푸아 친구']})
+_existing_story=story_dress
+_existing_crown=crown
+_existing_prop=prop
+def story_dress(pid,variant):
+ if pid not in ('tiana','moana'):return _existing_story(pid,variant)
+ _,top,skirt=STORY[pid][variant];pre=f'{pid}-story-{variant}'
+ s=defs(pre,skirt,top,'#fff7e6')+'<g transform="translate(100 0)" stroke="#795c55" stroke-width="2.5" stroke-linejoin="round">'
+ if pid=='tiana':
+  if variant==0:
+   s+=f'<path d="M239 282 Q300 305 363 282 L347 390 L430 724 Q300 757 171 724 L253 390Z" fill="{skirt}"/><path d="M239 282 L362 282 L347 390 L253 390Z" fill="{top}"/><path d="M270 285 H331 L335 400 L390 710 Q300 741 210 710 L263 400Z" fill="#fff6db"/><path d="M239 282 L218 325 L243 335 L259 301 M362 282 L385 325 L359 335 L343 301" fill="#f4e9bf"/>'
+  else:
+   s+=f'<path d="M240 282 Q270 269 300 296 Q333 268 362 282 L346 390 Q401 504 476 724 Q300 766 124 724 Q201 505 254 390Z" fill="url(#{pre}-dress)"/><path d="M242 283 Q268 273 300 299 Q332 272 360 283 L346 390 Q301 417 254 390Z" fill="{top}"/>'
+   if variant==1:
+    for d in ['M299 399 Q206 447 150 690 Q247 675 299 483Z','M302 399 Q398 450 453 691 Q353 675 302 483Z','M300 414 Q234 565 271 737 Q334 734 350 696 Q327 534 300 414Z']:
+     s+=f'<path d="{d}" fill="#d6dfa1" stroke="#9eb86a"/>'
+    s+=flower(300,400,24,'#f3ecd1')+'<path d="M300 424 Q273 487 300 520 Q328 485 300 424Z" fill="#8ca75b"/>'
+   else:
+    s+='<path d="M237 283 Q300 328 364 283 L381 311 Q301 355 219 310Z" fill="#d9eff8"/><path d="M254 410 Q191 490 170 577 Q249 601 301 501 Q351 601 430 577 Q404 485 347 410Z" fill="#bddfee"/>'
+ else:
+  s+=f'<path d="M240 282 Q300 306 362 282 L350 373 Q300 391 250 373Z" fill="{top}"/><path d="M251 398 L349 398 L407 686 L331 710 L299 694 L266 716 L195 686Z" fill="{skirt}"/><path d="M250 400 Q301 420 350 400" fill="none" stroke="#a54e40" stroke-width="15"/>'
+  for y in (309,337,359):s+=f'<path d="M250 {y} l15 -9 15 9 15 -9 15 9 15 -9 15 9" fill="none" stroke="#f7d5ae" stroke-width="4"/>'
+  for x in range(215,398,18):s+=f'<path d="M{x} 504 L{x-9} 689" stroke="#bb9465" stroke-width="4"/>'
+  s+='<path d="M273 269 Q298 311 329 269" fill="none" stroke="#e7d2aa" stroke-width="6"/><path d="M299 293 Q280 306 293 324 Q317 326 312 305Z" fill="#73c1bc" stroke="#447f7e"/>'
+  if variant==1:s+='<path d="M239 280 L261 291 L231 500 L192 466Z M361 280 L337 291 L368 503 L408 467Z" fill="#c77753"/><path d="M238 293 L205 450 M363 293 L395 450" stroke="#efcda4" stroke-width="7"/>'
+  if variant==2:
+   for x in range(215,400,23):s+=f'<path d="M{x} 429 Q{x-28} 504 {x-16} 554 Q{x+20} 502 {x} 429Z" fill="#88a16c"/>'
+   s+=flower(301,399,19,'#edc3a2')
+ return s+'</g>'
+def crown(pid,variant):
+ if pid not in ('tiana','moana'):return _existing_crown(pid,variant)
+ if pid=='tiana' and variant==0:
+  return '<g fill="#cedc96" stroke="#78914d" stroke-width="2"><path d="M321 107 Q345 61 355 51 Q377 66 400 26 Q427 67 446 51 Q468 74 479 107Z"/><path d="M360 102 Q360 66 400 49 Q440 69 440 102Z" fill="#e9edc9"/></g>'+flower(400,84,20,'#f8f1d3')
+ if variant==1:return flower(400,75,30,'#fff0cc' if pid=='tiana' else '#d85850')
+ return '<path d="M320 105 Q400 49 480 105" fill="none" stroke="#648c58" stroke-width="11"/>'+''.join(flower(x,y,16,'#f4d9ba') for x,y in [(335,94),(367,78),(400,73),(433,78),(466,94)])
+def prop(pid,variant):
+ if pid not in ('tiana','moana'):return _existing_prop(pid,variant)
+ s='<g transform="translate(515 348)" stroke="#775c53" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">'
+ if pid=='tiana' and variant==0:
+  s+='<ellipse cx="78" cy="126" rx="43" ry="31" fill="#91b866"/><ellipse cx="78" cy="86" rx="44" ry="31" fill="#a5c779"/><circle cx="56" cy="63" r="16" fill="#a5c779"/><circle cx="101" cy="63" r="16" fill="#a5c779"/><circle cx="56" cy="62" r="8" fill="white"/><circle cx="101" cy="62" r="8" fill="white"/><circle cx="58" cy="62" r="4" fill="#333a32"/><circle cx="99" cy="62" r="4" fill="#333a32"/><path d="M52 95 Q77 117 104 95 M46 139 L22 154 H57 M109 139 L133 154 H99" fill="none" stroke="#68844a" stroke-width="5"/><path d="M60 39 L58 17 L76 26 L88 9 L101 27 L119 19 L115 42Z" fill="#e2c569"/>'
+ elif pid=='tiana' and variant==1:
+  s+='<path d="M78 87 V174 M78 144 Q42 108 28 124 Q38 151 78 152" fill="#86ad65" stroke="#6e8f52" stroke-width="5"/>'+flower(78,65,34,'#f4e6c7')
+ elif pid=='tiana':
+  s+='<path d="M42 171 L90 65 M74 25 Q109 8 121 35 Q130 64 93 79 Q69 62 74 25Z" fill="#bc8d5b"/><path d="M28 145 L103 41 M92 25 L117 53" stroke="#d3ac79" stroke-width="4"/>'
+ elif variant==0:
+  s+='<path d="M35 174 L92 57" stroke="#ab7851" stroke-width="12"/><path d="M89 69 Q69 44 90 11 Q126 7 137 30 Q124 65 103 77Z" fill="#c49260"/><path d="M92 24 L121 41 M84 42 L111 59" stroke="#e1bc85" stroke-width="5"/>'
+ elif variant==1:
+  s+='<path d="M80 26 Q28 26 30 91 Q32 159 80 165 Q130 159 129 91 Q130 27 80 26Z" fill="#79c9a7" stroke="#4c9f82" stroke-width="4"/><path d="M81 58 Q116 65 104 103 Q84 129 61 109 Q41 89 65 75 Q86 67 89 90 Q91 105 76 102" fill="none" stroke="#c6efd0" stroke-width="8"/>'
+ else:
+  s+='<ellipse cx="81" cy="128" rx="42" ry="33" fill="#f2e9db"/><ellipse cx="78" cy="78" rx="43" ry="36" fill="#fff4e4"/><path d="M45 59 L34 24 Q66 21 68 50 M94 47 Q112 19 129 31 L112 65" fill="#e6a5a3"/><ellipse cx="81" cy="94" rx="24" ry="16" fill="#e7b0a8"/><circle cx="72" cy="94" r="3" fill="#936c67"/><circle cx="90" cy="94" r="3" fill="#936c67"/><circle cx="59" cy="73" r="5" fill="#393b42"/><circle cx="103" cy="73" r="5" fill="#393b42"/><path d="M49 144 V164 M107 144 V164" stroke="#b59c8e" stroke-width="10"/>'
+ return s+'</g>'
+
+
 def build():
  OUT.mkdir(parents=True,exist_ok=True)
  catalog=[]
@@ -422,7 +487,7 @@ def build():
    item={'name':label,'kind':kind,'box':box}
    if i:item['fit']={'x':(x+w/2)/8,'y':(y+h/2)/8,'w':w/8,'h':h/8}
    sprites.append(item)
-  catalog.append({'id':pid,'name':name,'src':'/static/princess/'+pid+'.svg?v=6','width':2400,'height':3200,'baseVariants':[9,10,11],'sprites':sprites,'color':color,'slots':{'outfit':{'x':50,'y':63,'rx':35,'ry':32},'head':{'x':50,'y':12,'rx':35,'ry':27},'hand':{'x':74,'y':55,'rx':32,'ry':33}}})
+  catalog.append({'id':pid,'name':name,'src':'/static/princess/'+pid+'.svg?v=7','width':2400,'height':3200,'baseVariants':[9,10,11],'sprites':sprites,'color':color,'slots':{'outfit':{'x':50,'y':63,'rx':35,'ry':32},'head':{'x':50,'y':12,'rx':35,'ry':27},'hand':{'x':74,'y':55,'rx':32,'ry':33}}})
  (OUT/'catalog.json').write_text(json.dumps(catalog,ensure_ascii=False,indent=2)+'\n')
  (ROOT/'static'/'hyeon-princess-assets.js').write_text('window.PRINCESS_ASSETS='+json.dumps(catalog,ensure_ascii=False,separators=(',',':'))+';\n')
 
