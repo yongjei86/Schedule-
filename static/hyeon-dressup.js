@@ -30,7 +30,7 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{cancelDrag();c
 
 let walkFrame=null,walkTime=0;const walkTargets=new WeakMap();
 const VILLAGE_KEY='hyeon-village-v1';let residents=[],sending=false,selectedResident=null;
-const positions=[[22,63],[42,61],[63,62],[81,64],[12,82],[31,83],[52,84],[72,84],[88,85],[39,97],[63,97]],sayings=['혜온아, 안녕!','꽃밭에 놀러 왔어요 🌸','친구랑 산책해요','오늘 옷이 마음에 들어요!','우리 집에 놀러 와요 🏡'];
+const positions=[[22,63],[42,61],[63,62],[81,64],[12,82],[31,83],[52,84],[72,84],[88,85],[39,90],[63,90],[81,92]],sayings=['혜온아, 안녕!','꽃밭에 놀러 왔어요 🌸','친구랑 산책해요','오늘 옷이 마음에 들어요!','우리 집에 놀러 와요 🏡'];
 function cleanResident(r){const c=catalog.find(c=>c.id===r?.character_id);if(!c||!r.outfit||typeof r.outfit!=='object')return null;const outfit={};for(const k of ['outfit','head','hand'])if(Number.isInteger(r.outfit[k])&&c.sprites[r.outfit[k]]?.kind===k)outfit[k]=r.outfit[k];return Object.keys(outfit).length?{character_id:c.id,outfit}:null;}
 function acceptResidents(rows){if(!Array.isArray(rows))throw Error('invalid village');const unique=new Map();for(const row of rows){const r=cleanResident(row);if(r)unique.set(r.character_id,r);}residents=[...unique.values()];try{localStorage.setItem(VILLAGE_KEY,JSON.stringify(residents));}catch(_){}$('village-count').textContent=residents.length;renderVillage();}
 function avatar(c,outfit){const n=document.createElement('div');n.className='avatar';n.append(sprite(c,0));for(const kind of ['outfit','head','hand']){const index=outfit[kind];if(!Number.isInteger(index)||c.sprites[index]?.kind!==kind)continue;const layer=document.createElement('div');layer.className='layer '+kind;fitLayer(layer,kind,index,c);layer.append(sprite(c,index));n.append(layer);}return n;}
@@ -83,9 +83,10 @@ setInterval(()=>{if($('village-view').hidden||document.hidden)return;const list=
 let villageSpeechSerial=0,villageSpeechTimer=null,villageVoiceKey=null;
 const villageVoice=document.createElement('audio');
 villageVoice.preload='auto';villageVoice.setAttribute('playsinline','');
-villageVoice.src='/static/dressup/voices/chacha.mp3';document.body.append(villageVoice);
+villageVoice.src='/static/dressup/voices-v2/chacha-0.mp3';document.body.append(villageVoice);
 const greetingTurns=new Map();
 const friendGreetings={
+ eclipse:'안녕! 나는 이클립스핑이야. 반짝이는 보석처럼 멋진 하루를 보내자!',
  chacha:'안녕! 나는 차차핑이야. 우리 같이 꽃밭을 산책할까?',
  shasha:'안녕! 나는 샤샤핑이야. 골라 준 옷이 정말 마음에 들어!',
  saekom:'안녕! 나는 새콤핑이야. 오늘은 어떤 재미있는 놀이를 해 볼까?',
@@ -109,17 +110,17 @@ function greetResident(c,replay=false){
  const message=$('resident-message'),status=$('resident-speech-status');
  if(!replay){
   const turn=greetingTurns.get(c.id)||0;
-  villageVoiceKey=[c.id,'your-day','see-you'][turn%3];
-  message.textContent=friendGreetings[villageVoiceKey];
+  villageVoiceKey=c.id+'-'+turn%3;
+  message.textContent=friendGreetings[[c.id,'your-day','see-you'][turn%3]];
   greetingTurns.set(c.id,turn+1);
  }
  stopVillageSpeech();
  if(muted){status.textContent='🔇 위의 소리 버튼을 켜고 다시 들어요.';return;}
- if(!friendGreetings[villageVoiceKey])return;
+ if(!villageVoiceKey)return;
  const serial=villageSpeechSerial;
  const failed=()=>{if(serial!==villageSpeechSerial)return;clearTimeout(villageSpeechTimer);status.textContent='말소리가 안 들리면 ‘다시 듣기’를 눌러 주세요.';};
  try{
-  const src='/static/dressup/voices/'+villageVoiceKey+'.mp3';
+  const src='/static/dressup/voices-v2/'+villageVoiceKey+'.mp3';
   if(villageVoice.getAttribute('src')!==src)villageVoice.src=src;
   villageVoice.muted=false;villageVoice.volume=1;
   villageVoice.onplaying=()=>{if(serial!==villageSpeechSerial)return;clearTimeout(villageSpeechTimer);status.textContent='🔊 친구가 혜온이에게 이야기하고 있어요.';};

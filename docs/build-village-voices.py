@@ -17,7 +17,7 @@ if os.environ.get('SSL_CERT_FILE'):
  edge_tts.communicate._SSL_CTX.load_verify_locations(cafile=os.environ['SSL_CERT_FILE'])
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / 'static' / 'dressup' / 'voices'
+OUT = ROOT / 'static' / 'dressup' / 'voices-v2'
 LINES = {
  'chacha': '안녕! 나는 차차핑이야. 우리 같이 꽃밭을 산책할까?',
  'shasha': '안녕! 나는 샤샤핑이야. 골라 준 옷이 정말 마음에 들어!',
@@ -30,19 +30,24 @@ LINES = {
  'yogu': '안녕! 나는 요거핑이야. 같이 산책하니까 정말 즐거워!',
  'pudding': '안녕! 나는 푸딩핑이야. 달콤한 하루야! 오늘 기분이 어때?',
  'dalkom': '안녕! 나는 달콤핑이야. 오늘도 만나서 정말 반가워!',
+ 'eclipse': '안녕! 나는 이클립스핑이야. 반짝이는 보석처럼 멋진 하루를 보내자!',
  'your-day': '안녕! 오늘 재미있었던 일을 들려줄래? 나는 네 이야기가 듣고 싶어.',
  'see-you': '오늘도 함께 놀아서 즐거웠어. 다음에도 우리 마을에 놀러 와 줘!',
 }
 
+PROFILES = {key: (rate, pitch) for key, rate, pitch in [('chacha','+8%','+22Hz'),('shasha','+3%','+15Hz'),('saekom','+12%','+30Hz'),('banjjak','+14%','+35Hz'),('hachoo','+7%','+32Hz'),('yeou','+4%','+20Hz'),('kkang','+16%','+38Hz'),('ballet','+2%','+24Hz'),('yogu','+6%','+18Hz'),('pudding','+3%','+26Hz'),('dalkom','+8%','+28Hz'),('eclipse','-3%','+10Hz')]}
+JOBS = {f'{key}-{turn}': (key, text) for key in PROFILES for turn, text in enumerate([LINES[key],LINES['your-day'],LINES['see-you']])}
+
 def build(item):
- key, text = item
+ key, (character, text) = item
+ rate, pitch = PROFILES[character]
  target = OUT / (key + '.mp3')
  if target.exists() and target.stat().st_size > 1000:
   return key
  temporary = OUT / (key + '.raw.mp3')
- asyncio.run(edge_tts.Communicate(text, 'ko-KR-SunHiNeural', rate='-6%', pitch='+4Hz').save(str(temporary)))
+ asyncio.run(edge_tts.Communicate(text, 'ko-KR-SunHiNeural', rate=rate, pitch=pitch).save(str(temporary)))
  subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-y', '-i', str(temporary),
-                 '-af', 'atempo=0.94,loudnorm=I=-16:TP=-1.5:LRA=11', '-ar', '24000',
+                 '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-ar', '24000',
                  '-ac', '1', '-b:a', '48k', str(target)], check=True)
  temporary.unlink()
  return key
@@ -50,6 +55,6 @@ def build(item):
 if __name__ == '__main__':
  OUT.mkdir(parents=True, exist_ok=True)
  with ThreadPoolExecutor(max_workers=3) as pool:
-  for name in pool.map(build, LINES.items()):
+  for name in pool.map(build, JOBS.items()):
    print('Built', name, flush=True)
  (OUT / 'dialogue.json').write_text(json.dumps(LINES, ensure_ascii=False, indent=2) + '\n')

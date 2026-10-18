@@ -120,28 +120,87 @@ def prop(pid,variant):
   s+='<path d="M551 522 L613 389" stroke="#d4b16f" stroke-width="12"/><path d="M612 358 L624 389 L656 392 L631 413 L638 444 L611 428 L583 444 L591 413 L566 392 L600 388Z" fill="#f9e3a3"/><path d="M612 381 L618 396 L635 399 L621 409 L624 424 L611 416 L599 423 L602 408 L590 398 L607 396Z" fill="#f0b7d4"/>'
  return s+'</g>'
 
+# Story costumes use a shared precise frame, with distinct silhouettes and details.
+STORY={
+ 'elsa': [('대관식 기본 복장','#152d31','#472a74'),('얼음 궁전 드레스','#62cbe5','#d6f6ff'),('숲의 하얀 드레스','#edf8ff','#b5d6eb')],
+ 'anna': [('여행 기본 복장','#213c57','#2584ad'),('대관식 초록 드레스','#285e40','#90b172'),('여왕 드레스','#263c2c','#744c82')],
+ 'rapunzel': [('탑에서 입는 보라 옷','#b18acf','#e2b4d9'),('꽃 장식 드레스','#b18acf','#ecc1e3'),('왕국 축제 드레스','#a074bd','#e6b5d9')],
+ 'ariel': [('바닷속 인어 모습','#8764b2','#56b493'),('육지의 파란 옷','#172f47','#8cc9df'),('분홍 궁전 드레스','#ed9db9','#ffe1ec')],
+ 'belle': [('마을의 파란 기본 옷','#5d9dc8','#f6f0df'),('노란 무도회 드레스','#f2c84c','#ffe79b'),('겨울 망토 드레스','#9c2543','#f6c8cf')],
+ 'cinderella': [('청소할 때 입는 옷','#724d35','#d3b49b'),('요정의 무도회 드레스','#9dc8f4','#e8f4ff'),('친구들이 만든 분홍 옷','#e99cba','#fbe5ee')]
+}
+def story_dress(pid,variant):
+ label,bodice,skirt=STORY[pid][variant]
+ edge='#735b66';prefix=f'{pid}-story-{variant}'
+ s=defs(prefix,skirt,bodice,'#fff8f2')+f'<g transform="translate(100 0)" stroke="{edge}" stroke-width="2.5" stroke-linejoin="round">'
+ if pid=='ariel' and variant==0:
+  s+='<path d="M236 280 Q260 270 299 294 Q335 270 364 280 L345 386 Q300 407 255 386Z" fill="#8764b2"/><path d="M255 386 Q303 409 345 386 Q373 478 329 630 Q315 678 362 710 Q410 720 425 747 Q355 770 302 725 Q259 766 179 747 Q198 713 246 709 Q279 681 266 631 Q220 481 255 386Z" fill="#52ad8d"/><path d="M259 390 Q301 412 342 390 M302 445 Q284 600 302 718" fill="none" stroke="#a2e0b3" stroke-width="6"/>'
+ else:
+  full=variant>0 or pid in ('elsa','anna','rapunzel')
+  left,right=(124,477) if full else (173,427)
+  s+=f'<path d="M240 280 Q269 274 300 288 Q331 274 361 280 L347 390 Q383 500 {right} 726 Q300 761 {left} 726 Q221 501 253 390Z" fill="url(#{prefix}-dress)"/>'
+  s+=f'<path d="M240 280 Q270 276 300 293 Q330 276 361 280 L346 391 Q301 406 254 391Z" fill="{bodice}"/>'
+  s+=f'<path d="M245 409 Q229 565 {left+38} 715 M278 419 L263 736 M323 418 L341 737 M352 410 Q383 580 {right-32} 716" fill="none" stroke="{bodice}" opacity=".28" stroke-width="5"/>'
+  if (pid in ('belle','cinderella') and variant==0) or (pid=='ariel' and variant==1):
+   s+='<path d="M237 281 Q216 284 211 317 L235 330 L254 310 M362 281 Q382 284 389 317 L365 330 L347 310" fill="#fff6e5"/><path d="M261 292 L279 291 L281 389 L322 389 L323 292 L340 292 L341 392 Q369 546 390 713 Q300 742 209 713 Q233 540 260 392Z" fill="#fff6e8"/><path d="M250 392 Q300 410 349 392" fill="none" stroke="#ded1bd" stroke-width="7"/>'
+  elif (pid=='belle' and variant==1) or (pid=='cinderella' and variant==1):
+   s+=f'<path d="M235 282 Q259 310 300 310 Q343 310 365 282 L381 311 Q341 343 301 323 Q258 343 219 310Z" fill="{skirt}"/>'
+   s+=f'<path d="M253 405 Q211 458 183 513 Q255 542 300 473 Q351 545 418 513 Q386 453 346 405Z" fill="{skirt}"/>'
+   s+=f'<path d="M177 575 Q238 632 300 571 Q360 633 424 575 M151 664 Q222 716 300 662 Q381 718 451 663" fill="none" stroke="{skirt}" stroke-width="13"/>'
+   if pid=='belle':s+=flower(300,575,15,'#e7ad37')
+  elif pid=='elsa' and variant==1:
+   s+='<path d="M244 285 L176 692 Q207 736 247 725 L275 326 M354 285 L423 692 Q391 737 352 727 L326 326" fill="#d8faff" opacity=".55"/><path d="M248 290 L232 317 M353 290 L370 316" stroke="#b8edfa" stroke-width="20"/>'
+   for x,y in [(212,565),(381,614),(298,681),(273,461),(343,535)]:s+=f'<path d="M{x-12} {y} h24 M{x} {y-12} v24 M{x-8} {y-8} l16 16 M{x-8} {y+8} l16 -16" stroke="#fff" stroke-width="2"/>'
+  elif pid=='rapunzel':
+   s+='<path d="M238 282 Q215 287 211 315 L234 334 L253 312 M361 282 Q384 289 389 315 L366 333 L347 311" fill="#dfb2df"/><path d="M281 302 L318 322 L283 342 L317 362 L285 383" fill="none" stroke="#f4d4df" stroke-width="5"/>'
+   if variant: 
+    for x,y in [(218,553),(383,612),(289,685)]:s+=flower(x,y,15)
+  elif pid=='anna' or (pid=='elsa' and variant==0):
+   s+='<path d="M269 306 Q299 331 331 306 M298 321 V382" fill="none" stroke="#d3b967" stroke-width="4"/>'
+   for x,y in [(214,630),(299,678),(388,630)]:s+=f'<path d="M{x} {y+25} v-48 M{x} {y} q-27 -30 -26 -3 q4 19 26 17 q30 -1 26 -20 q-2 -20 -26 6" fill="#a1b879" stroke="#d2c176" stroke-width="2"/>'
+   if pid=='anna' and variant==0:s+='<path d="M238 279 Q300 310 363 279 L393 475 L348 444 L330 306 L273 306 L253 447 L208 478Z" fill="#a23b6d"/>'
+  elif pid=='cinderella' and variant==2:
+   for x,y in [(254,313),(347,313),(197,586),(404,586)]:s+=f'<path d="M{x} {y} q-26 -22 -28 0 q2 20 28 0 q28 -22 29 0 q-1 21 -29 0Z" fill="#fff0ed"/>'
+  elif pid=='belle' and variant==2:s+='<path d="M237 281 Q301 323 365 281 L411 556 L350 510 L329 315 L274 315 L250 511 L190 555Z" fill="#9e2949"/><path d="M237 281 Q301 323 365 281" fill="none" stroke="#fff5e6" stroke-width="16"/>'
+ s+='</g>'
+ return s
+
+def dress(pid,color,shade,light,variant):return story_dress(pid,variant)
+_original_base=base
+def base(pid,hair,eye,variant=0):
+ s=_original_base(pid,hair,eye)
+ # Narrower cheeks, differentiated eye shape, and signature hair accents.
+ s=s.replace('rx="94" ry="109"','rx="85" ry="109"')
+ if pid=='cinderella':s+= '<g transform="translate(100 0)"><path d="M213 123 Q231 40 300 48 Q373 42 389 124" fill="none" stroke="#83b7df" stroke-width="10"/></g>'
+ if pid=='belle':s+='<g transform="translate(100 0)"><ellipse cx="300" cy="48" rx="40" ry="27" fill="#6e422c" stroke="#795a58" stroke-width="3"/><path d="M269 60 Q300 70 330 60" fill="none" stroke="#e4bf60" stroke-width="7"/></g>'
+ # Replace the neutral base clothes with the character's story starting costume.
+ return s+story_dress(pid,variant)
+
+
 def build():
  OUT.mkdir(parents=True,exist_ok=True)
  catalog=[]
  for pid,name,hair,eye,color,shade,light,*dress_names in PRINCESSES:
+  dress_names=[x[0] for x in STORY[pid]]
   drawings=[base(pid,hair,eye)]+[dress(pid,color,shade,light,i) for i in range(3)]+[crown(pid,i) for i in range(2)]+[prop(pid,i) for i in range(3)]
-  svg='<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="2400" viewBox="0 0 2400 2400">'
+  drawings += [base(pid,hair,eye,i) for i in range(3)]
+  svg='<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="3200" viewBox="0 0 2400 3200">'
   for i,art in enumerate(drawings):svg+=f'<g transform="translate({i%3*800} {i//3*800})">{art}</g>'
   svg+='</svg>'
   (OUT/(pid+'.svg')).write_text(svg)
   sprites=[]
-  for i in range(9):
-   kind='base' if i==0 else 'outfit' if i<4 else 'head' if i<6 else 'hand'
-   local=[0,0,800,800] if i==0 else [205,264,385,498] if i<4 else [309,27,182,93] if i<6 else [515,348,155,194]
+  for i in range(12):
+   kind='base' if i==0 or i>=9 else 'outfit' if i<4 else 'head' if i<6 else 'hand'
+   local=[0,0,800,800] if i==0 or i>=9 else [205,264,385,498] if i<4 else [309,27,182,93] if i<6 else [515,348,155,194]
    # Clothing extends to x577; head and hand shapes share exactly the base frame.
    if 0<i<4:local=[205,264,385,498]
    x,y,w,h=local;box=[i%3*800+x,i//3*800+y,w,h]
-   label=name if i==0 else dress_names[i-1] if i<4 else ['보석 왕관','꽃 왕관'][i-4] if i<6 else ['별 요술봉','친구 소품','꽃다발'][i-6]
+   label=name if i==0 or i>=9 else dress_names[i-1] if i<4 else ['보석 왕관','꽃 왕관'][i-4] if i<6 else ['별 요술봉','친구 소품','꽃다발'][i-6]
    if i==7:label={'elsa':'눈사람 친구','anna':'눈사람 친구','rapunzel':'파스칼','ariel':'물고기 친구','belle':'이야기책','cinderella':'이야기책'}[pid]
    item={'name':label,'kind':kind,'box':box}
    if i:item['fit']={'x':(x+w/2)/8,'y':(y+h/2)/8,'w':w/8,'h':h/8}
    sprites.append(item)
-  catalog.append({'id':pid,'name':name,'src':'/static/princess/'+pid+'.svg','width':2400,'height':2400,'sprites':sprites,'color':color,'slots':{'outfit':{'x':50,'y':63,'rx':35,'ry':32},'head':{'x':50,'y':12,'rx':35,'ry':27},'hand':{'x':74,'y':55,'rx':32,'ry':33}}})
+  catalog.append({'id':pid,'name':name,'src':'/static/princess/'+pid+'.svg','width':2400,'height':3200,'baseVariants':[9,10,11],'sprites':sprites,'color':color,'slots':{'outfit':{'x':50,'y':63,'rx':35,'ry':32},'head':{'x':50,'y':12,'rx':35,'ry':27},'hand':{'x':74,'y':55,'rx':32,'ry':33}}})
  (OUT/'catalog.json').write_text(json.dumps(catalog,ensure_ascii=False,indent=2)+'\n')
  (ROOT/'static'/'hyeon-princess-assets.js').write_text('window.PRINCESS_ASSETS='+json.dumps(catalog,ensure_ascii=False,separators=(',',':'))+';\n')
 

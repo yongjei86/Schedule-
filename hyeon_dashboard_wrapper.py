@@ -179,3 +179,28 @@ def hyeon_village_return_closet():
   return _main.jsonify(residents=_main._dressup_residents(c))
  finally:
   c.close()
+
+@app.route('/hyeon/princess/ballroom', methods=['GET','POST'])
+def hyeon_princess_ballroom():
+ import json
+ from pathlib import Path
+ catalog=json.loads((Path(__file__).parent/'static/princess/catalog.json').read_text())
+ by_id={item['id']:item for item in catalog}
+ payload=_main.request.get_json(silent=True) if _main.request.method=='POST' else None
+ if _main.request.method=='POST':
+  if not isinstance(payload,dict) or payload.get('character_id') not in by_id:
+   return _main.jsonify(error='invalid_character'),400
+  outfit=payload.get('outfit',{})
+  if payload.get('action')!='return':
+   if not isinstance(outfit,dict) or any(kind not in ('outfit','head','hand') or type(index) is not int or index<1 or index>=len(by_id[payload['character_id']]['sprites']) or by_id[payload['character_id']]['sprites'][index]['kind']!=kind for kind,index in outfit.items()):
+    return _main.jsonify(error='invalid_outfit'),400
+ c=db()
+ try:
+  c.execute('CREATE TABLE IF NOT EXISTS hyeon_ballroom_residents(character_id TEXT PRIMARY KEY,outfit TEXT NOT NULL)')
+  if payload:
+   if payload.get('action')=='return':c.execute('DELETE FROM hyeon_ballroom_residents WHERE character_id=?',(payload['character_id'],))
+   else:c.execute('INSERT INTO hyeon_ballroom_residents(character_id,outfit) VALUES(?,?) ON CONFLICT(character_id) DO UPDATE SET outfit=excluded.outfit',(payload['character_id'],json.dumps(outfit)))
+   c.commit()
+  rows=c.execute('SELECT character_id,outfit FROM hyeon_ballroom_residents ORDER BY character_id').fetchall()
+  return _main.jsonify(residents=[{'character_id':row[0],'outfit':json.loads(row[1])} for row in rows if row[0] in by_id])
+ finally:c.close()
