@@ -1670,7 +1670,7 @@ def _kid_portal(slug,child,academy_workbook=True):
         body+=f'<p class="muted" style="margin-top:10px">주황색은 {H(child)} Google Calendar, 회색은 기존 학원 DB 보완 일정입니다. 같은 시간·같은 일정은 중복 표시하지 않습니다.</p>'
         body+=_workbook_section(child,base,mon)
     if slug=='hyeon':
-        body+='<div style="margin-bottom:14px;display:flex;gap:8px"><a class="btn" href="/hyeon/hangul">🔤 한글 공부</a><a class="btn" href="/hyeon/coloring">🎨 색칠 공부</a></div>'
+        body+='<div style="margin-bottom:14px;display:flex;gap:8px"><a class="btn" href="/hyeon/hangul">🔤 한글 공부</a><a class="btn" href="/hyeon/coloring">🎨 색칠 공부</a><a class="btn" href="/hyeon/dressup">👗 옷입히기</a></div>'
     body+=_reading_section(child,base)+reading_edit_modal(base)
     if academy_workbook:
         body+=academy_modal(child)+wb_edit_modal(base)
@@ -1949,6 +1949,21 @@ def _init_hangul_practice_schema():
     c.commit(); c.close()
 _init_hangul_practice_schema()
 
+@app.route('/hyeon/hangul/audio/<key>.mp3')
+def hyeon_hangul_audio(key):
+    import zipfile
+    from io import BytesIO
+    from flask import send_file
+    if not re.fullmatch(r'[0-9a-f]{20}', key):
+        abort(404)
+    try:
+        with zipfile.ZipFile(Path(__file__).parent / 'static' / 'hangul-audio.zip') as clips:
+            data = clips.read(key + '.mp3')
+    except (KeyError, FileNotFoundError, zipfile.BadZipFile):
+        abort(404)
+    return send_file(BytesIO(data), mimetype='audio/mpeg', conditional=True, etag=key, max_age=31536000)
+
+
 @app.route('/hyeon/hangul/practice',methods=['POST'])
 def hangul_practice_log():
     data=request.get_json(silent=True) or {}
@@ -1990,6 +2005,10 @@ def hangul_log():
 
 HANGUL_STAR_GOAL=5
 
+@app.route('/hyeon/dressup')
+def hyeon_dressup_page():
+    return send_from_directory(Path(__file__).parent / 'static', 'hyeon-dressup.html')
+
 @app.route('/hyeon/hangul')
 def hangul_page():
     c=db()
@@ -2002,11 +2021,11 @@ def hangul_page():
     items=[('today','⭐','오늘 놀이'),('letters','ㄱ','글자 듣기'),('combine','가','글자 만들기'),('trace','✍️','따라쓰기'),('cards','🖼️','그림 낱말'),('listen','👂','듣고 고르기'),('quiz','🔗','짝 맞추기'),('family','💛','우리 가족')]
     menu=''.join(f'<button type="button" class="hg-nav" data-mode="{key}"><span>{icon}</span>{label}</button>' for key,icon,label in items)
     body=(f'<link rel="stylesheet" href="/static/hyeon-hangul.css?v=20261015-v1">'
-          f'<div class="hg-app"><aside class="hg-menu"><div class="hg-brand">혜온의 한글 놀이</div><nav class="hg-menu-items">{menu}</nav><div class="hg-parent-links"><a href="/hyeon">🏠 홈</a><a href="/hyeon/hangul/stats">보호자 기록</a></div></aside>'
+          f'<div class="hg-app"><aside class="hg-menu"><div class="hg-brand">혜온의 한글 놀이</div><nav class="hg-menu-items">{menu}</nav><div class="hg-parent-links"><a href="/hyeon">🏠 홈</a><a href="/hyeon/coloring">🎨 색칠공부</a><a href="/hyeon/dressup">👗 옷입히기</a><a href="/hyeon/hangul/stats">보호자 기록</a></div></aside>'
           '<section class="hg-work"><div class="hg-head"><h1 id="hg-title">오늘의 한글 놀이</h1><div class="hg-levels" aria-label="난이도">'
           '<button type="button" class="hg-level on">처음</button><button type="button" class="hg-level">익숙해요</button><button type="button" class="hg-level">더 해볼래요</button></div></div>'
           '<div class="hg-panel" id="hg-panel"></div></section></div><div id="hg-toast" class="hg-toast" role="status" hidden></div>'
-          f'<script id="hg-config" type="application/json">{config}</script><script src="/static/hyeon-hangul.js?v=20261015-v1"></script>')
+          f'<script id="hg-config" type="application/json">{config}</script><script src="/static/hyeon-hangul.js?v=20261018-audio2"></script>')
     return page('혜온 한글 놀이',body)
 
 @app.route('/hyeon/hangul/stats')
@@ -2093,7 +2112,7 @@ def coloring_page():
 @media(max-width:430px){{.hg-btn{{width:48px;height:48px;font-size:22px}}}}
 </style>
 <div class="hg-topbar">
-<a class="hg-btn" href="/hyeon">🏠</a>
+<a class="hg-btn" href="/hyeon">🏠</a><a class="hg-btn" href="/hyeon/hangul" aria-label="한글놀이">🔤</a><a class="hg-btn" href="/hyeon/dressup" aria-label="옷입히기">👗</a>
 <button type="button" class="hg-btn" onclick="clClear()">🔄</button>
 </div>
 <div class="cl-picker-row">{picker}</div>
