@@ -94,4 +94,7 @@ main._reading_section = reading_with_creative
 
 import riley_fashion  # Register the creative wardrobe after shared helpers exist.
 
+import kids_touch  # Shared page-level gesture lock for Riley and Hyeon.
+
+
 
