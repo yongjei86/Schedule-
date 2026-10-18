@@ -79,53 +79,56 @@ $('return-closet').onclick=async()=>{
 $('send-village').onclick=async()=>{unlock();if(sending)return;const c=character,outfit={...current()};if(!Object.keys(outfit).length){toast('먼저 옷이나 장식을 입혀봐요 🎀');return;}sending=true;$('send-village').disabled=true;$('send-village').textContent='🏡 이사 준비 중…';try{await villageReady;const existed=residents.some(r=>r.character_id===c.id),data=await villageRequest({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({character_id:c.id,outfit})});acceptResidents(data.residents);save();showVillage();renderVillage(c.id);$('village-status').textContent=residents.length+'명의 친구가 살고 있어요';sound(true);toast(existed?'🏡 '+c.name+'이 새 옷을 입고 돌아왔어요!':'🏡 '+c.name+'이 마을에 이사 왔어요!');}catch(_){toast('마을 저장이 안 됐어요. 잠시 후 다시 눌러주세요.');}finally{sending=false;$('send-village').disabled=false;$('send-village').textContent='🏡 마을로 보내기';}};
 setInterval(()=>{if($('village-view').hidden||document.hidden)return;const list=[...document.querySelectorAll('.resident')];if(!list.length)return;const n=list[Math.floor(Math.random()*list.length)];n.querySelector('.bubble').textContent=sayings[Math.floor(Math.random()*sayings.length)];n.classList.add('bubble-on');setTimeout(()=>n.classList.remove('bubble-on'),3000);},5200);
 
-/* Speak only after a child's tap, using the device's Korean voice. */
-let villageUtterance=null,villageSpeechSerial=0,villageSpeechTimer=null;
+/* Bundled MP3 playback starts synchronously inside the tap on iPhone/iPad. */
+let villageSpeechSerial=0,villageSpeechTimer=null,villageVoiceKey=null;
+const villageVoice=document.createElement('audio');
+villageVoice.preload='auto';villageVoice.setAttribute('playsinline','');
+villageVoice.src='/static/dressup/voices/chacha.mp3';document.body.append(villageVoice);
 const greetingTurns=new Map();
 const friendGreetings={
- chacha:'우리 같이 꽃밭을 산책할까?',
- shasha:'혜온이가 골라 준 옷이 정말 마음에 들어!',
- saekom:'오늘은 어떤 재미있는 놀이를 해 볼까?',
- banjjak:'혜온이랑 만나서 반짝반짝 기분이 좋아!',
- hachoo:'혜온아, 사랑해! 우리 같이 놀자!',
- yeou:'마을에 놀러 와 줘서 고마워!',
- kkang:'우리 같이 깡충깡충 뛰어 볼까?',
- ballet:'혜온아, 나랑 예쁘게 춤춰 볼까?',
- yogu:'같이 산책하니까 정말 즐거워!',
- pudding:'달콤한 하루야! 혜온이는 오늘 기분이 어때?',
- dalkom:'혜온아, 오늘도 만나서 정말 반가워!'
+ chacha:'안녕! 나는 차차핑이야. 우리 같이 꽃밭을 산책할까?',
+ shasha:'안녕! 나는 샤샤핑이야. 골라 준 옷이 정말 마음에 들어!',
+ saekom:'안녕! 나는 새콤핑이야. 오늘은 어떤 재미있는 놀이를 해 볼까?',
+ banjjak:'안녕! 나는 반짝핑이야. 만나서 반짝반짝 기분이 좋아!',
+ hachoo:'안녕! 나는 하츄핑이야. 사랑해! 우리 같이 놀자!',
+ yeou:'안녕! 나는 여우핑이야. 마을에 놀러 와 줘서 고마워!',
+ kkang:'안녕! 나는 깡총핑이야. 우리 같이 깡충깡충 뛰어 볼까?',
+ ballet:'안녕! 나는 발레핑이야. 나랑 예쁘게 춤춰 볼까?',
+ yogu:'안녕! 나는 요거핑이야. 같이 산책하니까 정말 즐거워!',
+ pudding:'안녕! 나는 푸딩핑이야. 달콤한 하루야! 오늘 기분이 어때?',
+ dalkom:'안녕! 나는 달콤핑이야. 오늘도 만나서 정말 반가워!',
+ 'your-day':'안녕! 오늘 재미있었던 일을 들려줄래? 나는 네 이야기가 듣고 싶어.',
+ 'see-you':'오늘도 함께 놀아서 즐거웠어. 다음에도 우리 마을에 놀러 와 줘!'
 };
 function stopVillageSpeech(){
  villageSpeechSerial++;clearTimeout(villageSpeechTimer);
- if(villageUtterance&&window.speechSynthesis){try{window.speechSynthesis.cancel();}catch(_){}}
- villageUtterance=null;
+ villageVoice.onplaying=null;villageVoice.onended=null;villageVoice.onerror=null;
+ villageVoice.pause();try{villageVoice.currentTime=0;}catch(_){}
 }
 function greetResident(c,replay=false){
  const message=$('resident-message'),status=$('resident-speech-status');
  if(!replay){
   const turn=greetingTurns.get(c.id)||0;
-  const lines=[friendGreetings[c.id]||'우리 같이 놀자!','혜온아, 오늘 재미있었던 일을 들려줄래?','다음에도 우리 마을에 놀러 와 줘!'];
-  message.textContent='혜온아, 안녕! 나는 '+c.name+'이야. '+lines[turn%lines.length];
+  villageVoiceKey=[c.id,'your-day','see-you'][turn%3];
+  message.textContent=friendGreetings[villageVoiceKey];
   greetingTurns.set(c.id,turn+1);
  }
  stopVillageSpeech();
  if(muted){status.textContent='🔇 위의 소리 버튼을 켜고 다시 들어요.';return;}
- if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){status.textContent='이 기기에서는 말소리를 지원하지 않아요.';return;}
- const synth=window.speechSynthesis,serial=villageSpeechSerial;
- const failed=()=>{if(serial!==villageSpeechSerial)return;clearTimeout(villageSpeechTimer);status.textContent='말소리가 안 들리면 ‘다시 듣기’를 눌러 주세요.';villageUtterance=null;};
+ if(!friendGreetings[villageVoiceKey])return;
+ const serial=villageSpeechSerial;
+ const failed=()=>{if(serial!==villageSpeechSerial)return;clearTimeout(villageSpeechTimer);status.textContent='말소리가 안 들리면 ‘다시 듣기’를 눌러 주세요.';};
  try{
-  const utterance=new window.SpeechSynthesisUtterance(message.textContent);
-  const voices=synth.getVoices(),korean=voices.filter(v=>/^ko(?:-|_)/i.test(v.lang)||v.lang==='ko');
-  const voice=korean.find(v=>v.localService)||korean[0];
-  if(voice)utterance.voice=voice;
-  utterance.lang='ko-KR';utterance.rate=.88;utterance.pitch=1.12;utterance.volume=1;
-  utterance.onstart=()=>{if(serial!==villageSpeechSerial)return;clearTimeout(villageSpeechTimer);status.textContent='🔊 친구가 혜온이에게 이야기하고 있어요.';};
-  utterance.onend=()=>{if(serial!==villageSpeechSerial)return;clearTimeout(villageSpeechTimer);villageUtterance=null;status.textContent='한 번 더 듣고 싶으면 ‘다시 듣기’를 눌러요.';};
-  utterance.onerror=failed;
-  villageUtterance=utterance;audio.pause();status.textContent='친구의 인사를 들어봐요.';
-  // Holding a strong reference also avoids interrupted speech on iPad Safari.
-  synth.resume();synth.speak(utterance);
-  villageSpeechTimer=setTimeout(()=>{if(serial!==villageSpeechSerial)return;stopVillageSpeech();status.textContent='말소리가 안 들리면 ‘다시 듣기’를 눌러 주세요.';},8000);
+  const src='/static/dressup/voices/'+villageVoiceKey+'.mp3';
+  if(villageVoice.getAttribute('src')!==src)villageVoice.src=src;
+  villageVoice.muted=false;villageVoice.volume=1;
+  villageVoice.onplaying=()=>{if(serial!==villageSpeechSerial)return;clearTimeout(villageSpeechTimer);status.textContent='🔊 친구가 혜온이에게 이야기하고 있어요.';};
+  villageVoice.onended=()=>{if(serial!==villageSpeechSerial)return;clearTimeout(villageSpeechTimer);status.textContent='한 번 더 듣고 싶으면 ‘다시 듣기’를 눌러요.';};
+  villageVoice.onerror=failed;
+  audio.pause();status.textContent='친구의 인사를 들어봐요.';
+  villageSpeechTimer=setTimeout(()=>{if(serial!==villageSpeechSerial)return;stopVillageSpeech();status.textContent='말소리가 안 들리면 ‘다시 듣기’를 눌러 주세요.';},10000);
+  // Do not await a network request before play(): Safari requires the tap context.
+  const playing=villageVoice.play();if(playing)playing.catch(failed);
  }catch(_){failed();}
 }
 $('resident-replay').onclick=()=>{if(!selectedResident)return;const c=catalog.find(c=>c.id===selectedResident.character_id);if(c)greetResident(c,true);};
@@ -135,6 +138,5 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')stopVillageSpeech();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopVillageSpeech();});
-try{window.speechSynthesis?.getVoices();}catch(_){}
 
 })();
