@@ -2,7 +2,7 @@
   {
     "id": "elsa",
     "name": "엘사",
-    "src": "/static/princess/elsa.svg",
+    "src": "/static/princess/elsa.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -223,7 +223,7 @@
   {
     "id": "anna",
     "name": "안나",
-    "src": "/static/princess/anna.svg",
+    "src": "/static/princess/anna.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -444,7 +444,7 @@
   {
     "id": "rapunzel",
     "name": "라푼젤",
-    "src": "/static/princess/rapunzel.svg",
+    "src": "/static/princess/rapunzel.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -665,7 +665,7 @@
   {
     "id": "ariel",
     "name": "인어공주",
-    "src": "/static/princess/ariel.svg",
+    "src": "/static/princess/ariel.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -886,7 +886,7 @@
   {
     "id": "belle",
     "name": "벨",
-    "src": "/static/princess/belle.svg",
+    "src": "/static/princess/belle.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -1107,7 +1107,7 @@
   {
     "id": "cinderella",
     "name": "신데렐라",
-    "src": "/static/princess/cinderella.svg",
+    "src": "/static/princess/cinderella.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -1328,7 +1328,7 @@
   {
     "id": "jasmine",
     "name": "자스민",
-    "src": "/static/princess/jasmine.svg",
+    "src": "/static/princess/jasmine.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -1549,7 +1549,7 @@
   {
     "id": "snowwhite",
     "name": "백설공주",
-    "src": "/static/princess/snowwhite.svg",
+    "src": "/static/princess/snowwhite.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -1770,7 +1770,7 @@
   {
     "id": "aurora",
     "name": "오로라",
-    "src": "/static/princess/aurora.svg",
+    "src": "/static/princess/aurora.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -1991,7 +1991,7 @@
   {
     "id": "merida",
     "name": "메리다",
-    "src": "/static/princess/merida.svg",
+    "src": "/static/princess/merida.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -2212,7 +2212,7 @@
   {
     "id": "mulan",
     "name": "뮬란",
-    "src": "/static/princess/mulan.svg",
+    "src": "/static/princess/mulan.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [
@@ -2433,7 +2433,7 @@
   {
     "id": "pocahontas",
     "name": "포카혼타스",
-    "src": "/static/princess/pocahontas.svg",
+    "src": "/static/princess/pocahontas.svg?v=6",
     "width": 2400,
     "height": 3200,
     "baseVariants": [

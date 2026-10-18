@@ -197,7 +197,7 @@ def base(pid,hair,eye,variant=0):
  # Arms and legs remain visible outside each costume silhouette.
  s+=f'<path d="M272 228 L269 283 Q300 306 332 283 L328 228 M238 283 Q218 297 205 340 L181 414 Q179 431 193 433 Q208 433 215 412 L248 331 M361 283 Q384 299 394 340 L418 414 Q422 430 407 433 Q393 433 385 413 L352 331 M267 726 L263 760 Q264 776 287 771 L299 731 M309 731 L312 760 Q315 777 338 769 L333 726" fill="{skin}"/>'
  s+='<path d="M262 755 Q276 766 290 753 L290 771 Q269 782 260 767Z M310 755 Q326 767 338 753 L342 768 Q318 783 311 768Z" fill="#d4e9f7"/>'
- s+=f'<path d="M213 128 Q204 78 247 55 Q298 33 349 57 Q395 81 389 135 L382 191 Q373 230 342 250 Q301 277 260 250 Q226 230 216 194Z" fill="url(#{pre}-skin)"/>'
+ s+=f'<path d="M213 128 Q204 78 247 55 Q298 33 349 57 Q395 81 389 135 L380 187 Q371 218 343 239 Q318 262 301 263 Q282 262 257 240 Q230 219 218 190Z" fill="url(#{pre}-skin)"/>'
  s+=f'<ellipse cx="212" cy="172" rx="11" ry="20" fill="{skin}"/><ellipse cx="388" cy="172" rx="11" ry="20" fill="{skin}"/>'
  # Each hairstyle is different rather than a palette swap.
  bang={
@@ -206,7 +206,7 @@ def base(pid,hair,eye,variant=0):
  'rapunzel':'M210 177 Q182 86 239 54 Q292 21 351 50 Q413 84 391 178 L376 155 Q378 103 346 80 Q321 125 280 139 Q251 149 224 144 L224 177Z',
  'ariel':'M205 183 Q164 121 196 71 Q216 26 282 39 Q326 13 376 52 Q425 94 391 190 L375 166 Q388 105 345 81 Q353 137 279 145 Q241 138 218 176Z',
  'belle':'M209 170 Q187 98 229 64 Q261 33 300 50 Q341 30 375 65 Q410 109 390 171 L375 151 Q374 98 344 84 Q321 112 300 123 Q267 112 254 87 Q223 104 224 168Z',
- 'cinderella':'M208 171 Q189 107 218 77 Q224 43 270 43 Q320 29 361 56 Q409 87 390 171 L375 148 Q375 106 349 88 Q335 125 293 125 Q264 123 248 104 Q225 119 224 170Z'}.get(pid,{'jasmine':'M207 174 Q181 92 237 56 Q299 22 363 57 Q417 94 390 177 L376 150 Q374 112 343 90 Q321 117 300 121 Q277 114 255 91 Q223 110 224 173Z','snowwhite':'M209 171 Q183 97 227 64 Q267 36 300 56 Q342 32 377 71 Q414 106 389 173 L375 155 Q375 112 346 91 Q314 118 284 103 Q246 128 224 155 L224 176Z','aurora':'M207 174 Q188 91 242 59 Q290 25 352 53 Q415 86 391 180 L376 158 Q377 102 345 85 Q322 128 280 139 Q249 148 224 141 L223 176Z','merida':'M207 178 Q167 122 196 78 Q218 36 270 50 Q315 20 365 57 Q422 80 393 180 L376 152 Q378 109 345 93 Q303 130 266 114 Q236 122 223 171Z','mulan':'M208 173 Q186 95 236 63 Q298 26 361 61 Q411 97 391 176 L376 153 Q377 107 345 86 Q300 133 223 130 L223 176Z','pocahontas':'M207 175 Q185 88 237 59 Q298 24 362 59 Q415 96 391 177 L376 151 Q374 108 345 85 Q316 123 224 139 L224 176Z'}.get(pid,''))
+ 'cinderella':'M208 171 Q189 107 218 77 Q224 43 270 43 Q320 29 361 56 Q409 87 390 171 L375 148 Q375 106 349 88 Q328 143 276 127 Q253 122 248 104 Q225 119 224 170Z'}.get(pid,{'jasmine':'M207 174 Q181 92 237 56 Q299 22 363 57 Q417 94 390 177 L376 150 Q374 112 343 90 Q321 117 300 121 Q277 114 255 91 Q223 110 224 173Z','snowwhite':'M209 171 Q183 97 227 64 Q267 36 300 56 Q342 32 377 71 Q414 106 389 173 L375 155 Q375 112 346 91 Q314 118 284 103 Q246 128 224 155 L224 176Z','aurora':'M207 174 Q188 91 242 59 Q290 25 352 53 Q415 86 391 180 L376 158 Q377 102 345 85 Q322 128 280 139 Q249 148 224 141 L223 176Z','merida':'M207 178 Q167 122 196 78 Q218 36 270 50 Q315 20 365 57 Q422 80 393 180 L376 152 Q378 109 345 93 Q303 130 266 114 Q236 122 223 171Z','mulan':'M208 173 Q186 95 236 63 Q298 26 361 61 Q411 97 391 176 L376 153 Q377 107 345 86 Q300 133 223 130 L223 176Z','pocahontas':'M207 175 Q185 88 237 59 Q298 24 362 59 Q415 96 391 177 L376 151 Q374 108 345 85 Q316 123 224 139 L224 176Z'}.get(pid,''))
  s+=f'<path d="{bang}" fill="{fill}"/>'
  if pid=='elsa':
   s+=f'<path d="M224 105 Q266 81 270 45 M248 111 Q295 78 301 44 M276 111 Q323 89 331 65" fill="none" stroke="#fff9df" stroke-width="4"/>'
@@ -220,15 +220,34 @@ def base(pid,hair,eye,variant=0):
  if pid=='cinderella':
   s+='<path d="M213 121 Q225 53 299 51 Q370 53 387 121" fill="none" stroke="#8cc9ed" stroke-width="9"/>'
   if variant==0:s+='<path d="M211 119 Q215 55 271 44 Q338 31 377 88 Q314 53 259 89Z" fill="#dedfe5" stroke="#b2acb9"/><path d="M374 99 l31 -16 -8 40 -20 -9Z" fill="#dedfe5"/>'
- # Expressive almond-shaped eyes, colored irises, eyelid shading, lashes and brows.
- for x,flip in [(261,1),(339,-1)]:
-  slant=5 if pid=='elsa' else 2 if pid=='belle' else 0
-  wide=26 if pid in ('rapunzel','ariel') else 24
-  s+=f'<g transform="translate({x} 169) scale({flip} 1)"><path d="M{-wide} {-3-slant} Q-4 -23 {wide} -4 Q18 21 0 21 Q-18 19 {-wide} {-3-slant}Z" fill="#fffaf7" stroke="#976c80" stroke-width="1.5"/>'
-  s+=f'<ellipse cx="1" cy="3" rx="14" ry="20" fill="url(#{pre}-iris)" stroke="#385c68" stroke-width="1.4"/><ellipse cx="1" cy="4" rx="7.5" ry="14" fill="#24334d" stroke="none"/><ellipse cx="-4" cy="-5" rx="4.5" ry="6" fill="#fff" stroke="none"/><circle cx="7" cy="10" r="2.4" fill="#fff" stroke="none"/>'
-  s+=f'<path d="M{-wide-2} {-5-slant} Q0 -24 {wide} -5 M{-wide} {-5-slant} l-8 -10 M{-wide+6} -12 l-5 -10" fill="none" stroke="#473247" stroke-width="3.5"/><path d="M-24 -30 Q-6 -40 18 -29" fill="none" stroke="{shade}" stroke-width="4.8"/></g>'
- s+=f'<ellipse cx="239" cy="205" rx="26" ry="15" fill="url(#{pre}-blush)" stroke="none"/><ellipse cx="361" cy="205" rx="26" ry="15" fill="url(#{pre}-blush)" stroke="none"/>'
- s+='<path d="M299 181 Q289 202 299 207 Q305 207 307 203" fill="none" stroke="#d09d8e" stroke-width="2"/><path d="M278 225 Q292 219 301 225 Q311 219 324 224 Q303 245 278 225Z" fill="#c8657b" stroke="#b96374" stroke-width="1.3"/><path d="M284 226 Q302 230 318 225" fill="none" stroke="#fff0e7" stroke-width="2"/>'
+ # Character-specific classic animation eyes. Clip irises to the eyelids.
+ profiles={
+  'cinderella':(23,15,2,13,'#558cbb',False),
+  'ariel':(27,21,0,16,'#3b93aa',True),
+  'belle':(25,17,3,14,'#8b7044',True),
+  'elsa':(26,16,5,14,'#539ac1',False),
+  'anna':(25,20,1,15,'#489a91',True),
+  'rapunzel':(28,23,0,17,'#6eaa64',True),
+  'jasmine':(29,16,6,15,'#885e3c',False),
+  'snowwhite':(23,17,1,13,'#70513e',True),
+  'aurora':(26,14,5,13,'#7867a7',False),
+  'merida':(25,21,0,15,'#528d9a',True),
+  'mulan':(26,12,5,12,'#634b3b',False),
+  'pocahontas':(28,12,6,12,'#684733',False)}
+ wide,depth,slant,iris,iris_color,open_smile=profiles[pid]
+ for x,flip in [(260,1),(340,-1)]:
+  eid=f'{pre}-eye-{x}'
+  shape=f'M{-wide} {-slant} Q-3 {-depth-14} {wide} -2 Q15 {depth} 0 {depth} Q-17 {depth-2} {-wide} {-slant}Z'
+  s+=f'<g transform="translate({x} 174) scale({flip} 1)"><defs><clipPath id="{eid}"><path d="{shape}"/></clipPath></defs>'
+  s+=f'<path d="{shape}" fill="#fffdf9" stroke="#b7877f" stroke-width="1.4"/><g clip-path="url(#{eid})"><ellipse cx="3" cy="1" rx="{iris}" ry="{depth+3}" fill="{iris_color}" stroke="#3f424b" stroke-width="1.5"/><ellipse cx="3" cy="1" rx="{iris*.48}" ry="{depth*.8}" fill="#26323d" stroke="none"/><ellipse cx="-2" cy="-6" rx="3.5" ry="4.8" fill="#fff" stroke="none"/><circle cx="8" cy="8" r="1.8" fill="#fff" stroke="none"/></g>'
+  s+=f'<path d="M{-wide-1} {-slant-1} Q-3 {-depth-15} {wide} -3 M{-wide+2} {-slant-2} l-8 -9 M{-wide+8} {-slant-7} l-5 -9" fill="none" stroke="#45333c" stroke-width="3.3"/><path d="M-23 {-depth-22} Q-6 {-depth-33} 19 {-depth-20}" fill="none" stroke="{shade}" stroke-width="3.5"/></g>'
+ s+=f'<ellipse cx="239" cy="207" rx="22" ry="12" fill="url(#{pre}-blush)" stroke="none"/><ellipse cx="361" cy="207" rx="22" ry="12" fill="url(#{pre}-blush)" stroke="none"/>'
+ s+='<path d="M299 183 Q290 202 299 207 Q305 208 308 203" fill="none" stroke="#c6927e" stroke-width="1.8"/>'
+ lip='#bd3d51' if pid=='snowwhite' else '#bd6571' if pid in ('mulan','pocahontas') else '#ce6a7c'
+ if open_smile:
+  s+=f'<path d="M277 222 Q290 218 301 223 Q314 216 326 220 Q315 247 299 245 Q285 243 277 222Z" fill="{lip}" stroke="#a95164" stroke-width="1.3"/><path d="M281 223 Q302 231 322 222 L317 230 Q301 237 285 230Z" fill="#fff9ee" stroke="none"/><path d="M291 239 Q301 234 313 238 Q301 246 291 239Z" fill="#ed95a1" stroke="none"/>'
+ else:
+  s+=f'<path d="M279 224 Q291 216 300 222 Q309 216 324 221 Q303 241 279 224Z" fill="{lip}" stroke="#ad596b" stroke-width="1.2"/><path d="M284 224 Q302 230 319 222" fill="none" stroke="#f8c4bb" stroke-width="1.8"/>'
  if pid in ('anna','rapunzel'):
   s+='<g fill="#bc8267" stroke="none">'+''.join(f'<circle cx="{x}" cy="{y}" r="1.4"/>' for x,y in [(239,196),(248,199),(256,195),(346,195),(354,199),(364,196)])+'</g>'
  if pid=='rapunzel':
@@ -403,7 +422,7 @@ def build():
    item={'name':label,'kind':kind,'box':box}
    if i:item['fit']={'x':(x+w/2)/8,'y':(y+h/2)/8,'w':w/8,'h':h/8}
    sprites.append(item)
-  catalog.append({'id':pid,'name':name,'src':'/static/princess/'+pid+'.svg','width':2400,'height':3200,'baseVariants':[9,10,11],'sprites':sprites,'color':color,'slots':{'outfit':{'x':50,'y':63,'rx':35,'ry':32},'head':{'x':50,'y':12,'rx':35,'ry':27},'hand':{'x':74,'y':55,'rx':32,'ry':33}}})
+  catalog.append({'id':pid,'name':name,'src':'/static/princess/'+pid+'.svg?v=6','width':2400,'height':3200,'baseVariants':[9,10,11],'sprites':sprites,'color':color,'slots':{'outfit':{'x':50,'y':63,'rx':35,'ry':32},'head':{'x':50,'y':12,'rx':35,'ry':27},'hand':{'x':74,'y':55,'rx':32,'ry':33}}})
  (OUT/'catalog.json').write_text(json.dumps(catalog,ensure_ascii=False,indent=2)+'\n')
  (ROOT/'static'/'hyeon-princess-assets.js').write_text('window.PRINCESS_ASSETS='+json.dumps(catalog,ensure_ascii=False,separators=(',',':'))+';\n')
 
