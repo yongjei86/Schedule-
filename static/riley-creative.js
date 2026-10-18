@@ -91,7 +91,7 @@ $('new-art').onclick=()=>tab('library');
 async function startDesign(id){try{if(dirty)await saveArt();await artQueue;templateId=id;designVersion=2;artId=null;colors={};currentTitle='나의 '+designs.catalog.find(d=>d.id===id).title;completed=false;dirty=false;history=[];future=[];render();$('fit').click();await tab('studio');}catch(e){notice(e.message)}}
 let designFilter='전체';
 function designLibrary(){
- const filters=$('design-filters');filters.replaceChildren();['전체','명화','이탈리아','스페인'].forEach(name=>{const b=button(name,()=>{designFilter=name;designLibrary()});b.classList.toggle('active',name===designFilter);filters.append(b)});
+ const filters=$('design-filters');filters.replaceChildren();['전체','명화','이탈리아','스페인','프랑스'].forEach(name=>{const b=button(name,()=>{designFilter=name;designLibrary()});b.classList.toggle('active',name===designFilter);filters.append(b)});
  const host=$('design-list');host.replaceChildren();designs.catalog.filter(d=>designFilter==='전체'||d.group===designFilter).forEach(d=>{const card=document.createElement('article');card.className='design-card';const preview=drawing({},false,d.id,2);preview.setAttribute('aria-hidden','true');const title=document.createElement('h2');title.textContent=d.title;const meta=document.createElement('p');meta.textContent=d.by+' · '+d.group+' · '+d.level;const note=document.createElement('p');note.textContent=d.note;const go=button('이 그림 색칠하기',()=>startDesign(d.id));go.className='primary';card.append(preview,title,meta,note,go);host.append(card)});
 }
 function download(a){const svg=drawing(a.colors,false,a.template||'sunflowers',a.design_version||1);svg.setAttribute('width','1360');svg.setAttribute('height','1640');const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)],{type:'image/svg+xml'})),image=new Image();image.onload=()=>{const c=document.createElement('canvas');c.width=1360;c.height=1640;c.getContext('2d').drawImage(image,0,0);c.toBlob(blob=>{const link=document.createElement('a'),u=URL.createObjectURL(blob);link.href=u;link.download=(a.title||'해바라기')+'.png';link.click();setTimeout(()=>URL.revokeObjectURL(u),10000)},'image/png');URL.revokeObjectURL(url)};image.onerror=()=>{notice('이미지 저장에 실패했어요.');URL.revokeObjectURL(url)};image.src=url}
@@ -106,3 +106,4 @@ $('entry-title').oninput=$('entry-body').oninput=diaryChange;$('entry-art').onch
 window.addEventListener('beforeunload',e=>{if(dirty||diaryDirty){e.preventDefault();e.returnValue=''}});
 render();refresh().then(()=>tab(document.body.dataset.view==='diary'?'diary':'library')).catch(e=>notice(e.message));
 })();
+

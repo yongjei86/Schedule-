@@ -26,7 +26,7 @@ with connection() as c:
     if 'design_version' not in {row['name'] for row in c.execute('PRAGMA table_info(riley_art)')}:
         c.execute('ALTER TABLE riley_art ADD COLUMN design_version INTEGER NOT NULL DEFAULT 1')
 
-TEMPLATES = {'sunflowers','starry','cezanne','chagall','monet','colosseum','duomo','pisa','sagrada','alhambra','madrid'}
+TEMPLATES = {'sunflowers','starry','cezanne','chagall','monet','colosseum','duomo','pisa','sagrada','alhambra','madrid','italy-collection','venice','milan','louvre','paris-notebook','royal-crest','italy-map'}
 
 def now():
     return main.datetime.now(main.KST).isoformat(timespec='seconds')
@@ -91,3 +91,4 @@ def reading_with_creative(child='지유',base='/riley'):
         cards = '<section class="feature-card" style="margin:14px 0;padding:18px"><h2>지유의 창작 공간</h2><div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="/riley/coloring">🌻 명화 색칠공부</a><a class="btn s" href="/riley/diary">📖 나의 일기장</a></div></section>'
     return cards + _old_reading(child,base)
 main._reading_section = reading_with_creative
+
