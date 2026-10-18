@@ -88,7 +88,10 @@ _old_reading = main._reading_section
 def reading_with_creative(child='지유',base='/riley'):
     cards = ''
     if child=='지유' and base=='/riley':
-        cards = '<section class="feature-card" style="margin:14px 0;padding:18px"><h2>지유의 창작 공간</h2><div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="/riley/coloring">🌻 명화 색칠공부</a><a class="btn s" href="/riley/diary">📖 나의 일기장</a></div></section>'
+        cards = '<section class="feature-card" style="margin:14px 0;padding:18px"><h2>지유의 창작 공간</h2><div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="/riley/coloring">🌻 명화 색칠공부</a><a class="btn s" href="/riley/fashion">👗 옷 디자인 · 런웨이</a><a class="btn s" href="/riley/diary">📖 나의 일기장</a></div></section>'
     return cards + _old_reading(child,base)
 main._reading_section = reading_with_creative
+
+import riley_fashion  # Register the creative wardrobe after shared helpers exist.
+
 
