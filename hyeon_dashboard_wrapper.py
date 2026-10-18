@@ -153,3 +153,22 @@ def hyeon_shared_theme(response):
  response.headers.pop('Last-Modified',None)
  response.headers['Cache-Control'] = 'no-cache'
  return response
+
+
+@app.route('/hyeon/dressup/village/return', methods=['POST'])
+def hyeon_village_return_closet():
+ payload = _main.request.get_json(silent=True)
+ character_id = payload.get('character_id') if isinstance(payload,dict) else None
+ if not isinstance(character_id,str) or character_id not in {item['id'] for item in _main._dressup_catalog()}:
+  return _main.jsonify(error='invalid_character'),400
+ c=db()
+ try:
+  c.execute("""CREATE TABLE IF NOT EXISTS hyeon_village_residents(
+   character_id TEXT PRIMARY KEY, outfit TEXT NOT NULL,
+   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+  c.execute('DELETE FROM hyeon_village_residents WHERE character_id=?',(character_id,))
+  c.commit()
+  return _main.jsonify(residents=_main._dressup_residents(c))
+ finally:
+  c.close()

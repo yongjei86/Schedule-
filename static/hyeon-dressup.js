@@ -28,20 +28,54 @@ document.addEventListener('pointermove',moveDrag,{passive:false});document.addEv
 for(const c of catalog){const b=document.createElement('button');b.className='character';b.dataset.id=c.id;b.setAttribute('aria-label',c.name+' 선택');b.setAttribute('aria-pressed','false');const p=document.createElement('div');p.className='portrait';p.append(sprite(c,0));const name=document.createElement('span');name.textContent=c.name;b.append(p,name);b.onclick=()=>{unlock();choose(c);};$('characters').append(b);const im=new Image();im.onerror=()=>toast('그림을 불러오지 못했어요. 새로고침해 주세요.');im.src=c.src;}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{cancelDrag();category=b.dataset.tab;page=0;document.querySelectorAll('[data-tab]').forEach(n=>n.setAttribute('aria-selected',String(n===b)));renderItems();});$('prev').onclick=()=>{cancelDrag();page--;renderItems();};$('next').onclick=()=>{cancelDrag();page++;renderItems();};$('reset').onclick=()=>{cancelDrag();state[character.id]={};renderWorn();renderItems();save();$('hint').textContent='새로운 옷을 골라볼까요?';};$('finish').onclick=()=>{unlock();if(!Object.keys(current()).length){toast('먼저 옷이나 장식을 입혀봐요 🎀');return;}save();sound(true);celebration('outfit',true);toast('✨ '+character.name+' 꾸미기 완성!');};$('sound').onclick=()=>{muted=!muted;$('sound').textContent=muted?'🔇':'🔊';$('sound').setAttribute('aria-label',muted?'소리 켜기':'소리 끄기');$('sound').setAttribute('aria-pressed',String(!muted));if(!muted){unlock();sound();}};document.querySelector('.credit').onclick=e=>{e.preventDefault();$('sources').hidden=false;};$('close-sources').onclick=()=>$('sources').hidden=true;document.addEventListener('keydown',e=>{if(e.key==='Escape'){cancelDrag();$('sources').hidden=true;$('resident-modal').hidden=true;}});choose(character);
 
+let walkFrame=null,walkTime=0;const walkTargets=new WeakMap();
 const VILLAGE_KEY='hyeon-village-v1';let residents=[],sending=false,selectedResident=null;
 const positions=[[22,63],[42,61],[63,62],[81,64],[12,82],[31,83],[52,84],[72,84],[88,85],[39,97],[63,97]],sayings=['혜온아, 안녕!','꽃밭에 놀러 왔어요 🌸','친구랑 산책해요','오늘 옷이 마음에 들어요!','우리 집에 놀러 와요 🏡'];
 function cleanResident(r){const c=catalog.find(c=>c.id===r?.character_id);if(!c||!r.outfit||typeof r.outfit!=='object')return null;const outfit={};for(const k of ['outfit','head','hand'])if(Number.isInteger(r.outfit[k])&&c.sprites[r.outfit[k]]?.kind===k)outfit[k]=r.outfit[k];return Object.keys(outfit).length?{character_id:c.id,outfit}:null;}
 function acceptResidents(rows){if(!Array.isArray(rows))throw Error('invalid village');const unique=new Map();for(const row of rows){const r=cleanResident(row);if(r)unique.set(r.character_id,r);}residents=[...unique.values()];try{localStorage.setItem(VILLAGE_KEY,JSON.stringify(residents));}catch(_){}$('village-count').textContent=residents.length;renderVillage();}
 function avatar(c,outfit){const n=document.createElement('div');n.className='avatar';n.append(sprite(c,0));for(const kind of ['outfit','head','hand']){const index=outfit[kind];if(!Number.isInteger(index)||c.sprites[index]?.kind!==kind)continue;const layer=document.createElement('div');layer.className='layer '+kind;fitLayer(layer,kind,index,c);layer.append(sprite(c,index));n.append(layer);}return n;}
-function renderVillage(arrived=null){const root=$('residents');root.replaceChildren();$('village-empty').hidden=residents.length>0;residents.forEach((r,i)=>{const c=catalog.find(c=>c.id===r.character_id),b=document.createElement('button'),pos=positions[i%positions.length];b.className='resident'+(r.character_id===arrived?' arriving':'');b.dataset.character=c.id;b.setAttribute('aria-label',c.name+' 만나기');b.style.left=pos[0]+'%';b.style.top=pos[1]+'%';b.style.zIndex=Math.round(pos[1]);b.style.setProperty('--delay',(-i*.7)+'s');b.append(avatar(c,r.outfit));const name=document.createElement('span');name.className='resident-label';name.textContent=c.name;const bubble=document.createElement('span');bubble.className='bubble';bubble.textContent=sayings[i%sayings.length];b.append(name,bubble);b.onclick=()=>openResident(r);root.append(b);});}
-async function villageRequest(options={}){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);try{const r=await fetch('/hyeon/dressup/village',{...options,signal:controller.signal});if(!r.ok)throw Error('village unavailable');return await r.json();}finally{clearTimeout(timer);}}
+function renderVillage(arrived=null){const root=$('residents');root.replaceChildren();$('village-empty').hidden=residents.length>0;residents.forEach((r,i)=>{const c=catalog.find(c=>c.id===r.character_id),b=document.createElement('button'),pos=positions[i%positions.length];b.className='resident'+(r.character_id===arrived?' arriving':'');b.dataset.character=c.id;b.setAttribute('aria-label',c.name+' 만나기');b.style.left=pos[0]+'%';b.style.top=pos[1]+'%';b.style.zIndex=Math.round(pos[1]);b.style.setProperty('--delay',(-i*.7)+'s');b.append(avatar(c,r.outfit));const name=document.createElement('span');name.className='resident-label';name.textContent=c.name;const bubble=document.createElement('span');bubble.className='bubble';bubble.textContent=sayings[i%sayings.length];b.append(name,bubble);b.onclick=()=>openResident(r);root.append(b);});startVillageWalk();}
+// Walk on the foreground paths; bound feet and labels inside the visible scene.
+function startVillageWalk(){if(walkFrame===null)walkFrame=requestAnimationFrame(walkVillage);}
+function walkVillage(now){
+ walkFrame=null;
+ if($('village-view').hidden||document.hidden||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){walkTime=0;return;}
+ const dt=Math.min((now-walkTime)/1000||0,.05);walkTime=now;
+ if($('resident-modal').hidden){
+  const scene=$('village-scene'),width=scene.clientWidth,height=scene.clientHeight;
+  if(width&&height)document.querySelectorAll('.resident').forEach(node=>{
+   const padX=Math.min(40,(node.offsetWidth/2+12)/width*100),minY=Math.min(88,Math.max(62,(node.offsetHeight+40)/height*100)),maxY=Math.max(minY,Math.min(92,100-30/height*100));
+   let x=Math.max(padX,Math.min(100-padX,parseFloat(node.style.left))),y=Math.max(minY,Math.min(maxY,parseFloat(node.style.top)));
+   let goal=walkTargets.get(node);
+   if(!goal||Math.hypot((goal.x-x)*width/100,(goal.y-y)*height/100)<3){goal={x:padX+Math.random()*(100-2*padX),y:minY+Math.random()*(maxY-minY),speed:12+Math.random()*7};walkTargets.set(node,goal);}
+   const dx=(goal.x-x)*width/100,dy=(goal.y-y)*height/100,distance=Math.hypot(dx,dy),step=Math.min(distance,goal.speed*dt);
+   if(distance){x+=dx/distance*step/width*100;y+=dy/distance*step/height*100;}
+   node.style.left=x+'%';node.style.top=y+'%';node.style.zIndex=Math.round(y);
+  });
+ }
+ walkFrame=requestAnimationFrame(walkVillage);
+}
+document.addEventListener('visibilitychange',()=>{walkTime=0;if(!document.hidden&&!$('village-view').hidden)startVillageWalk();});
+async function villageRequest(options={},url='/hyeon/dressup/village'){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);try{const r=await fetch(url,{...options,signal:controller.signal});if(!r.ok)throw Error('village unavailable');return await r.json();}finally{clearTimeout(timer);}}
 try{acceptResidents(JSON.parse(localStorage.getItem(VILLAGE_KEY)||'[]'));}catch(_){acceptResidents([]);}
 const villageReady=villageRequest().then(data=>{acceptResidents(data.residents);$('village-status').textContent=residents.length?residents.length+'명의 친구가 살고 있어요':'옷을 입힌 친구를 초대해요!';}).catch(()=>{$('village-status').textContent='저장된 마을을 보여줘요. 연결되면 다시 불러와요.';});
 function showVillage(){cancelDrag();$('dressing-view').hidden=true;$('village-view').hidden=false;$('open-village').setAttribute('aria-pressed','true');renderVillage();}
 function showDressing(){cancelDrag();$('village-view').hidden=true;$('dressing-view').hidden=false;$('resident-modal').hidden=true;$('open-village').setAttribute('aria-pressed','false');}
-function openResident(r){selectedResident=r;const c=catalog.find(c=>c.id===r.character_id);$('resident-name').textContent=c.name+'의 집';$('resident-preview').replaceChildren(avatar(c,r.outfit));$('resident-modal').hidden=false;}
+function openResident(r){selectedResident=r;const c=catalog.find(c=>c.id===r.character_id);$('resident-name').textContent=c.name+'의 집';$('resident-preview').replaceChildren(avatar(c,r.outfit));$('return-closet').disabled=false;$('return-closet').textContent='🏠 옷장으로 돌아가기';$('resident-modal').hidden=false;}
 $('open-village').onclick=()=>{unlock();showVillage();};$('back-dressing').onclick=showDressing;$('invite-first').onclick=showDressing;$('close-resident').onclick=()=>$('resident-modal').hidden=true;$('stay-village').onclick=()=>$('resident-modal').hidden=true;
 $('redress').onclick=()=>{if(!selectedResident)return;const r=selectedResident,c=catalog.find(c=>c.id===r.character_id);state[c.id]={...r.outfit};save();showDressing();choose(c);};
+$('return-closet').onclick=async()=>{
+ if(!selectedResident||$('return-closet').disabled)return;
+ const resident=selectedResident,c=catalog.find(c=>c.id===resident.character_id),button=$('return-closet');
+ button.disabled=true;button.textContent='집에 가는 중…';unlock();
+ try{
+  const data=await villageRequest({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({character_id:c.id})},'/hyeon/dressup/village/return');
+  state[c.id]={...resident.outfit};save();acceptResidents(data.residents);selectedResident=null;
+  $('village-status').textContent=residents.length?residents.length+'명의 친구가 살고 있어요':'옷을 입힌 친구를 초대해요!';
+  showDressing();choose(c);sound();toast('🏠 '+c.name+'이 옷장으로 돌아왔어요!');
+ }catch(_){toast('돌아오지 못했어요. 연결을 확인하고 다시 눌러주세요.');}
+ finally{button.disabled=false;button.textContent='🏠 옷장으로 돌아가기';}
+};
 $('send-village').onclick=async()=>{unlock();if(sending)return;const c=character,outfit={...current()};if(!Object.keys(outfit).length){toast('먼저 옷이나 장식을 입혀봐요 🎀');return;}sending=true;$('send-village').disabled=true;$('send-village').textContent='🏡 이사 준비 중…';try{await villageReady;const existed=residents.some(r=>r.character_id===c.id),data=await villageRequest({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({character_id:c.id,outfit})});acceptResidents(data.residents);save();showVillage();renderVillage(c.id);$('village-status').textContent=residents.length+'명의 친구가 살고 있어요';sound(true);toast(existed?'🏡 '+c.name+'이 새 옷을 입고 돌아왔어요!':'🏡 '+c.name+'이 마을에 이사 왔어요!');}catch(_){toast('마을 저장이 안 됐어요. 잠시 후 다시 눌러주세요.');}finally{sending=false;$('send-village').disabled=false;$('send-village').textContent='🏡 마을로 보내기';}};
 setInterval(()=>{if($('village-view').hidden||document.hidden)return;const list=[...document.querySelectorAll('.resident')];if(!list.length)return;const n=list[Math.floor(Math.random()*list.length)];n.querySelector('.bubble').textContent=sayings[Math.floor(Math.random()*sayings.length)];n.classList.add('bubble-on');setTimeout(()=>n.classList.remove('bubble-on'),3000);},5200);
 
