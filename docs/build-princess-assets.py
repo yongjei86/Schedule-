@@ -464,6 +464,61 @@ def prop(pid,variant):
  return s+'</g>'
 
 
+# Extra selections are appended so previously saved outfits keep their indices.
+EXTRA_DRESSES={
+ 'elsa':('별빛 눈꽃 드레스','#8e9fdf','#dce9ff'),
+ 'anna':('가을 축제 드레스','#a06938','#e3b467'),
+ 'rapunzel':('태양빛 축제 드레스','#d38eab','#f7d4a4'),
+ 'ariel':('바다빛 무도회 드레스','#499fc0','#b2e3e5'),
+ 'belle':('장미 정원 드레스','#cc718a','#f4bfd0'),
+ 'cinderella':('은빛 별무리 드레스','#a6a9db','#eeebff'),
+ 'jasmine':('달빛 궁전 복장','#4964a2','#a0bde4'),
+ 'snowwhite':('사과꽃 축제 드레스','#8c4970','#f4c5d5'),
+ 'aurora':('라일락 무도회 드레스','#9a7dbc','#dac4ec'),
+ 'merida':('숲의 축제 드레스','#6d6140','#aaa57a'),
+ 'mulan':('목련 축제 예복','#638c97','#b4d6ce'),
+ 'pocahontas':('노을빛 축제 복장','#bb754b','#edc08a'),
+ 'tiana':('황금빛 축제 드레스','#cfaa55','#f3e2a5'),
+ 'moana':('바다빛 축제 복장','#b85142','#efd2a4')}
+for pid in EXTRA_DRESSES:STORY[pid].append(EXTRA_DRESSES[pid])
+_EXTRA_STORY=story_dress
+_EXTRA_CROWN=crown
+_EXTRA_PROP=prop
+def story_dress(pid,variant):
+ if variant<3:return _EXTRA_STORY(pid,variant)
+ # Reuse a character's recognizable silhouette with its own festival palette.
+ source=2 if pid in ('tiana','moana','mulan','jasmine') else 1
+ old=STORY[pid][source];STORY[pid][source]=STORY[pid][3]
+ try:art=_EXTRA_STORY(pid,source)
+ finally:STORY[pid][source]=old
+ art=art.replace(f'{pid}-story-{source}',f'{pid}-festival-3').replace(f'{pid}-costume-{source}',f'{pid}-festival-3')
+ accent=EXTRA_DRESSES[pid][1]
+ if pid in ('moana','jasmine','pocahontas'):
+  deco=flower(400,401,14,'#fff0cb')
+ else:
+  deco=''.join(flower(x,y,10,'#fff0d2') for x,y in [(326,605),(469,628),(393,695)])
+ return art+deco
+
+def crown(pid,variant):
+ if variant<2:return _EXTRA_CROWN(pid,variant)
+ col=EXTRA_DRESSES[pid][1];gem=EXTRA_DRESSES[pid][2]
+ if variant==2:
+  return f'<g stroke="#a18555" stroke-width="2" fill="#f1d18a"><path d="M321 106 L328 71 L357 87 L378 48 L400 77 L423 48 L447 87 L475 71 L480 106Z"/><path d="M329 101 Q400 114 473 101" fill="none" stroke="#fff1c6" stroke-width="5"/><path d="M400 70 L412 87 L400 104 L388 87Z" fill="{col}"/>'+''.join(f'<circle cx="{x}" cy="91" r="5" fill="{gem}"/>' for x in (347,369,432,453))+'</g>'
+ return f'<path d="M321 105 Q400 43 479 105" fill="none" stroke="{col}" stroke-width="9"/>'+''.join(flower(x,y,r,gem) for x,y,r in [(339,91,12),(369,77,14),(400,72,18),(431,77,14),(462,91,12)])
+
+def prop(pid,variant):
+ if variant<3:return _EXTRA_PROP(pid,variant)
+ col=EXTRA_DRESSES[pid][1];light=EXTRA_DRESSES[pid][2]
+ s='<g transform="translate(515 348)" stroke="#846857" stroke-width="2.5" stroke-linejoin="round">'
+ if pid in ('moana','pocahontas','merida','anna'):
+  s+=f'<path d="M25 77 Q79 51 132 77 L127 158 Q78 176 30 158Z" fill="{col}"/><path d="M43 70 V48 Q78 18 113 48 V70" fill="none" stroke="#d9b77c" stroke-width="8"/><path d="M33 87 Q78 111 126 87" fill="none" stroke="{light}" stroke-width="6"/><path d="M78 94 l13 18 -13 17 -13 -17Z" fill="{light}"/>'
+ elif pid in ('belle','mulan','snowwhite'):
+  s+=f'<path d="M22 43 Q50 22 78 42 Q108 21 137 43 L132 151 Q104 134 78 154 Q48 135 25 151Z" fill="{light}"/><path d="M78 43 V152 M34 60 Q51 52 67 61 M90 60 Q108 51 124 60 M34 79 Q51 71 67 80 M90 79 Q108 70 124 79" fill="none" stroke="{col}" stroke-width="4"/>'+flower(108,112,17,col)
+ else:
+  s+=f'<path d="M38 49 Q78 30 118 49 L125 145 Q78 166 31 145Z" fill="{light}"/><ellipse cx="78" cy="48" rx="40" ry="12" fill="{col}"/><path d="M48 43 Q38 6 78 8 Q118 6 108 43 M45 58 L40 139 M111 58 L116 139" fill="none" stroke="#d8b46e" stroke-width="6"/><path d="M78 73 L85 92 L106 94 L90 107 L96 127 L78 115 L61 127 L66 107 L51 94 L71 92Z" fill="{col}"/>'
+ return s+'</g>'
+
+
 def build():
  OUT.mkdir(parents=True,exist_ok=True)
  catalog=[]
@@ -471,23 +526,25 @@ def build():
   dress_names=[x[0] for x in STORY[pid]]
   drawings=[base(pid,hair,eye)]+[dress(pid,color,shade,light,i) for i in range(3)]+[crown(pid,i) for i in range(2)]+[prop(pid,i) for i in range(3)]
   drawings += [base(pid,hair,eye,i) for i in range(3)]
-  svg='<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="3200" viewBox="0 0 2400 3200">'
+  drawings += [dress(pid,color,shade,light,3),crown(pid,2),crown(pid,3),prop(pid,3),base(pid,hair,eye,3)]
+  svg='<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="4800" viewBox="0 0 2400 4800">'
   for i,art in enumerate(drawings):svg+=f'<g transform="translate({i%3*800} {i//3*800})">{art}</g>'
   svg+='</svg>'
   (OUT/(pid+'.svg')).write_text(svg)
   sprites=[]
-  for i in range(12):
-   kind='base' if i==0 or i>=9 else 'outfit' if i<4 else 'head' if i<6 else 'hand'
-   local=[0,0,800,800] if i==0 or i>=9 else [205,264,385,498] if i<4 else [309,27,182,93] if i<6 else [515,348,155,194]
+  for i in range(17):
+   kind='base' if i in (0,9,10,11,16) else 'outfit' if i in (1,2,3,12) else 'head' if i in (4,5,13,14) else 'hand'
+   local={'base':[0,0,800,800],'outfit':[205,264,385,498],'head':[309,27,182,93],'hand':[515,348,155,194]}[kind]
    # Clothing extends to x577; head and hand shapes share exactly the base frame.
    if 0<i<4:local=[205,264,385,498]
    x,y,w,h=local;box=[i%3*800+x,i//3*800+y,w,h]
-   label=name if i==0 or i>=9 else dress_names[i-1] if i<4 else CROWN_NAMES[pid][i-4] if i<6 else PROP_NAMES[pid][i-6]
+   label={12:STORY[pid][3][0],13:'축제 보석 왕관',14:'꽃과 보석 머리띠',15:('모험 가방' if pid in ('moana','pocahontas','merida','anna') else '꽃무늬 이야기책' if pid in ('belle','mulan','snowwhite') else '반짝이는 축제 등불')}.get(i)
+   if label is None:label=name if kind=='base' else dress_names[i-1] if kind=='outfit' else CROWN_NAMES[pid][i-4] if kind=='head' else PROP_NAMES[pid][i-6]
    if False:label={'elsa':'눈사람 친구','anna':'눈사람 친구','rapunzel':'파스칼','ariel':'물고기 친구','belle':'이야기책','cinderella':'이야기책'}[pid]
    item={'name':label,'kind':kind,'box':box}
    if i:item['fit']={'x':(x+w/2)/8,'y':(y+h/2)/8,'w':w/8,'h':h/8}
    sprites.append(item)
-  catalog.append({'id':pid,'name':name,'src':'/static/princess/'+pid+'.svg?v=7','width':2400,'height':3200,'baseVariants':[9,10,11],'sprites':sprites,'color':color,'slots':{'outfit':{'x':50,'y':63,'rx':35,'ry':32},'head':{'x':50,'y':12,'rx':35,'ry':27},'hand':{'x':74,'y':55,'rx':32,'ry':33}}})
+  catalog.append({'id':pid,'name':name,'src':'/static/princess/'+pid+'.svg?v=8','width':2400,'height':4800,'baseVariants':[9,10,11],'outfitBases':{'1':9,'2':10,'3':11,'12':16},'sprites':sprites,'color':color,'slots':{'outfit':{'x':50,'y':63,'rx':35,'ry':32},'head':{'x':50,'y':12,'rx':35,'ry':27},'hand':{'x':74,'y':55,'rx':32,'ry':33}}})
  (OUT/'catalog.json').write_text(json.dumps(catalog,ensure_ascii=False,indent=2)+'\n')
  (ROOT/'static'/'hyeon-princess-assets.js').write_text('window.PRINCESS_ASSETS='+json.dumps(catalog,ensure_ascii=False,separators=(',',':'))+';\n')
 
