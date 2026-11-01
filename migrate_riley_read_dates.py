@@ -99,7 +99,11 @@ books=[
 
 rcols={r['name'] for r in c.execute('PRAGMA table_info(riley_reading)').fetchall()}
 for title,language,genre,read_date,sr_score,lexile_score in books:
-    row=c.execute('SELECT id FROM riley_reading WHERE title=? LIMIT 1',(title,)).fetchone()
+    # Record each reading day separately; re-running this migration is idempotent.
+    row=c.execute("SELECT id FROM riley_reading WHERE title=? AND COALESCE(read_date,'')=? LIMIT 1",(title,read_date)).fetchone()
+    if not row:
+        # Preserve undated legacy records by assigning their first known reading date.
+        row=c.execute("SELECT id FROM riley_reading WHERE title=? AND COALESCE(read_date,'')='' LIMIT 1",(title,)).fetchone()
     if not row:
         fields=['title','language','rating','summary','created_at']
         values=[title,language,0,'',read_date+'T21:00:00']
@@ -107,16 +111,19 @@ for title,language,genre,read_date,sr_score,lexile_score in books:
         if 'sr_score' in rcols: fields.append('sr_score'); values.append(sr_score)
         if 'lexile_score' in rcols: fields.append('lexile_score'); values.append(lexile_score)
         if 'read_date' in rcols: fields.append('read_date'); values.append(read_date)
+        if 'child' in rcols: fields.append('child'); values.append('지유')
         q=','.join('?' for _ in fields)
         c.execute(f"INSERT INTO riley_reading({','.join(fields)}) VALUES({q})",values)
     else:
         updates=[]; vals=[]
+        if 'child' in rcols:
+            updates.append("child=CASE WHEN COALESCE(child,'')='' THEN '지유' ELSE child END")
         if 'read_date' in rcols:
             updates.append("read_date=CASE WHEN COALESCE(read_date,'')='' THEN ? ELSE read_date END"); vals.append(read_date)
         if 'sr_score' in rcols and sr_score:
-            updates.append("sr_score=CASE WHEN COALESCE(sr_score,'')='' THEN ? ELSE sr_score END"); vals.append(sr_score)
+            updates.append("sr_score=?"); vals.append(sr_score)
         if 'lexile_score' in rcols and lexile_score:
-            updates.append("lexile_score=CASE WHEN COALESCE(lexile_score,'')='' THEN ? ELSE lexile_score END"); vals.append(lexile_score)
+            updates.append("lexile_score=?"); vals.append(lexile_score)
         if updates:
             vals.append(row['id']); c.execute('UPDATE riley_reading SET '+','.join(updates)+' WHERE id=?',vals)
 
