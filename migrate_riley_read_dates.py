@@ -94,6 +94,7 @@ books=[
     ('Magic Animal Friends: Olivia Nibblesqueak\'s Messy Mischief','영어','창작','2026-10-29','',''),
     ('Magic Animal Friends: Rosie Gigglepip\'s Lucky Escape','영어','창작','2026-10-31','',''),
     ('떴다! 지식 탐험대 26: 출발, 공룡 멸종의 비밀을 찾아서!','한글','과학','2026-10-20','',''),
+    ('Nancy Drew and the Clue Crew #9: The Halloween Hoax','영어','창작','2026-11-05','3.5','510L'),
 ]
 
 
