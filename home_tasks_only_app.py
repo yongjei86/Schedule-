@@ -2057,12 +2057,11 @@ def hangul_page():
     config=json.dumps(dict(words=words,letters=letters,day=day,logged=logged),ensure_ascii=False).replace('<','\\u003c')
     items=[('today','⭐','오늘 놀이'),('letters','ㄱ','글자 듣기'),('combine','가','글자 만들기'),('trace','✍️','따라쓰기'),('cards','🖼️','그림 낱말'),('listen','👂','듣고 고르기'),('quiz','🔗','짝 맞추기'),('family','💛','우리 가족')]
     menu=''.join(f'<button type="button" class="hg-nav" data-mode="{key}"><span>{icon}</span>{label}</button>' for key,icon,label in items)
-    body=(f'<link rel="stylesheet" href="/static/hyeon-hangul.css?v=20261015-v1">'
+    body=(f'<link rel="stylesheet" href="/static/hyeon-hangul.css?v=20261110-fit1">'
           f'<div class="hg-app"><aside class="hg-menu"><div class="hg-brand">혜온의 한글 놀이</div><nav class="hg-menu-items">{menu}</nav><div class="hg-parent-links"><a href="/hyeon">🏠 홈</a><a href="/hyeon/coloring">🎨 색칠공부</a><a href="/hyeon/dressup">👗 옷입히기</a><a href="/hyeon/hangul/stats">보호자 기록</a></div></aside>'
-          '<section class="hg-work"><div class="hg-head"><h1 id="hg-title">오늘의 한글 놀이</h1><div class="hg-levels" aria-label="난이도">'
-          '<button type="button" class="hg-level on">처음</button><button type="button" class="hg-level">익숙해요</button><button type="button" class="hg-level">더 해볼래요</button></div></div>'
+          '<section class="hg-work"><div class="hg-head"><h1 id="hg-title">오늘의 한글 놀이</h1></div>'
           '<div class="hg-panel" id="hg-panel"></div></section></div><div id="hg-toast" class="hg-toast" role="status" hidden></div>'
-          f'<script id="hg-config" type="application/json">{config}</script><script src="/static/hyeon-hangul.js?v=20261018-audio2"></script>')
+          f'<script id="hg-config" type="application/json">{config}</script><script src="/static/hyeon-hangul.js?v=20261110-fit1"></script>')
     return page('혜온 한글 놀이',body)
 
 @app.route('/hyeon/hangul/stats')
