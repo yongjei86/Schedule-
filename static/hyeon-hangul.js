@@ -2,7 +2,6 @@
 const cfg=JSON.parse(document.getElementById('hg-config').textContent), panel=document.getElementById('hg-panel');
 const byId=id=>document.getElementById(id), el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
 const FAMILY=[{word:'혜온',emoji:'👧'},{word:'지유',emoji:'👧'},{word:'엄마',emoji:'👩'},{word:'아빠',emoji:'👨'}];
-const ART={'고양이':'cat','강아지':'dog','토끼':'rabbit','물고기':'fish','사과':'apple','자동차':'car','별':'star','꽃':'flower','집':'house','나비':'butterfly','거북이':'turtle','오리':'duck','케이크':'cake','우산':'umbrella','나무':'tree'};
 const extra=[['🌸','꽃'],['🏠','집'],['🐢','거북이'],['🦆','오리'],['🎂','케이크'],['🌳','나무']];
 const words=[...cfg.words];extra.forEach(([emoji,word])=>{if(!words.some(w=>w.word===word))words.push({emoji,word});});
 let mode='today',group='자음',currentWord=0,traceIndex=0,traceCleanup=()=>{},dispose=()=>{},generation=0,speechToken=0;const logged=new Set(cfg.logged||[]),timers=new Set();
@@ -23,7 +22,7 @@ async function log(item,activity,status){const key=[item,activity,status].join('
 function findPrompt(word){const c=word.charCodeAt(word.length-1),tail=c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28!==0?'을':'를';return word+tail+' 찾아줘';}
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function button(label,fn,cls='hg-small-button'){const b=el('button',cls,label);b.type='button';b.onclick=()=>{unlock();fn();};return b;}
-function art(w,cls='hg-word-art'){const n=el('div',cls);if(ART[w.word]){const im=el('img');im.src='/static/coloring/preschool-'+ART[w.word]+'.svg';im.alt=w.word;n.append(im);}else n.textContent=w.emoji;return n;}
+function art(w,cls='hg-word-art'){return el('div',cls,w.emoji);}
 function heading(text,hint){panel.append(el('h2','',text));if(hint)panel.append(el('p','hg-hint',hint));}
 function actions(...buttons){const a=el('div','hg-actions');a.append(...buttons);panel.append(a);return a;}
 function render(next=mode){traceCleanup();dispose();dispose=()=>{};timers.forEach(clearTimeout);timers.clear();generation++;stopVoice();byId('hg-toast').hidden=true;mode=next;panel.dataset.mode=mode;panel.closest('.hg-app').toggleAttribute('data-fixed',mode==='combine'||mode==='quiz');panel.replaceChildren();panel.scrollTop=0;document.querySelectorAll('.hg-nav').forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));byId('hg-title').textContent={today:'오늘의 한글 놀이',letters:'글자 듣기',combine:'글자 만들기',trace:'따라쓰기',cards:'그림 낱말',quiz:'짝 맞추기',listen:'듣고 고르기',family:'우리 가족'}[mode];({today:today,letters:letters,combine:combine,trace:trace,cards:cards,quiz:quiz,listen:listen,family:family})[mode]();}
@@ -35,11 +34,34 @@ function letters(){heading('눌러서 들어봐요','오늘은 몇 개만 천천
 const CI={'ㄱ':0,'ㄴ':2,'ㄷ':3,'ㄹ':5,'ㅁ':6,'ㅂ':7,'ㅅ':9,'ㅇ':11,'ㅈ':12,'ㅊ':14,'ㅋ':15,'ㅌ':16,'ㅍ':17,'ㅎ':18},VI={'ㅏ':0,'ㅑ':2,'ㅓ':4,'ㅕ':6,'ㅗ':8,'ㅛ':12,'ㅜ':13,'ㅠ':17,'ㅡ':18,'ㅣ':20};
 function syllable(c,v){return String.fromCharCode(0xAC00+CI[c]*588+VI[v]*28);}
 const ASSOC={'가':'가방','나':'나비','다':'다리','라':'라면','마':'마이크','바':'바나나','사':'사과','아':'아기','자':'자동차','차':'차','카':'카메라','타':'타조','파':'파도','하':'하마','고':'고래','노':'노루','도':'도넛','로':'로봇','모':'모자','보':'보석','소':'소','오':'오리','조':'조개','코':'코끼리','토':'토끼','포':'포도','호':'호랑이','구':'구름','누':'누나','무':'무지개','수':'수박','우':'우유','주':'주스','기':'기차','미':'미소','비':'비행기','시':'시계','이':'이빨','지':'지구','치':'치즈','피':'피자','여':'여우','거':'거북이','너':'너구리'};
-let selectedCons='ㄱ',selectedVowel='ㅏ';
-function combine(){heading('둘이 만나면 어떤 글자일까요?','파란 자음과 분홍 모음을 눌러봐요.');const result=el('div','hg-result'),eq=el('div','hg-equation'),word=el('div','hg-word-line');const preview=el('div','hg-combine-preview');preview.append(eq,result,word);panel.append(preview);
-const cons=Object.keys(CI),vs=Object.keys(VI),cRow=el('div','hg-pick-row hg-consonants'),vRow=el('div','hg-pick-row hg-vowels');
-function update(sound){const syl=syllable(selectedCons,selectedVowel);eq.replaceChildren(el('b','hg-cons',selectedCons),el('span','','+'),el('b','hg-vowel',selectedVowel));result.textContent=syl;word.replaceChildren();const match=words.find(w=>w.word===ASSOC[syl]);if(match){word.append(art(match),el('span','',match.word));}else if(ASSOC[syl])word.textContent=ASSOC[syl];cRow.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.textContent===selectedCons));vRow.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.textContent===selectedVowel));if(sound){speak(ASSOC[syl]?`${syl}, ${ASSOC[syl]}`:syl);log(syl,'combine','seen');}}
-cons.forEach(c=>cRow.append(button(c,()=>{selectedCons=c;update(true);},'hg-pick')));vs.forEach(v=>vRow.append(button(v,()=>{selectedVowel=v;update(true);},'hg-pick vowel')));panel.append(cRow,vRow);actions(button('🔊 다시 듣기',()=>update(true)));update(false);}
+function combine(){
+ const prompt=el('p','hg-hint hg-combine-step');
+ const result=el('div','hg-result'),eq=el('div','hg-equation'),word=el('div','hg-word-line');
+ result.setAttribute('aria-live','polite');
+ const preview=el('div','hg-combine-preview');preview.append(eq,result,word);
+ const cRow=el('div','hg-pick-row hg-consonants'),vRow=el('div','hg-pick-row hg-vowels');
+ let cons=null,vowel=null;
+ const back=button('◀ 자음 다시 고르기',()=>{cons=null;vowel=null;stopVoice();update();});
+ const replay=button('🔊 다시 듣기',()=>update(true));
+ function update(sound=false){
+  const syl=cons&&vowel?syllable(cons,vowel):null;
+  prompt.textContent=cons?'② 분홍 모음을 골라요':'① 파란 자음을 골라요';
+  cRow.hidden=!!cons;vRow.hidden=!cons;
+  back.disabled=!cons;replay.disabled=!syl;
+  back.classList.toggle('hg-replay-wait',!cons);
+  replay.classList.toggle('hg-replay-wait',!syl);
+  eq.replaceChildren(el('b','hg-cons',cons||'□'),el('span','','+'),el('b','hg-vowel',vowel||'□'));
+  result.textContent=syl||'';word.replaceChildren();
+  if(!syl)return;
+  const match=words.find(w=>w.word===ASSOC[syl]);
+  if(match)word.append(art(match),el('span','',match.word));else if(ASSOC[syl])word.textContent=ASSOC[syl];
+  vRow.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.textContent===vowel));
+  if(sound){speak(ASSOC[syl]?`${syl}, ${ASSOC[syl]}`:syl);log(syl,'combine','seen');}
+ }
+ Object.keys(CI).forEach(c=>cRow.append(button(c,()=>{cons=c;vowel=null;update();},'hg-pick')));
+ Object.keys(VI).forEach(v=>vRow.append(button(v,()=>{if(cons){vowel=v;update(true);}},'hg-pick vowel')));
+ panel.append(prompt,preview,cRow,vRow);actions(back,replay);update();
+}
 function wordCard(w,fn){const c=button('',fn,'hg-word-card');c.append(art(w),el('div','hg-word-text',w.word));return c;}
 function cards(){heading('그림과 낱말을 함께 봐요','그림을 누르면 읽어줘요.');const w=words[currentWord%words.length];panel.append(wordCard(w,()=>{speak(w.word);log(w.word,'cards','seen');}));pager(currentWord%words.length,words.length,()=>{currentWord=(currentWord-1+words.length)%words.length;render();},()=>{currentWord=(currentWord+1)%words.length;render();});}
 function family(){heading('우리 가족 이름을 불러요','눌러서 듣고, 같이 말해봐요.');const g=el('div','hg-family-grid');FAMILY.forEach(w=>g.append(wordCard(w,()=>{speak(w.word);log(w.word,'family','seen');})));panel.append(g);}
