@@ -2130,8 +2130,7 @@ def coloring_page():
         picker+=f'<button type="button" class="cl-pick" id="cl-pick-{t["id"]}" onclick="clSelect(\'{t["id"]}\')">{art}<span>{H(t["name"])}</span></button>'
     body=f'''
 <style>
-.hg-topbar{{display:flex;gap:8px;margin-bottom:14px}}
-.hg-btn{{width:56px;height:56px;border-radius:16px;border:1px solid #e4e9f0;background:#fff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center}}
+.cl-reset{{display:grid;place-items:center;flex:0 0 auto;width:44px;height:44px;padding:0;border-radius:14px;border:1px solid #e8d8e9;background:#f8edf5;font-size:21px;cursor:pointer}}
 .cl-picker-row{{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;margin-bottom:12px}}
 .cl-pick{{aspect-ratio:1;border-radius:18px;border:2px solid #e4e9f0;background:#fff;font-size:34px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}}
 .cl-pick span{{font-size:11px;font-weight:800;color:#748196}}
@@ -2145,18 +2144,14 @@ def coloring_page():
 .cl-swatch{{width:44px;height:44px;border-radius:50%;border:2px solid #e4e9f0;cursor:pointer}}
 .cl-swatch.on{{border-color:#14263f;border-width:3px}}
 .cl-tools{{display:flex;gap:8px;justify-content:center}}
-@media(max-width:430px){{.hg-btn{{width:48px;height:48px;font-size:22px}}}}
 </style>
-<div class="hg-topbar">
-<a class="hg-btn" href="/hyeon">🏠</a><a class="hg-btn" href="/hyeon/hangul" aria-label="한글놀이">🔤</a><a class="hg-btn" href="/hyeon/dressup" aria-label="옷입히기">👗</a>
-<button type="button" class="hg-btn" onclick="clClear()">🔄</button>
-</div>
 <div class="cl-picker-row">{picker}</div>
 <div class="cl-canvas-wrap">
   <canvas class="cl-canvas" id="cl-canvas"></canvas>
   <div id="cl-celebration" role="status" hidden style="position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:3;padding:12px 20px;border-radius:20px;background:#fff4c7;font-size:22px;font-weight:800;white-space:nowrap;pointer-events:none">🎉 완성! 참 잘했어요!</div><svg class="cl-outline" id="cl-outline" viewBox="0 0 300 300"></svg>
 </div>
 <div class="cl-palette">{color_btns}</div>
+<button type="button" class="cl-reset" id="cl-reset" aria-label="색칠 처음부터" title="색칠 처음부터" onclick="clClear()">🔄</button>
 <script>
 const CL_TEMPLATES={templates_json};
 let clColor='#e74c3c';
@@ -2292,7 +2287,7 @@ clInit();
 clSelect(CL_TEMPLATES[0].id);
 document.querySelector('.cl-swatch').classList.add('on');
 </script>
-<script src="/static/hyeon-custom-coloring.js?v=20261015-artwork-v5"></script>
+<script src="/static/hyeon-custom-coloring.js?v=20261110-nav-v6"></script>
 '''
     return page('혜온 색칠 공부',body)
 

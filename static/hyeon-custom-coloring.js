@@ -41,8 +41,6 @@
     .cl-sidebar .cl-pick {aspect-ratio:auto;height:73px;min-width:0;border-radius:12px;font-size:27px}
     .cl-sidebar .cl-pick span {font-size:11px;line-height:1.2;word-break:keep-all}
     .cl-workspace {min-height:0;min-width:0;background:#fff;border:1px solid #e4e9f0;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:8px;overflow:hidden}
-    .cl-workspace .hg-topbar {align-self:stretch;margin:0 0 6px;flex:0 0 auto}
-    .cl-workspace .hg-btn {width:46px;height:46px;border-radius:12px;font-size:23px}
     .cl-workspace .cl-canvas-wrap {box-sizing:border-box;position:relative;flex:0 1 auto;width:min(100%,calc(100dvh - 165px));max-width:none;max-height:calc(100% - 60px);aspect-ratio:1 / 1;height:auto;margin:auto;border-radius:16px;overflow:hidden}
     .cl-workspace .cl-canvas {width:100%;height:100%;touch-action:none}
     .cl-control-footer {width:100%;flex:0 0 auto;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding-top:5px}
@@ -57,31 +55,28 @@
       .cl-sidebar .cl-pick {height:58px;min-width:66px;width:66px;flex:0 0 66px;font-size:22px}
       .cl-sidebar .cl-pick span {font-size:9px}
       .cl-workspace {flex:1 1 auto;padding:5px;border-radius:12px}
-      .cl-workspace .hg-topbar {margin-bottom:2px}
-      .cl-workspace .hg-btn {width:38px;height:38px;font-size:19px}
       .cl-workspace .cl-canvas-wrap {width:min(100%,calc(100dvh - 214px));max-height:calc(100% - 45px);border-radius:11px;margin:auto}
       .cl-control-footer {min-height:35px;padding-top:2px}
       .cl-control-footer .cl-swatch {width:31px;height:31px}
     }
     @media(max-height:540px) and (min-width:650px) {
-      .cl-workspace .hg-topbar {margin:0}
-      .cl-workspace .hg-btn {width:36px;height:36px;font-size:18px}
       .cl-workspace .cl-canvas-wrap {width:min(100%,calc(100dvh - 105px))}
       .cl-control-footer .cl-swatch {width:30px;height:30px}
     }
   `;
   document.head.appendChild(layoutStyle);
   var main = document.querySelector('main.wrap');
-  var topbar = document.querySelector('.hg-topbar');
+  var reset = document.getElementById('cl-reset');
+  var header = document.getElementById('hy-header');
   var palette = document.querySelector('.cl-palette');
   var studio = document.createElement('div'); studio.className = 'cl-studio';
   var sidebar = document.createElement('aside'); sidebar.className = 'cl-sidebar';
   var workspace = document.createElement('section'); workspace.className = 'cl-workspace';
   var footer = document.createElement('div'); footer.className = 'cl-control-footer';
   sidebar.appendChild(picker);
-  workspace.appendChild(topbar);
   workspace.appendChild(wrap);
   footer.appendChild(tools); footer.appendChild(palette);
+  if (reset) (header || footer).appendChild(reset);
   workspace.appendChild(footer);
   studio.appendChild(sidebar); studio.appendChild(workspace);
   main.appendChild(studio);
