@@ -98,9 +98,9 @@ books=[
     ('전쟁과 발명: 세상이 번쩍, 생각이 반짝!','한글','과학','2026-11-04','',''),
     ('북극의 눈물: 지구 끝에 무슨 일이?!','한글','과학','2026-11-06','',''),
     ('Bear Grylls Adventures: The Sailing Challenge','영어','창작','2026-11-07','4.4','670L'),
-    ('Bear Grylls Adventures: The Sea Challenge','영어','창작','2026-11-13','',''),
-    ('The 39 Steps','영어','고전','2026-11-13','',''),
-    ('The Prisoner of Zenda','영어','고전','2026-11-13','',''),
+    ('Bear Grylls Adventures: The Sea Challenge','영어','창작','2026-11-13','4.4','670L'),
+    ('The 39 Steps','영어','고전','2026-11-13','5.4','840L'),
+    ('The Prisoner of Zenda','영어','고전','2026-11-13','4.0','600L'),
 ]
 
 
