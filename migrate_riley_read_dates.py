@@ -101,6 +101,7 @@ books=[
     ('Bear Grylls Adventures: The Sea Challenge','영어','창작','2026-11-13','4.4','670L'),
     ('The 39 Steps','영어','고전','2026-11-13','5.4','840L'),
     ('The Prisoner of Zenda','영어','고전','2026-11-13','4.0','600L'),
+    ('The Magic Finger','영어','창작','2026-11-12','',''),
 ]
 
 
