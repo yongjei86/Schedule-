@@ -3253,20 +3253,41 @@ _ICON_SVG = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
 <circle cx="392" cy="128" r="9" fill="#FFD166"/>
 </svg>'''
 
-_SW = '''const CACHE='family-pwa-v2';
-const SHELL=['/manifest.webmanifest','/pwa-icon-v3.svg'];
-self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));self.skipWaiting();});
-self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
-self.addEventListener('fetch',event=>{
-  if(event.request.method!=='GET') return;
-  const url=new URL(event.request.url);
-  if(url.origin!==location.origin) return;
-  if(event.request.mode==='navigate'){
-    event.respondWith(fetch(event.request).catch(()=>caches.match('/')));
+_SW = '''const CACHE = 'family-pwa-v3';
+const SHELL = ['/manifest.webmanifest', '/pwa-icon-v3.svg'];
+const OFFLINE_HTML = `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>우리 가족 기록</title><body><main><h1>연결을 확인해 주세요</h1><p>가족 기록을 불러오지 못했습니다. 인터넷에 연결한 뒤 다시 시도해 주세요.</p><button type="button" onclick="location.reload()">다시 시도</button> <a href="/">홈으로</a></main></body></html>`;
+self.addEventListener('install', event => event.waitUntil(self.skipWaiting()));
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith('family-pwa-') && key !== CACHE).map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
+});
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+  if (request.mode === 'navigate') {
+    event.respondWith(fetch(request).catch(() => new Response(OFFLINE_HTML, {
+      status: 503,
+      headers: {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'}
+    })));
     return;
   }
-  if(url.pathname==='/manifest.webmanifest'||url.pathname==='/pwa-icon-v3.svg'){
-    event.respondWith(fetch(event.request).then(resp=>{const copy=resp.clone();caches.open(CACHE).then(c=>c.put(event.request,copy));return resp;}).catch(()=>caches.match(event.request)));
+  if (SHELL.includes(url.pathname)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      try {
+        const response = await fetch(request);
+        if (response.ok) await cache.put(request, response.clone()).catch(() => {});
+        return response;
+      } catch (error) {
+        const cached = await cache.match(request);
+        return cached || Response.error();
+      }
+    })());
   }
 });'''
 
